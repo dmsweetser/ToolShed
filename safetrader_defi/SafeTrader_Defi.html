@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Arbitrum Trading Bot</title>
+    <title>Uniswap Arbitrum Trading Bot - PREPROD</title>
     <style>
         :root {
             --bs-body-color: #212529;
@@ -95,6 +95,11 @@
             font-size: 0.875rem;
         }
 
+        .btn-xs {
+            padding: 0.15rem 0.3rem;
+            font-size: 0.75rem;
+        }
+
         .card {
             background: white;
             border-radius: var(--bs-border-radius);
@@ -115,6 +120,10 @@
             font-size: 1.25rem;
             font-weight: 600;
             margin-bottom: 10px;
+        }
+
+        .card-body {
+            padding: 0;
         }
 
         .form-control {
@@ -188,10 +197,16 @@
             color: white;
         }
 
+        .badge-secondary {
+            background: var(--bs-secondary);
+            color: white;
+        }
+
         .nav-tabs {
             display: flex;
             border-bottom: 1px solid #dee2e6;
             margin-bottom: 20px;
+            flex-wrap: wrap;
         }
 
         .nav-tabs .nav-link {
@@ -237,6 +252,12 @@
             color: #856404;
         }
 
+        .alert-info {
+            background: rgba(13, 202, 240, 0.1);
+            border: 1px solid var(--bs-info);
+            color: var(--bs-info);
+        }
+
         .status-indicator {
             display: inline-block;
             width: 12px;
@@ -256,6 +277,10 @@
 
         .status-disconnected {
             background: var(--bs-secondary);
+        }
+
+        .status-warning {
+            background: var(--bs-warning);
         }
 
         @keyframes pulse {
@@ -305,7 +330,6 @@
             border-radius: var(--bs-border-radius);
             border: 1px solid #dee2e6;
             position: relative;
-            overflow: hidden;
         }
 
         .grid-2 {
@@ -314,8 +338,16 @@
             gap: 20px;
         }
 
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
         @media (max-width: 768px) {
-            .grid-2 {
+
+            .grid-2,
+            .grid-3 {
                 grid-template-columns: 1fr;
             }
         }
@@ -348,14 +380,19 @@
         }
 
         .loading-spinner {
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
             border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
+            animation: spin 0.8s ease-in-out infinite;
             display: inline-block;
-            margin-right: 10px;
+            margin-right: 8px;
+        }
+
+        .loading-spinner-dark {
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-top-color: var(--bs-primary);
         }
 
         @keyframes spin {
@@ -385,7 +422,7 @@
             background: white;
             padding: 30px;
             border-radius: var(--bs-border-radius);
-            max-width: 500px;
+            max-width: 600px;
             width: 90%;
             max-height: 80vh;
             overflow-y: auto;
@@ -448,6 +485,10 @@
             gap: 20px;
         }
 
+        .flex-wrap {
+            flex-wrap: wrap;
+        }
+
         .code-display {
             background: #f8f9fa;
             padding: 10px;
@@ -456,6 +497,116 @@
             font-size: 0.9rem;
             overflow-x: auto;
         }
+
+        .log-container {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: var(--bs-border-radius);
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+        }
+
+        .log-info {
+            color: #569cd6;
+        }
+
+        .log-success {
+            color: #4ec9b0;
+        }
+
+        .log-warning {
+            color: #dcdcaa;
+        }
+
+        .log-error {
+            color: #f44747;
+        }
+
+        .log-debug {
+            color: #6c757d;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--bs-primary);
+            transition: width 0.3s;
+        }
+
+        .price-sparkline {
+            width: 60px;
+            height: 30px;
+            display: inline-block;
+            margin-left: 10px;
+        }
+
+        .backtest-results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: var(--bs-border-radius);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .connection-status {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.85rem;
+        }
+
+        .status-connected {
+            background: rgba(25, 135, 84, 0.1);
+            color: var(--bs-success);
+        }
+
+        .status-disconnected {
+            background: rgba(220, 53, 69, 0.1);
+            color: var(--bs-danger);
+        }
+
+        .status-degraded {
+            background: rgba(255, 193, 7, 0.1);
+            color: var(--bs-warning);
+        }
+
+        .pool-info {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
     </style>
 </head>
 
@@ -463,20 +614,22 @@
     <div class="container">
         <header class="text-center mb-2">
             <h1>Uniswap Arbitrum Trading Bot</h1>
-            <p class="text-secondary">Automated crypto trading with pattern detection</p>
+            <p class="text-secondary">PREPROD - Real Data, Simulated Trades</p>
         </header>
 
         <!-- Main Navigation -->
         <div class="nav-tabs">
             <div class="nav-link active" data-tab="dashboard">Dashboard</div>
             <div class="nav-link" data-tab="trading">Trading</div>
+            <div class="nav-link" data-tab="backtest">Backtest</div>
             <div class="nav-link" data-tab="history">History</div>
             <div class="nav-link" data-tab="settings">Settings</div>
+            <div class="nav-link" data-tab="logs">Logs</div>
         </div>
 
         <!-- Dashboard Tab -->
-        <div id="dashboard" class="tab-content">
-            <div class="grid-2">
+        <div id="dashboard" class="tab-content active">
+            <div class="grid-3">
                 <!-- Bot Status Card -->
                 <div class="card">
                     <div class="card-header d-flex justify-between align-center">
@@ -488,19 +641,37 @@
                             <span class="status-indicator status-disconnected" id="statusIndicator"></span>
                             <span id="botStatusText">Disconnected</span>
                         </div>
-                        <div class="d-flex gap-1 mt-1">
+                        <div class="connection-status" id="connectionStatus">
+                            <div class="status-item status-disconnected" id="binanceStatus">
+                                <span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span>
+                                Binance
+                            </div>
+                            <div class="status-item status-disconnected" id="coingeckoStatus">
+                                <span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span>
+                                CoinGecko
+                            </div>
+                            <div class="status-item status-disconnected" id="uniswapStatus">
+                                <span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span>
+                                Uniswap
+                            </div>
+                            <div class="status-item status-disconnected" id="walletStatus">
+                                <span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span>
+                                Wallet
+                            </div>
+                        </div>
+                        <div class="d-flex gap-1 mt-2">
                             <button class="btn btn-success btn-sm" id="startBotBtn" onclick="startBot()">
                                 <span class="loading-spinner" id="startSpinner" style="display:none;"></span>Start Bot
                             </button>
                             <button class="btn btn-danger btn-sm" id="stopBotBtn" onclick="stopBot()" disabled>
                                 <span class="loading-spinner" id="stopSpinner" style="display:none;"></span>Stop Bot
                             </button>
-                            <button class="btn btn-secondary btn-sm" id="testBtn" onclick="testConnection()">Test
-                                Connection</button>
+                            <button class="btn btn-secondary btn-sm" onclick="testConnection()">Test All</button>
                         </div>
-                        <div class="mt-1">
+                        <div class="mt-2">
                             <p><strong>Uptime:</strong> <span id="uptime">00:00:00</span></p>
                             <p><strong>Last Price Update:</strong> <span id="lastPriceUpdate">Never</span></p>
+                            <p><strong>Price Source:</strong> <span id="priceSource">None</span></p>
                         </div>
                     </div>
                 </div>
@@ -510,21 +681,35 @@
                     <div class="card-header">Profit & Loss</div>
                     <div class="card-body">
                         <h2 id="totalPnL">$0.00</h2>
-                        <p class="text-secondary">Total PnL across all trades</p>
+                        <p class="text-secondary">Total PnL (Simulated)</p>
                         <div class="pnl-chart" id="pnlChart">
                             <canvas id="pnlCanvas"></canvas>
                         </div>
-                        <div class="d-flex justify-between mt-1">
+                        <div class="d-flex justify-between mt-2">
                             <div>
                                 <p><strong>Today:</strong> <span id="dailyPnL">$0.00</span></p>
                             </div>
                             <div>
-                                <p><strong>This Week:</strong> <span id="weeklyPnL">$0.00</span></p>
+                                <p><strong>Week:</strong> <span id="weeklyPnL">$0.00</span></p>
                             </div>
                             <div>
-                                <p><strong>This Month:</strong> <span id="monthlyPnL">$0.00</span></p>
+                                <p><strong>Month:</strong> <span id="monthlyPnL">$0.00</span></p>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Network Stats Card -->
+                <div class="card">
+                    <div class="card-header">Network Stats</div>
+                    <div class="card-body">
+                        <p><strong>Gas Price:</strong> <span id="gasPrice">-</span> gwei</p>
+                        <p><strong>ETH Price:</strong> <span id="ethPrice">$0.00</span></p>
+                        <p><strong>ARB Price:</strong> <span id="arbPrice">$0.00</span></p>
+                        <div class="progress-bar mt-2">
+                            <div class="progress-fill" id="networkUtilization" style="width: 0%;"></div>
+                        </div>
+                        <p class="text-secondary mt-1">Network Utilization</p>
                     </div>
                 </div>
             </div>
@@ -532,7 +717,10 @@
             <!-- Active Positions & Recent Trades -->
             <div class="grid-2">
                 <div class="card">
-                    <div class="card-header">Active Positions</div>
+                    <div class="card-header d-flex justify-between align-center">
+                        <span>Active Positions</span>
+                        <span class="badge badge-secondary" id="activeCount">0</span>
+                    </div>
                     <div class="card-body">
                         <div id="activePositions">
                             <p class="text-secondary">No active positions</p>
@@ -541,7 +729,10 @@
                 </div>
 
                 <div class="card">
-                    <div class="card-header">Recent Trades</div>
+                    <div class="card-header d-flex justify-between align-center">
+                        <span>Recent Trades</span>
+                        <button class="btn btn-secondary btn-xs" onclick="refreshRecentTrades()">Refresh</button>
+                    </div>
                     <div class="card-body trade-history">
                         <table class="table table-striped">
                             <thead>
@@ -566,9 +757,20 @@
 
             <!-- Price Monitoring -->
             <div class="card">
-                <div class="card-header">
+                <div class="card-header d-flex justify-between align-center">
                     <span>Price Monitoring</span>
-                    <button class="btn btn-primary btn-sm" onclick="refreshPrices()">Refresh</button>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-primary btn-xs" onclick="refreshPrices()">
+                            <span class="loading-spinner loading-spinner-dark" id="priceRefreshSpinner"
+                                style="display:none;"></span>Refresh
+                        </button>
+                        <select class="form-control btn-xs" id="priceSourceSelect" onchange="switchPriceSource()"
+                            style="padding:2px 5px;height:auto;">
+                            <option value="auto">Auto</option>
+                            <option value="binance">Binance WS</option>
+                            <option value="coingecko">CoinGecko</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="token-selector" id="tokenSelector">
@@ -579,6 +781,7 @@
                         <button class="token-btn" data-token="LINK">LINK</button>
                         <button class="token-btn" data-token="ARB">ARB</button>
                         <button class="token-btn" data-token="GMX">GMX</button>
+                        <button class="token-btn" data-token="USDT">USDT</button>
                     </div>
                     <div id="priceTable">
                         <table class="table">
@@ -587,13 +790,14 @@
                                     <th>Token</th>
                                     <th>Price (USD)</th>
                                     <th>24h Change</th>
-                                    <th>Pattern Status</th>
+                                    <th>Liquidity</th>
+                                    <th>Pattern</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody id="priceRows">
                                 <tr>
-                                    <td colspan="5" class="text-center text-secondary">Loading prices...</td>
+                                    <td colspan="6" class="text-center text-secondary">Loading prices...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -603,30 +807,31 @@
         </div>
 
         <!-- Trading Tab -->
-        <div id="trading" class="tab-content" style="display:none;">
+        <div id="trading" class="tab-content">
             <div class="card">
                 <div class="card-header">Trading Strategies</div>
                 <div class="card-body">
                     <div class="form-group">
                         <label class="form-label">Buy Patterns</label>
-                        <textarea class="form-control pattern-input" id="buyPatterns"
-                            placeholder="Enter buy patterns..."></textarea>
+                        <textarea class="form-control pattern-input" id="buyPatterns" rows="3"
+                            placeholder="Enter buy patterns (e.g., &lt;_-0.5_150-450)&amp;(&lt;_-1.5_150-450)"></textarea>
                         <small class="text-secondary">
-                            Format: Use &lt;_[-0.5]_150-450 for price drops, &gt;_[+0.3]_15-150 for price rises<br>
-                            &amp; = AND condition, | = OR condition
+                            Format: &lt;_[-0.5]_150-450 = price drops 0.5% over 150-450 sec | &amp; = AND, | = OR<br>
+                            Example: &lt;_-1_300-600&amp;&gt;_+0.5_60-180
                         </small>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">Sell Patterns</label>
-                        <textarea class="form-control pattern-input" id="sellPatterns"
-                            placeholder="Enter sell patterns..."></textarea>
+                        <textarea class="form-control pattern-input" id="sellPatterns" rows="3"
+                            placeholder="Enter sell patterns"></textarea>
                         <small class="text-secondary">
-                            Format: &gt;_[+0.3]_15-150 = price rises by 0.3% over 15-150 seconds
+                            Format: &gt;_[+0.3]_15-150 = price rises 0.3% over 15-150 sec<br>
+                            Example: &gt;_+0.5_60-300|&gt;_+0.2_300-1800
                         </small>
                     </div>
 
-                    <div class="grid-2">
+                    <div class="grid-3">
                         <div class="form-group">
                             <label class="form-label">Trade Amount (USD)</label>
                             <input type="number" class="form-control" id="tradeAmount" value="100" min="1" step="1">
@@ -635,9 +840,13 @@
                             <label class="form-label">Max Open Trades</label>
                             <input type="number" class="form-control" id="maxTrades" value="5" min="1" max="20">
                         </div>
+                        <div class="form-group">
+                            <label class="form-label">Cooldown (sec)</label>
+                            <input type="number" class="form-control" id="tradeCooldown" value="60" min="0">
+                        </div>
                     </div>
 
-                    <div class="grid-2">
+                    <div class="grid-3">
                         <div class="form-group">
                             <label class="form-label">Stop Loss (%)</label>
                             <input type="number" class="form-control" id="stopLoss" value="2" min="0" max="100"
@@ -646,6 +855,11 @@
                         <div class="form-group">
                             <label class="form-label">Take Profit (%)</label>
                             <input type="number" class="form-control" id="takeProfit" value="5" min="0" max="100"
+                                step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Trailing Stop (%)</label>
+                            <input type="number" class="form-control" id="trailingStop" value="1" min="0" max="100"
                                 step="0.1">
                         </div>
                     </div>
@@ -662,34 +876,132 @@
                         </div>
                     </div>
 
-                    <button class="btn btn-primary" onclick="saveTradingSettings()">Save Trading Settings</button>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-primary" onclick="saveTradingSettings()">
+                            <span class="loading-spinner loading-spinner-dark" id="saveSettingsSpinner"
+                                style="display:none;"></span>Save Settings
+                        </button>
+                        <button class="btn btn-secondary" onclick="loadDefaultPatterns()">Load Defaults</button>
+                        <button class="btn btn-warning" onclick="validatePatterns()">Validate Patterns</button>
+                    </div>
+                    <div id="patternValidationResult" class="mt-1"></div>
                 </div>
             </div>
 
             <div class="card">
-                <div class="card-header">Pattern Tester</div>
+                <div class="card-header">Trade Simulation</div>
                 <div class="card-body">
-                    <div class="form-group">
-                        <label class="form-label">Test Pattern</label>
-                        <input type="text" class="form-control" id="testPattern" placeholder="Enter pattern to test">
+                    <div class="grid-2">
+                        <div>
+                            <div class="form-group">
+                                <label class="form-label">Token</label>
+                                <select class="form-control" id="simToken">
+                                    <option value="ETH">ETH</option>
+                                    <option value="WBTC">WBTC</option>
+                                    <option value="UNI">UNI</option>
+                                    <option value="LINK">LINK</option>
+                                    <option value="ARB">ARB</option>
+                                    <option value="GMX">GMX</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Amount (USD)</label>
+                                <input type="number" class="form-control" id="simAmount" value="100" min="1">
+                            </div>
+                        </div>
+                        <div>
+                            <div class="form-group">
+                                <label class="form-label">Action</label>
+                                <select class="form-control" id="simAction">
+                                    <option value="buy">Buy</option>
+                                    <option value="sell">Sell</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Slippage (%)</label>
+                                <input type="number" class="form-control" id="simSlippage" value="0.5" min="0" max="10"
+                                    step="0.1">
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Price History (comma separated)</label>
-                        <input type="text" class="form-control" id="testPrices"
-                            placeholder="e.g., 100, 101, 102, 101.5, 100.8">
+                    <button class="btn btn-success" onclick="simulateTrade()">
+                        <span class="loading-spinner loading-spinner-dark" id="simSpinner"
+                            style="display:none;"></span>Simulate Trade
+                    </button>
+                    <div id="simulationResult" class="mt-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Backtest Tab -->
+        <div id="backtest" class="tab-content">
+            <div class="card">
+                <div class="card-header">Backtesting</div>
+                <div class="card-body">
+                    <div class="grid-2">
+                        <div>
+                            <div class="form-group">
+                                <label class="form-label">Token Pair</label>
+                                <select class="form-control" id="backtestToken">
+                                    <option value="ETH">ETH/USD</option>
+                                    <option value="WBTC">WBTC/USD</option>
+                                    <option value="UNI">UNI/USD</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Time Range</label>
+                                <select class="form-control" id="backtestRange">
+                                    <option value="7">Last 7 Days</option>
+                                    <option value="30" selected>Last 30 Days</option>
+                                    <option value="90">Last 90 Days</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Patterns to Test</label>
+                            <textarea class="form-control" id="backtestPatterns" rows="3"
+                                placeholder="Enter patterns to backtest..."></textarea>
+                        </div>
+                        <button class="btn btn-primary" onclick="runBacktest()">
+                            <span class="loading-spinner loading-spinner-dark" id="backtestSpinner"
+                                style="display:none;"></span>Run Backtest
+                        </button>
                     </div>
-                    <button class="btn btn-success" onclick="testPattern()">Test Pattern</button>
-                    <div id="testResult" class="mt-1"></div>
+                    <div id="backtestResults" class="backtest-results" style="display:none;">
+                        <h4>Results</h4>
+                        <div class="grid-3">
+                            <div>
+                                <p><strong>Total Trades:</strong> <span id="btTotalTrades">0</span></p>
+                                <p><strong>Winning:</strong> <span id="btWinning">0</span></p>
+                                <p><strong>Losing:</strong> <span id="btLosing">0</span></p>
+                            </div>
+                            <div>
+                                <p><strong>Win Rate:</strong> <span id="btWinRate">0%</span></p>
+                                <p><strong>Total PnL:</strong> <span id="btTotalPnL">$0.00</span></p>
+                                <p><strong>Avg Profit:</strong> <span id="btAvgProfit">$0.00</span></p>
+                            </div>
+                            <div>
+                                <p><strong>Max Drawdown:</strong> <span id="btMaxDrawdown">$0.00</span></p>
+                                <p><strong>Profit Factor:</strong> <span id="btProfitFactor">0.00</span></p>
+                                <p><strong>Sharpe Ratio:</strong> <span id="btSharpeRatio">0.00</span></p>
+                            </div>
+                        </div>
+                        <canvas id="backtestChart" width="400" height="200"></canvas>
+                        <div id="btTradeList" class="mt-2"></div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- History Tab -->
-        <div id="history" class="tab-content" style="display:none;">
+        <div id="history" class="tab-content">
             <div class="card">
                 <div class="card-header d-flex justify-between align-center">
                     <span>Trade History</span>
-                    <button class="btn btn-secondary btn-sm" onclick="exportTradeHistory()">Export CSV</button>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-secondary btn-xs" onclick="exportTradeHistory()">Export CSV</button>
+                        <button class="btn btn-danger btn-xs" onclick="clearTradeHistory()">Clear All</button>
+                    </div>
                 </div>
                 <div class="card-body trade-history">
                     <table class="table table-striped">
@@ -703,12 +1015,11 @@
                                 <th>Fee</th>
                                 <th>Status</th>
                                 <th>PnL</th>
-                                <th>Tx Hash</th>
                             </tr>
                         </thead>
                         <tbody id="fullTradeHistory">
                             <tr>
-                                <td colspan="9" class="text-center text-secondary">No trade history</td>
+                                <td colspan="8" class="text-center text-secondary">No trade history</td>
                             </tr>
                         </tbody>
                     </table>
@@ -718,20 +1029,28 @@
             <div class="card">
                 <div class="card-header">Performance Statistics</div>
                 <div class="card-body">
-                    <div class="grid-2">
+                    <div class="grid-3">
                         <div>
-                            <h3>Overall</h3>
+                            <h4>Overall</h4>
                             <p><strong>Total Trades:</strong> <span id="totalTrades">0</span></p>
                             <p><strong>Win Rate:</strong> <span id="winRate">0%</span></p>
                             <p><strong>Avg Profit:</strong> <span id="avgProfit">$0.00</span></p>
                             <p><strong>Max Drawdown:</strong> <span id="maxDrawdown">$0.00</span></p>
+                            <p><strong>Profit Factor:</strong> <span id="profitFactor">0.00</span></p>
                         </div>
                         <div>
-                            <h3>Current Session</h3>
+                            <h4>Current Session</h4>
                             <p><strong>Session Start:</strong> <span id="sessionStart">-</span></p>
                             <p><strong>Trades:</strong> <span id="sessionTrades">0</span></p>
                             <p><strong>Session PnL:</strong> <span id="sessionPnL">$0.00</span></p>
                             <p><strong>Best Trade:</strong> <span id="bestTrade">$0.00</span></p>
+                            <p><strong>Worst Trade:</strong> <span id="worstTrade">$0.00</span></p>
+                        </div>
+                        <div>
+                            <h4>Best Performers</h4>
+                            <p><strong>Token:</strong> <span id="bestToken">-</span></p>
+                            <p><strong>PnL:</strong> <span id="bestTokenPnL">$0.00</span></p>
+                            <p><strong>Win Rate:</strong> <span id="bestTokenWinRate">0%</span></p>
                         </div>
                     </div>
                 </div>
@@ -739,21 +1058,20 @@
         </div>
 
         <!-- Settings Tab -->
-        <div id="settings" class="tab-content" style="display:none;">
+        <div id="settings" class="tab-content">
             <div class="card">
-                <div class="card-header">Wallet & Network Settings</div>
+                <div class="card-header">Wallet & Network</div>
                 <div class="card-body">
                     <div class="form-group">
                         <label class="form-label">MetaMask Status</label>
                         <div class="d-flex align-center gap-1">
-                            <span id="walletStatus"></span>
+                            <span id="walletStatusBadge"></span>
                             <button class="btn btn-primary btn-sm" id="connectWalletBtn" onclick="connectWallet()">
-                                Connect MetaMask
+                                <span class="loading-spinner loading-spinner-dark" id="walletConnectSpinner"
+                                    style="display:none;"></span>Connect MetaMask
                             </button>
                             <button class="btn btn-danger btn-sm" id="disconnectWalletBtn" onclick="disconnectWallet()"
-                                style="display:none;">
-                                Disconnect
-                            </button>
+                                style="display:none;">Disconnect</button>
                         </div>
                         <div id="walletInfo" class="mt-1"></div>
                     </div>
@@ -762,51 +1080,65 @@
                         <label class="form-label">Network</label>
                         <select class="form-control" id="networkSelect" onchange="updateNetwork()">
                             <option value="arbitrum">Arbitrum One</option>
-                            <option value="arbitrum-nova">Arbitrum Nova</option>
+                            <option value="arbitrum-goerli">Arbitrum Goerli (Testnet)</option>
+                            <option value="mainnet">Ethereum Mainnet</option>
                         </select>
-                        <small class="text-secondary">Currently configured for Arbitrum L2</small>
+                        <small class="text-secondary">Current: <span id="currentNetwork">Arbitrum One</span></small>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Uniswap Router Address</label>
+                        <label class="form-label">Uniswap Router</label>
                         <input type="text" class="form-control" id="routerAddress"
                             value="0xE592427A0AEce92De3Edee1F18E0157C05861564" readonly>
-                        <small class="text-secondary">Uniswap V3 Router on Arbitrum</small>
+                        <small class="text-secondary">Uniswap V3 Router Address</small>
                     </div>
                 </div>
             </div>
 
             <div class="card">
-                <div class="card-header">API & Data Settings</div>
+                <div class="card-header">Price Feed Configuration</div>
                 <div class="card-body">
                     <div class="form-group">
-                        <label class="form-label">Price Feed Provider</label>
-                        <select class="form-control" id="priceProvider" onchange="updatePriceProvider()">
-                            <option value="uniswap">Uniswap V3 (Default)</option>
+                        <label class="form-label">Primary Price Source</label>
+                        <select class="form-control" id="primaryPriceSource" onchange="updatePriceConfig()">
+                            <option value="binance">Binance WebSocket</option>
                             <option value="coingecko">CoinGecko API</option>
-                            <option value="custom">Custom WebSocket</option>
                         </select>
                     </div>
 
-                    <div class="form-group" id="customWsGroup" style="display:none;">
-                        <label class="form-label">Custom WebSocket URL</label>
-                        <input type="text" class="form-control" id="customWsUrl" placeholder="wss://example.com/ws">
+                    <div class="form-group">
+                        <label class="form-label">Fallback Price Source</label>
+                        <select class="form-control" id="fallbackPriceSource">
+                            <option value="coingecko">CoinGecko API</option>
+                            <option value="binance">Binance WebSocket</option>
+                            <option value="none">None</option>
+                        </select>
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label">Price Update Interval (ms)</label>
-                        <input type="number" class="form-control" id="priceInterval" value="5000" min="1000"
-                            max="60000">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">API Keys (Encrypted)</label>
-                        <div class="input-group">
-                            <input type="password" class="form-control" id="apiKeyInput" placeholder="Enter API key">
-                            <button class="btn btn-secondary" onclick="saveApiKey()">Save Encrypted</button>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Price Update Interval (ms)</label>
+                            <input type="number" class="form-control" id="priceInterval" value="5000" min="1000"
+                                max="60000">
                         </div>
-                        <div id="apiKeyStatus" class="mt-1"></div>
+                        <div class="form-group">
+                            <label class="form-label">Max Price Age (sec)</label>
+                            <input type="number" class="form-control" id="maxPriceAge" value="30" min="5" max="300">
+                        </div>
                     </div>
+
+                    <div class="form-group" id="coingeckoApiKeyGroup">
+                        <label class="form-label">CoinGecko API Key (Optional)</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="coingeckoApiKey"
+                                placeholder="Demo key available">
+                            <button class="btn btn-secondary" onclick="saveApiKeys()">Save</button>
+                        </div>
+                        <small class="text-secondary">Free tier: 10-50 calls/min. <a
+                                href="https://www.coingecko.com/en/api" target="_blank">Get API Key</a></small>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="savePriceSettings()">Save Price Settings</button>
                 </div>
             </div>
 
@@ -814,7 +1146,7 @@
                 <div class="card-header">Backup & Security</div>
                 <div class="card-body">
                     <div class="form-group">
-                        <label class="form-label">Auto-Backup Settings</label>
+                        <label class="form-label">Auto-Backup</label>
                         <div class="d-flex gap-2 align-center">
                             <input type="checkbox" id="autoBackupEnabled" checked>
                             <label for="autoBackupEnabled">Enable Auto-Backup</label>
@@ -826,14 +1158,17 @@
                     </div>
 
                     <div class="form-group">
-                        <button class="btn btn-primary" onclick="createBackup()">Create Backup Now</button>
-                        <button class="btn btn-secondary" onclick="restoreBackup()">Restore from Backup</button>
+                        <button class="btn btn-primary btn-sm" onclick="createBackup()">
+                            <span class="loading-spinner loading-spinner-dark" id="backupSpinner"
+                                style="display:none;"></span>Create Backup Now
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="restoreBackup()">Restore from Backup</button>
                         <input type="file" id="backupFileInput" accept=".json" style="display:none;"
                             onchange="handleBackupUpload(event)">
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Encryption Settings</label>
+                        <label class="form-label">Encryption</label>
                         <div class="d-flex gap-2 align-center">
                             <input type="checkbox" id="encryptionEnabled" checked>
                             <label for="encryptionEnabled">Enable Data Encryption</label>
@@ -841,14 +1176,14 @@
                         <div class="mt-1">
                             <label>Encryption Password</label>
                             <input type="password" class="form-control" id="encryptionPassword"
-                                placeholder="Set encryption password">
+                                placeholder="Set password for encryption">
                             <button class="btn btn-warning btn-sm mt-1" onclick="changeEncryptionPassword()">Change
                                 Password</button>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <button class="btn btn-danger" onclick="clearAllData()">Clear All Data</button>
+                        <button class="btn btn-danger btn-sm" onclick="clearAllData()">Clear All Data</button>
                         <small class="text-secondary">This will delete all stored data including trade history and
                             settings</small>
                     </div>
@@ -858,23 +1193,28 @@
             <div class="card">
                 <div class="card-header">Advanced Settings</div>
                 <div class="card-body">
-                    <div class="form-group">
-                        <label class="form-label">Gas Settings</label>
-                        <div class="grid-2">
-                            <div>
-                                <label>Max Gas Price (gwei)</label>
-                                <input type="number" class="form-control" id="maxGasPrice" value="100" min="1">
-                            </div>
-                            <div>
-                                <label>Gas Limit</label>
-                                <input type="number" class="form-control" id="gasLimit" value="500000" min="21000">
-                            </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Max Gas Price (gwei)</label>
+                            <input type="number" class="form-control" id="maxGasPrice" value="200" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Gas Limit</label>
+                            <input type="number" class="form-control" id="gasLimit" value="500000" min="21000">
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label">Slippage Tolerance (%)</label>
-                        <input type="number" class="form-control" id="slippage" value="0.5" min="0" max="10" step="0.1">
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Slippage Tolerance (%)</label>
+                            <input type="number" class="form-control" id="slippage" value="0.5" min="0" max="10"
+                                step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Price Impact Limit (%)</label>
+                            <input type="number" class="form-control" id="maxPriceImpact" value="1" min="0" max="50"
+                                step="0.1">
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -887,6 +1227,52 @@
                     </div>
 
                     <button class="btn btn-primary" onclick="saveAdvancedSettings()">Save Advanced Settings</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Tab -->
+        <div id="logs" class="tab-content">
+            <div class="card">
+                <div class="card-header d-flex justify-between align-center">
+                    <span>Application Logs</span>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-secondary btn-xs" onclick="clearLogs()">Clear</button>
+                        <button class="btn btn-primary btn-xs" onclick="downloadLogs()">Download</button>
+                        <button class="btn btn-warning btn-xs" onclick="toggleAutoScroll()">Auto-Scroll: ON</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="log-container" id="logContainer">
+                        <div class="log-entry log-info">[INFO] Application initialized. Waiting for user action...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">Log Settings</div>
+                <div class="card-body">
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Log Level</label>
+                            <select class="form-control" id="logLevel" onchange="updateLogLevel()">
+                                <option value="info">Info</option>
+                                <option value="debug">Debug</option>
+                                <option value="warn">Warning</option>
+                                <option value="error">Error</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Max Log Entries</label>
+                            <input type="number" class="form-control" id="maxLogEntries" value="1000" min="100"
+                                max="10000">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="logToConsole" checked> Log to browser console
+                        </label>
+                    </div>
                 </div>
             </div>
         </div>
@@ -904,8 +1290,8 @@
     <!-- Modal for transaction confirmation -->
     <div class="modal" id="txModal">
         <div class="modal-content">
-            <h3>Transaction Pending</h3>
-            <p id="txMessage"></p>
+            <h3 id="txModalTitle">Transaction Confirmation</h3>
+            <div id="txModalContent"></div>
             <div class="d-flex justify-between mt-2">
                 <button class="btn btn-secondary" onclick="closeTxModal()">Cancel</button>
                 <button class="btn btn-primary" onclick="confirmTransaction()">Confirm</button>
@@ -913,35 +1299,99 @@
         </div>
     </div>
 
+    <!-- Modal for backtest details -->
+    <div class="modal" id="backtestDetailModal">
+        <div class="modal-content" style="max-width: 800px;">
+            <h3>Backtest Trade Details</h3>
+            <div id="backtestDetailContent"></div>
+            <button class="btn btn-primary mt-2" onclick="closeBacktestDetailModal()">Close</button>
+        </div>
+    </div>
+
     <script>
         // ============================================
-        // Configuration & State
+        // Configuration & Constants
         // ============================================
 
-        const APP_VERSION = '1.0.0';
+        const APP_VERSION = '2.0.0-PREPROD';
         const ARBITRUM_CHAIN_ID = 42161;
-        const UNISWAP_ROUTER = '0xE592427A0AEce92De3Edee1F18E0157C05861564';
-        const USDC_ADDRESS = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
-        const WETH_ADDRESS = '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1';
+        const ARBITRUM_GOERLI_CHAIN_ID = 421613;
+        const MAINNET_CHAIN_ID = 1;
 
-        // Token configurations for Arbitrum
-        const TOKENS = {
-            ETH: { address: WETH_ADDRESS, decimals: 18, symbol: 'ETH' },
-            WBTC: { address: '0x2f2a2543B76A416654947aaB75B4e35b52a17231', decimals: 8, symbol: 'WBTC' },
-            USDC: { address: USDC_ADDRESS, decimals: 6, symbol: 'USDC' },
-            UNI: { address: '0xfa7F8980b0f1E64A2062791cc3b0871572f1F7f0', decimals: 18, symbol: 'UNI' },
-            LINK: { address: '0xf97f4df75117a78c1A5a0DBb814Af92458539FB4', decimals: 18, symbol: 'LINK' },
-            ARB: { address: '0x912CE59144196C11c48067255325c5414506085A', decimals: 18, symbol: 'ARB' },
-            GMX: { address: '0xfc5A1A6EB076a2C7aD06eD22C5C769A78b3Fa3A1', decimals: 18, symbol: 'GMX' }
+        // Contract Addresses
+        const CONTRACTS = {
+            arbitrum: {
+                router: '0xE592427A0AEce92De3Edee1F18E0157C05861564',
+                factory: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+                quoter: '0x61fFE014bA17989E743c5F6cB21bF9697530B21e',
+                usdc: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+                weth: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1'
+            },
+            'arbitrum-goerli': {
+                router: '0xE592427A0AEce92De3Edee1F18E0157C05861564',
+                factory: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+                usdc: '0x329439558254224a394519447336f4853855b15d',
+                weth: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1'
+            },
+            mainnet: {
+                router: '0xE592427A0AEce92De3Edee1F18E0157C05861564',
+                factory: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+                usdc: '0xA0b86a33E6441b8b24c7e86e32B19C5D82cdDB2c',
+                weth: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
+            }
         };
 
-        // Application state
+        // Token configurations
+        const TOKENS = {
+            ETH: { address: null, decimals: 18, symbol: 'ETH', isNative: true },
+            WBTC: { address: { arbitrum: '0x2f2a2543B76A416654947aaB75B4e35b52a17231', 'arbitrum-goerli': '0x2f2a2543B76A416654947aaB75B4e35b52a17231', mainnet: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599' }, decimals: 8, symbol: 'WBTC' },
+            USDC: { address: null, decimals: 6, symbol: 'USDC' },
+            USDT: { address: { arbitrum: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', 'arbitrum-goerli': '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', mainnet: '0xdAC17F958D2ee523a2206206994597C13D831ec7' }, decimals: 6, symbol: 'USDT' },
+            UNI: { address: { arbitrum: '0xfa7F8980b0f1E64A2062791cc3b0871572f1F7f0', 'arbitrum-goerli': '0xfa7F8980b0f1E64A2062791cc3b0871572f1F7f0', mainnet: '0x1f9840a85d5aF5bf1D1762F925BDADDd9D929986' }, decimals: 18, symbol: 'UNI' },
+            LINK: { address: { arbitrum: '0xf97f4df75117a78c1A5a0DBb814Af92458539FB4', 'arbitrum-goerli': '0xf97f4df75117a78c1A5a0DBb814Af92458539FB4', mainnet: '0x514910771AF9Ca656af840dff83E8264EcF986CA' }, decimals: 18, symbol: 'LINK' },
+            ARB: { address: { arbitrum: '0x912CE59144196C11c48067255325c5414506085A', 'arbitrum-goerli': '0x912CE59144196C11c48067255325c5414506085A', mainnet: null }, decimals: 18, symbol: 'ARB' },
+            GMX: { address: { arbitrum: '0xfc5A1A6EB076a2C7aD06eD22C5C769A78b3Fa3A1', 'arbitrum-goerli': null, mainnet: null }, decimals: 18, symbol: 'GMX' }
+        };
+
+        // Binance symbol mapping
+        const BINANCE_SYMBOLS = {
+            ETH: 'ETHUSDT',
+            WBTC: 'BTCUSDT',
+            UNI: 'UNIUSDT',
+            LINK: 'LINKUSDT',
+            ARB: 'ARBUSDT',
+            GMX: 'GMXUSDT',
+            USDC: 'USDCUSDT',
+            USDT: 'USDTUSDT'
+        };
+
+        // CoinGecko ID mapping
+        const COINGECKO_IDS = {
+            ETH: 'ethereum',
+            WBTC: 'wrapped-bitcoin',
+            USDC: 'usd-coin',
+            USDT: 'tether',
+            UNI: 'uniswap',
+            LINK: 'chainlink',
+            ARB: 'arbitrum',
+            GMX: 'gmx'
+        };
+
+        // Uniswap V3 Fee Tiers
+        const FEE_TIERS = [500, 3000, 10000, 100000]; // 0.05%, 0.3%, 1%, 10%
+
+        // ============================================
+        // Application State
+        // ============================================
+
         let state = {
             isRunning: false,
             isConnected: false,
             walletAddress: null,
+            network: 'arbitrum',
             prices: {},
             priceHistory: {},
+            priceSources: {},
             trades: [],
             settings: {
                 buyPatterns: '',
@@ -950,39 +1400,54 @@
                 maxTrades: 5,
                 stopLoss: 2,
                 takeProfit: 5,
-                tokens: ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX'],
+                trailingStop: 1,
+                tokens: ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX', 'USDC', 'USDT'],
                 priceInterval: 5000,
+                maxPriceAge: 30,
                 slippage: 0.5,
-                maxGasPrice: 100,
+                maxGasPrice: 200,
                 gasLimit: 500000,
+                maxPriceImpact: 1,
+                tradeCooldown: 60,
+                primaryPriceSource: 'binance',
+                fallbackPriceSource: 'coingecko',
                 autoBackup: true,
                 backupInterval: 30,
-                encryptionEnabled: true
+                encryptionEnabled: true,
+                debugMode: 'none'
             },
             startTime: null,
             lastPriceUpdate: null,
-            backupTimer: null
+            lastTradeTime: null,
+            backupTimer: null,
+            priceUpdateTimer: null,
+            logs: [],
+            autoScroll: true,
+            currentNetwork: null
         };
 
         // WebSocket connections
-        let priceWebSocket = null;
-        let uniswapWebSocket = null;
+        let binanceWebSocket = null;
+        let pricePollingInterval = null;
 
         // ============================================
         // Initialization
         // ============================================
 
         document.addEventListener('DOMContentLoaded', async function () {
+            log('info', 'Initializing Uniswap Trading Bot v' + APP_VERSION);
             initializeApp();
-            loadSettings();
+            await loadSettings();
             setupEventListeners();
-            checkWalletConnection();
+            await checkWalletConnection();
+            updateNetworkInfo();
         });
 
         function initializeApp() {
             console.log('Initializing Uniswap Trading Bot v' + APP_VERSION);
             updateUI();
             startUptimeTimer();
+            log('info', 'Application initialized. Ready for connections.');
         }
 
         function setupEventListeners() {
@@ -994,25 +1459,11 @@
                 });
             });
 
-            // Token selector for price monitoring
-            document.querySelectorAll('#tokenSelector .token-btn').forEach(btn => {
+            // Token selectors
+            document.querySelectorAll('#tokenSelector .token-btn, #tradeTokens .token-btn').forEach(btn => {
                 btn.addEventListener('click', function () {
                     this.classList.toggle('active');
                 });
-            });
-
-            // Token selector for trading
-            document.querySelectorAll('#tradeTokens .token-btn').forEach(btn => {
-                btn.addEventListener('click', function () {
-                    this.classList.toggle('active');
-                });
-            });
-
-            // Price provider change
-            document.getElementById('priceProvider').addEventListener('change', function () {
-                const provider = this.value;
-                document.getElementById('customWsGroup').style.display =
-                    provider === 'custom' ? 'block' : 'none';
             });
 
             // Auto-backup toggle
@@ -1023,31 +1474,126 @@
                     stopBackupTimer();
                 }
             });
+
+            // Price source select
+            document.getElementById('priceSourceSelect').addEventListener('change', function () {
+                const source = this.value;
+                state.settings.primaryPriceSource = source;
+                saveSettings();
+                if (state.isRunning) {
+                    restartPriceFeeds();
+                }
+            });
+
+            // Log auto-scroll toggle
+            document.querySelector('#logs .btn-warning').addEventListener('click', function () {
+                state.autoScroll = !state.autoScroll;
+                this.textContent = 'Auto-Scroll: ' + (state.autoScroll ? 'ON' : 'OFF');
+            });
         }
 
         function switchTab(tab) {
-            // Hide all tab contents
             document.querySelectorAll('.tab-content').forEach(content => {
-                content.style.display = 'none';
+                content.classList.remove('active');
             });
-
-            // Remove active class from all nav links
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.classList.remove('active');
             });
 
-            // Show selected tab
-            document.getElementById(tab).style.display = 'block';
-
-            // Add active class to clicked nav link
+            document.getElementById(tab).classList.add('active');
             event.target.classList.add('active');
 
-            // Refresh data for specific tabs
             if (tab === 'history') {
                 renderFullTradeHistory();
             } else if (tab === 'dashboard') {
                 refreshDashboard();
+            } else if (tab === 'logs') {
+                scrollToBottom('logContainer');
             }
+        }
+
+        // ============================================
+        // Logging System
+        // ============================================
+
+        function log(level, message, data = null) {
+            const timestamp = new Date().toISOString();
+            const logEntry = { timestamp, level, message, data };
+
+            // Add to log array
+            state.logs.push(logEntry);
+            if (state.logs.length > (document.getElementById('maxLogEntries')?.value || 1000)) {
+                state.logs.shift();
+            }
+
+            // Format message
+            const formatted = `[${level.toUpperCase()}] ${message}` + (data ? ` - ${JSON.stringify(data)}` : '');
+
+            // Add to UI
+            const logContainer = document.getElementById('logContainer');
+            if (logContainer) {
+                const entry = document.createElement('div');
+                entry.className = `log-entry log-${level}`;
+                entry.textContent = formatted;
+                logContainer.appendChild(entry);
+
+                if (state.autoScroll) {
+                    scrollToBottom('logContainer');
+                }
+            }
+
+            // Console output based on settings
+            const debugMode = document.getElementById('debugMode')?.value || state.settings.debugMode;
+            const logToConsole = document.getElementById('logToConsole')?.checked ?? true;
+
+            if (logToConsole) {
+                const levels = { error: 0, warn: 1, info: 2, debug: 3 };
+                const currentLevel = levels[debugMode] || 2;
+                const messageLevel = levels[level] || 2;
+
+                if (messageLevel <= currentLevel) {
+                    console[level === 'error' ? 'error' : level](formatted);
+                }
+            }
+
+            // Save logs to DB periodically
+            if (state.logs.length % 10 === 0) {
+                saveLogs();
+            }
+        }
+
+        function scrollToBottom(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.scrollTop = element.scrollHeight;
+            }
+        }
+
+        function clearLogs() {
+            state.logs = [];
+            const logContainer = document.getElementById('logContainer');
+            if (logContainer) {
+                logContainer.innerHTML = '<div class="log-entry log-info">[INFO] Logs cleared</div>';
+            }
+            log('info', 'Logs cleared by user');
+        }
+
+        function downloadLogs() {
+            const logText = state.logs.map(l => `[${l.level.toUpperCase()}] ${l.message}`).join('\n');
+            const blob = new Blob([logText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'trading-bot-logs-' + new Date().toISOString().split('T')[0] + '.log';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            log('info', 'Logs downloaded');
+        }
+
+        function updateLogLevel() {
+            const level = document.getElementById('logLevel').value;
+            log('info', `Log level changed to: ${level}`);
         }
 
         // ============================================
@@ -1057,8 +1603,11 @@
         async function connectWallet() {
             if (typeof window.ethereum === 'undefined') {
                 showNotification('Error', 'MetaMask is not installed. Please install MetaMask first.');
+                log('error', 'MetaMask not installed');
                 return;
             }
+
+            showLoading('walletConnectSpinner');
 
             try {
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -1067,19 +1616,22 @@
                     state.isConnected = true;
 
                     // Check network
-                    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-                    if (parseInt(chainId) !== ARBITRUM_CHAIN_ID) {
-                        showNotification('Network Error', 'Please switch to Arbitrum network in MetaMask.');
-                        return;
-                    }
+                    await checkNetwork();
 
                     updateWalletUI();
                     saveSettings();
+                    log('info', `Wallet connected: ${shortenAddress(state.walletAddress)}`);
                     showNotification('Success', 'Wallet connected successfully!');
+
+                    // Get ETH balance
+                    await updateEthBalance();
                 }
             } catch (error) {
                 console.error('Error connecting wallet:', error);
+                log('error', `Wallet connection failed: ${error.message}`);
                 showNotification('Error', 'Failed to connect wallet: ' + error.message);
+            } finally {
+                hideLoading('walletConnectSpinner');
             }
         }
 
@@ -1088,6 +1640,7 @@
             state.isConnected = false;
             updateWalletUI();
             saveSettings();
+            log('info', 'Wallet disconnected');
             showNotification('Success', 'Wallet disconnected.');
         }
 
@@ -1098,47 +1651,171 @@
                     if (accounts.length > 0) {
                         state.walletAddress = accounts[0];
                         state.isConnected = true;
-
-                        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-                        if (parseInt(chainId) !== ARBITRUM_CHAIN_ID) {
-                            showNotification('Network Warning', 'Connected to wrong network. Please switch to Arbitrum.');
-                        }
-
+                        await checkNetwork();
                         updateWalletUI();
+                        await updateEthBalance();
+                        log('info', `Existing wallet connection detected: ${shortenAddress(state.walletAddress)}`);
                     }
+
+                    // Listen for account changes
+                    window.ethereum.on('accountsChanged', async (accounts) => {
+                        if (accounts.length > 0) {
+                            state.walletAddress = accounts[0];
+                            state.isConnected = true;
+                            await updateEthBalance();
+                        } else {
+                            state.walletAddress = null;
+                            state.isConnected = false;
+                        }
+                        updateWalletUI();
+                        saveSettings();
+                        log('info', 'Wallet account changed');
+                    });
+
+                    window.ethereum.on('chainChanged', async (chainId) => {
+                        await checkNetwork();
+                        updateNetworkInfo();
+                        log('info', `Network changed to: ${chainId}`);
+                    });
+
                 } catch (error) {
                     console.error('Error checking wallet:', error);
+                    log('error', `Wallet check failed: ${error.message}`);
                 }
             }
         }
 
-        function updateWalletUI() {
-            const walletStatus = document.getElementById('walletStatus');
-            const connectBtn = document.getElementById('connectWalletBtn');
-            const disconnectBtn = document.getElementById('disconnectWalletBtn');
-            const walletInfo = document.getElementById('walletInfo');
+        async function checkNetwork() {
+            if (!state.isConnected || !window.ethereum) return;
 
-            if (state.isConnected && state.walletAddress) {
-                const shortAddress = state.walletAddress.substring(0, 6) + '...' +
-                    state.walletAddress.substring(state.walletAddress.length - 4);
-                walletStatus.textContent = 'Connected: ' + shortAddress;
-                walletStatus.className = 'badge badge-success';
-                connectBtn.style.display = 'none';
-                disconnectBtn.style.display = 'inline-block';
-                walletInfo.innerHTML = `<p><strong>Address:</strong> ${state.walletAddress}</p>`;
-            } else {
-                walletStatus.textContent = 'Not connected';
-                walletStatus.className = 'badge badge-danger';
-                connectBtn.style.display = 'inline-block';
-                disconnectBtn.style.display = 'none';
-                walletInfo.innerHTML = '<p class="text-secondary">Connect MetaMask to start trading</p>';
+            try {
+                const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                const chainIdNum = parseInt(chainId);
+
+                if (chainIdNum === ARBITRUM_CHAIN_ID) {
+                    state.network = 'arbitrum';
+                    state.currentNetwork = 'Arbitrum One';
+                } else if (chainIdNum === ARBITRUM_GOERLI_CHAIN_ID) {
+                    state.network = 'arbitrum-goerli';
+                    state.currentNetwork = 'Arbitrum Goerli (Testnet)';
+                } else if (chainIdNum === MAINNET_CHAIN_ID) {
+                    state.network = 'mainnet';
+                    state.currentNetwork = 'Ethereum Mainnet';
+                } else {
+                    state.network = null;
+                    state.currentNetwork = 'Unknown Network';
+                    log('warn', `Unsupported network: ${chainId}`);
+                }
+
+                // Update token addresses based on network
+                updateTokenAddresses();
+
+            } catch (error) {
+                console.error('Error checking network:', error);
+                log('error', `Network check failed: ${error.message}`);
+            }
+        }
+
+        function updateNetworkInfo() {
+            const networkSelect = document.getElementById('networkSelect');
+            const currentNetworkEl = document.getElementById('currentNetwork');
+
+            if (state.currentNetwork) {
+                currentNetworkEl.textContent = state.currentNetwork;
+            }
+
+            if (networkSelect) {
+                networkSelect.value = state.network || 'arbitrum';
+            }
+        }
+
+        function updateTokenAddresses() {
+            // Update token addresses based on current network
+            for (const symbol in TOKENS) {
+                const token = TOKENS[symbol];
+                if (token.isNative) {
+                    token.address = null; // Native ETH
+                } else if (token.address && state.network) {
+                    // Use network-specific address if available
+                    if (token.address[state.network]) {
+                        token.address = token.address[state.network];
+                    } else if (token.address.arbitrum) {
+                        // Fallback to Arbitrum address
+                        token.address = token.address.arbitrum;
+                    }
+                }
+            }
+
+            // Update USDC address based on network
+            if (state.network && CONTRACTS[state.network]?.usdc) {
+                TOKENS.USDC.address = CONTRACTS[state.network].usdc;
             }
         }
 
         async function updateNetwork() {
             const network = document.getElementById('networkSelect').value;
-            // For now, we only support Arbitrum
-            showNotification('Info', 'Network configuration updated. Please reconnect wallet.');
+            state.network = network;
+            state.currentNetwork = network === 'arbitrum' ? 'Arbitrum One' :
+                network === 'arbitrum-goerli' ? 'Arbitrum Goerli (Testnet)' :
+                    'Ethereum Mainnet';
+            updateTokenAddresses();
+            updateNetworkInfo();
+            saveSettings();
+            log('info', `Network changed to: ${state.currentNetwork}`);
+        }
+
+        async function updateEthBalance() {
+            if (!state.isConnected || !state.walletAddress || !window.ethereum) return;
+
+            try {
+                const balance = await window.ethereum.request({
+                    method: 'eth_getBalance',
+                    params: [state.walletAddress, 'latest']
+                });
+
+                const ethBalance = parseInt(balance) / 1e18;
+                const walletInfo = document.getElementById('walletInfo');
+                if (walletInfo) {
+                    walletInfo.innerHTML = `
+                        <p><strong>Address:</strong> ${state.walletAddress}</p>
+                        <p><strong>ETH Balance:</strong> ${ethBalance.toFixed(6)} ETH</p>
+                        <p><strong>Network:</strong> ${state.currentNetwork || 'Unknown'}</p>
+                    `;
+                }
+
+                log('info', `ETH balance: ${ethBalance.toFixed(6)}`);
+
+            } catch (error) {
+                console.error('Error getting ETH balance:', error);
+                log('error', `Failed to get ETH balance: ${error.message}`);
+            }
+        }
+
+        function updateWalletUI() {
+            const walletStatusBadge = document.getElementById('walletStatusBadge');
+            const connectBtn = document.getElementById('connectWalletBtn');
+            const disconnectBtn = document.getElementById('disconnectWalletBtn');
+            const walletInfo = document.getElementById('walletInfo');
+
+            if (state.isConnected && state.walletAddress) {
+                const shortAddress = shortenAddress(state.walletAddress);
+                walletStatusBadge.innerHTML = '<span class="badge badge-success">Connected: ' + shortAddress + '</span>';
+                connectBtn.style.display = 'none';
+                disconnectBtn.style.display = 'inline-block';
+            } else {
+                walletStatusBadge.innerHTML = '<span class="badge badge-danger">Not connected</span>';
+                connectBtn.style.display = 'inline-block';
+                disconnectBtn.style.display = 'none';
+                walletInfo.innerHTML = '<p class="text-secondary">Connect MetaMask to start trading</p>';
+            }
+
+            // Update connection status
+            updateConnectionStatus();
+        }
+
+        function shortenAddress(address) {
+            if (!address) return '';
+            return address.substring(0, 6) + '...' + address.substring(address.length - 4);
         }
 
         // ============================================
@@ -1148,6 +1825,7 @@
         async function startBot() {
             if (!state.isConnected) {
                 showNotification('Error', 'Please connect MetaMask first.');
+                log('error', 'Cannot start bot: wallet not connected');
                 return;
             }
 
@@ -1156,13 +1834,21 @@
                 return;
             }
 
-            // Show loading state
-            document.getElementById('startSpinner').style.display = 'inline-block';
+            showLoading('startSpinner');
             document.getElementById('startBotBtn').disabled = true;
+            log('info', 'Starting bot...');
 
             try {
-                // Initialize WebSocket connections
-                await initializeWebSockets();
+                // Validate patterns before starting
+                const buyValid = validatePatternString(state.settings.buyPatterns);
+                const sellValid = validatePatternString(state.settings.sellPatterns);
+
+                if (!buyValid && !sellValid) {
+                    throw new Error('No valid patterns configured. Please add buy or sell patterns in Settings.');
+                }
+
+                // Initialize price feeds
+                await initializePriceFeeds();
 
                 // Start price monitoring
                 startPriceMonitoring();
@@ -1176,10 +1862,15 @@
                 state.startTime = new Date();
 
                 updateBotStatus();
+                log('info', 'Bot started successfully');
                 showNotification('Success', 'Bot started successfully!');
+
+                // Get initial gas price
+                await updateGasPrice();
 
             } catch (error) {
                 console.error('Error starting bot:', error);
+                log('error', `Failed to start bot: ${error.message}`);
                 showNotification('Error', 'Failed to start bot: ' + error.message);
                 document.getElementById('startSpinner').style.display = 'none';
                 document.getElementById('startBotBtn').disabled = false;
@@ -1192,28 +1883,25 @@
                 return;
             }
 
-            // Show loading state
-            document.getElementById('stopSpinner').style.display = 'inline-block';
+            showLoading('stopSpinner');
             document.getElementById('stopBotBtn').disabled = true;
+            log('info', 'Stopping bot...');
 
             try {
-                // Close WebSocket connections
-                closeWebSockets();
-
-                // Stop price monitoring
+                // Close all connections
+                closePriceFeeds();
                 stopPriceMonitoring();
-
-                // Stop backup timer
                 stopBackupTimer();
 
                 state.isRunning = false;
 
                 updateBotStatus();
+                log('info', 'Bot stopped successfully');
                 showNotification('Success', 'Bot stopped successfully!');
 
             } catch (error) {
                 console.error('Error stopping bot:', error);
-                showNotification('Error', 'Failed to stop bot: ' + error.message);
+                log('error', `Failed to stop bot: ${error.message}`);
             } finally {
                 document.getElementById('stopSpinner').style.display = 'none';
                 document.getElementById('stopBotBtn').disabled = false;
@@ -1240,13 +1928,55 @@
                 stopBtn.disabled = true;
                 botStatusIndicator.innerHTML = '<span class="badge badge-secondary">Stopped</span>';
             }
+
+            updateConnectionStatus();
+        }
+
+        function updateConnectionStatus() {
+            const binanceStatus = document.getElementById('binanceStatus');
+            const coingeckoStatus = document.getElementById('coingeckoStatus');
+            const uniswapStatus = document.getElementById('uniswapStatus');
+            const walletStatus = document.getElementById('walletStatus');
+
+            if (binanceStatus) {
+                const binanceConnected = state.priceSources.binance?.connected || false;
+                binanceStatus.className = `status-item ${binanceConnected ? 'status-connected' : 'status-disconnected'}`;
+                binanceStatus.innerHTML = binanceConnected ? 'Binance ✓' : 'Binance ✗';
+            }
+
+            if (coingeckoStatus) {
+                const coingeckoConnected = state.priceSources.coingecko?.connected || false;
+                coingeckoStatus.className = `status-item ${coingeckoConnected ? 'status-connected' : 'status-disconnected'}`;
+                coingeckoStatus.innerHTML = coingeckoConnected ? 'CoinGecko ✓' : 'CoinGecko ✗';
+            }
+
+            if (uniswapStatus) {
+                const uniswapConnected = state.isConnected && state.network;
+                uniswapStatus.className = `status-item ${uniswapConnected ? 'status-connected' : 'status-disconnected'}`;
+                uniswapStatus.innerHTML = uniswapConnected ? 'Uniswap ✓' : 'Uniswap ✗';
+            }
+
+            if (walletStatus) {
+                const walletConnected = state.isConnected;
+                walletStatus.className = `status-item ${walletConnected ? 'status-connected' : 'status-disconnected'}`;
+                walletStatus.innerHTML = walletConnected ? 'Wallet ✓' : 'Wallet ✗';
+            }
+
+            // Update price source display
+            const priceSource = document.getElementById('priceSource');
+            if (priceSource) {
+                const activeSource = state.priceSources.binance?.connected ? 'Binance' :
+                    state.priceSources.coingecko?.connected ? 'CoinGecko' : 'None';
+                priceSource.textContent = activeSource;
+            }
         }
 
         async function testConnection() {
-            showNotification('Info', 'Testing connection...');
+            log('info', 'Testing all connections...');
+            showNotification('Info', 'Testing connections...');
 
             try {
-                // Test MetaMask connection
+                // Test MetaMask
                 if (typeof window.ethereum === 'undefined') {
                     throw new Error('MetaMask not installed');
                 }
@@ -1258,270 +1988,425 @@
 
                 // Test network
                 const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-                if (parseInt(chainId) !== ARBITRUM_CHAIN_ID) {
+                if (parseInt(chainId) !== ARBITRUM_CHAIN_ID && parseInt(chainId) !== ARBITRUM_GOERLI_CHAIN_ID) {
                     throw new Error('Wrong network. Please switch to Arbitrum.');
                 }
 
-                // Test WebSocket connection
-                const testWs = new WebSocket('wss://echo.websocket.org');
-                await new Promise((resolve, reject) => {
-                    testWs.onopen = resolve;
-                    testWs.onerror = reject;
-                    setTimeout(reject, 3000);
-                });
-                testWs.close();
+                // Test Binance WebSocket
+                await testBinanceConnection();
 
+                // Test CoinGecko API
+                await testCoinGeckoConnection();
+
+                // Test Uniswap (read-only)
+                await testUniswapConnection();
+
+                log('info', 'All connections tested successfully');
                 showNotification('Success', 'All connections working!');
 
             } catch (error) {
                 console.error('Connection test failed:', error);
+                log('error', `Connection test failed: ${error.message}`);
                 showNotification('Error', 'Connection test failed: ' + error.message);
             }
         }
 
         // ============================================
-        // WebSocket & Price Data
+        // Price Feed Integration (PREPROD)
         // ============================================
 
-        async function initializeWebSockets() {
-            const provider = document.getElementById('priceProvider').value;
+        async function initializePriceFeeds() {
+            log('info', 'Initializing price feeds...');
 
-            if (provider === 'uniswap' || provider === 'custom') {
-                // For demo purposes, we'll use a mock WebSocket
-                // In production, you would connect to actual price feed
-                initializeMockWebSocket();
-            } else if (provider === 'coingecko') {
-                // CoinGecko doesn't have WebSocket, so we'll use polling
-                startPricePolling();
+            // Initialize based on settings
+            const primary = state.settings.primaryPriceSource || 'binance';
+            const fallback = state.settings.fallbackPriceSource || 'coingecko';
+
+            if (primary === 'binance') {
+                await initializeBinanceWebSocket();
             }
+
+            if (fallback === 'coingecko') {
+                await initializeCoinGeckoPolling();
+            }
+
+            log('info', `Price feeds initialized: primary=${primary}, fallback=${fallback}`);
         }
 
-        function initializeMockWebSocket() {
-            // Close existing connection
-            if (priceWebSocket) {
-                priceWebSocket.close();
+        async function restartPriceFeeds() {
+            closePriceFeeds();
+            await initializePriceFeeds();
+        }
+
+        function closePriceFeeds() {
+            if (binanceWebSocket) {
+                binanceWebSocket.close();
+                binanceWebSocket = null;
+                state.priceSources.binance = { connected: false };
             }
 
-            // Create mock WebSocket for demonstration
-            // In production, replace with actual WebSocket connection
-            priceWebSocket = new WebSocket('wss://stream.binance.com:9443/ws/!ticker@arr');
+            if (pricePollingInterval) {
+                clearInterval(pricePollingInterval);
+                pricePollingInterval = null;
+                state.priceSources.coingecko = { connected: false };
+            }
 
-            priceWebSocket.onopen = function () {
-                console.log('WebSocket connected');
-                state.isConnected = true;
-                updateBotStatus();
-                showNotification('Success', 'Price feed connected!');
+            updateConnectionStatus();
+        }
+
+        // Binance WebSocket
+        async function initializeBinanceWebSocket() {
+            if (binanceWebSocket) {
+                binanceWebSocket.close();
+            }
+
+            // Get active tokens
+            const activeTokens = getActiveTokens();
+            if (activeTokens.length === 0) {
+                log('warn', 'No tokens selected for price monitoring');
+                return;
+            }
+
+            // Map tokens to Binance symbols
+            const binanceSymbols = activeTokens
+                .map(t => BINANCE_SYMBOLS[t])
+                .filter(s => s);
+
+            if (binanceSymbols.length === 0) {
+                log('warn', 'No valid Binance symbols for selected tokens');
+                return;
+            }
+
+            // Create WebSocket connection
+            const socketUrl = 'wss://stream.binance.com:9443/ws/' +
+                binanceSymbols.map(s => s.toLowerCase() + '@ticker').join('/');
+
+            binanceWebSocket = new WebSocket(socketUrl);
+
+            binanceWebSocket.onopen = function () {
+                state.priceSources.binance = { connected: true, lastUpdate: Date.now() };
+                log('info', `Binance WebSocket connected (${binanceSymbols.length} symbols)`);
+                updateConnectionStatus();
             };
 
-            priceWebSocket.onmessage = function (event) {
+            binanceWebSocket.onmessage = function (event) {
                 try {
-                    // Parse Binance ticker data
                     const data = JSON.parse(event.data);
 
-                    // Mock price updates for our tokens
-                    // In production, you would map actual token prices
-                    updateMockPrices();
+                    // Extract symbol and price
+                    const symbol = data.s;
+                    const price = parseFloat(data.c);
+                    const priceChange = parseFloat(data.p);
+                    const volume = parseFloat(data.v);
 
-                } catch (error) {
-                    console.error('Error parsing WebSocket message:', error);
-                }
-            };
+                    // Map Binance symbol back to token
+                    const token = Object.entries(BINANCE_SYMBOLS).find(
+                        ([k, v]) => v === symbol
+                    )?.[0];
 
-            priceWebSocket.onerror = function (error) {
-                console.error('WebSocket error:', error);
-                showNotification('Error', 'Price feed connection error');
-            };
+                    if (token) {
+                        // Store price
+                        const prevPrice = state.prices[token];
+                        state.prices[token] = price;
+                        state.priceHistory[token] = state.priceHistory[token] || [];
 
-            priceWebSocket.onclose = function () {
-                console.log('WebSocket closed');
-                state.isConnected = false;
-                updateBotStatus();
-                // Attempt to reconnect
-                setTimeout(initializeMockWebSocket, 5000);
-            };
-
-            // Start generating mock price updates
-            startMockPriceUpdates();
-        }
-
-        function startMockPriceUpdates() {
-            // Generate random price movements for demo tokens
-            const mockTokens = ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX'];
-            const basePrices = { ETH: 3000, WBTC: 50000, UNI: 10, LINK: 15, ARB: 2, GMX: 40 };
-
-            // Initialize prices
-            mockTokens.forEach(token => {
-                if (!state.prices[token]) {
-                    state.prices[token] = basePrices[token] || 1;
-                    state.priceHistory[token] = [];
-                }
-            });
-
-            // Start interval to update prices
-            mockPriceInterval = setInterval(() => {
-                mockTokens.forEach(token => {
-                    if (state.prices[token]) {
-                        // Random price change between -2% and +2%
-                        const changePercent = (Math.random() * 4 - 2) / 100;
-                        const change = state.prices[token] * changePercent;
-                        const newPrice = state.prices[token] + change;
-
-                        // Add to price history
-                        const timestamp = Date.now();
                         state.priceHistory[token].push({
-                            price: state.prices[token],
-                            timestamp: timestamp
+                            price: price,
+                            timestamp: Date.now(),
+                            source: 'binance'
                         });
 
-                        // Keep only last 1000 price points
+                        // Keep only recent history (last 1000 points)
                         if (state.priceHistory[token].length > 1000) {
                             state.priceHistory[token].shift();
                         }
 
-                        state.prices[token] = newPrice;
                         state.lastPriceUpdate = new Date();
+                        state.priceSources.binance = { connected: true, lastUpdate: Date.now() };
+
+                        // Update UI
+                        updatePriceUI();
+                        checkPatterns();
+                        updateUptime();
+
+                        // Log price update
+                        if (state.settings.debugMode === 'verbose') {
+                            log('debug', `Price update: ${token} = $${price} (${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}%)`);
+                        }
                     }
-                });
+
+                } catch (error) {
+                    console.error('Error parsing Binance message:', error);
+                    log('error', `Binance message parse error: ${error.message}`);
+                }
+            };
+
+            binanceWebSocket.onerror = function (error) {
+                state.priceSources.binance = { connected: false };
+                log('error', `Binance WebSocket error: ${error.message}`);
+                updateConnectionStatus();
+            };
+
+            binanceWebSocket.onclose = function () {
+                state.priceSources.binance = { connected: false };
+                log('warn', 'Binance WebSocket closed. Attempting to reconnect...');
+                updateConnectionStatus();
+
+                // Attempt to reconnect after delay
+                setTimeout(initializeBinanceWebSocket, 5000);
+            };
+        }
+
+        async function testBinanceConnection() {
+            return new Promise((resolve, reject) => {
+                const testWs = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@ticker');
+
+                testWs.onopen = () => {
+                    testWs.close();
+                    resolve();
+                };
+
+                testWs.onerror = (error) => {
+                    testWs.close();
+                    reject(new Error('Binance WebSocket connection failed'));
+                };
+
+                setTimeout(() => {
+                    testWs.close();
+                    reject(new Error('Binance WebSocket timeout'));
+                }, 3000);
+            });
+        }
+
+        // CoinGecko API
+        async function initializeCoinGeckoPolling() {
+            if (pricePollingInterval) {
+                clearInterval(pricePollingInterval);
+            }
+
+            // Get active tokens
+            const activeTokens = getActiveTokens();
+            if (activeTokens.length === 0) {
+                log('warn', 'No tokens selected for CoinGecko polling');
+                return;
+            }
+
+            // Filter tokens with CoinGecko IDs
+            const validTokens = activeTokens.filter(t => COINGECKO_IDS[t]);
+            if (validTokens.length === 0) {
+                log('warn', 'No valid CoinGecko IDs for selected tokens');
+                return;
+            }
+
+            // Start polling
+            const interval = state.settings.priceInterval || 10000;
+            pricePollingInterval = setInterval(async () => {
+                await fetchCoinGeckoPrices(validTokens);
+            }, interval);
+
+            // Initial fetch
+            await fetchCoinGeckoPrices(validTokens);
+
+            state.priceSources.coingecko = { connected: true, lastUpdate: Date.now() };
+            log('info', `CoinGecko polling started (${validTokens.length} tokens, ${interval}ms interval)`);
+            updateConnectionStatus();
+        }
+
+        async function fetchCoinGeckoPrices(tokens) {
+            try {
+                const apiKey = document.getElementById('coingeckoApiKey')?.value || '';
+                const ids = tokens.map(t => COINGECKO_IDS[t]).join('%2C');
+                const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&precision=full` +
+                    (apiKey ? `&x_cg_demo_api_key=${apiKey}` : '');
+
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                state.priceSources.coingecko = { connected: true, lastUpdate: Date.now() };
+
+                for (const token of tokens) {
+                    const cgId = COINGECKO_IDS[token];
+                    if (data[cgId] && data[cgId].usd) {
+                        const price = parseFloat(data[cgId].usd);
+
+                        // Store price
+                        const prevPrice = state.prices[token];
+                        state.prices[token] = price;
+                        state.priceHistory[token] = state.priceHistory[token] || [];
+
+                        state.priceHistory[token].push({
+                            price: price,
+                            timestamp: Date.now(),
+                            source: 'coingecko'
+                        });
+
+                        if (state.priceHistory[token].length > 1000) {
+                            state.priceHistory[token].shift();
+                        }
+
+                        state.lastPriceUpdate = new Date();
+
+                        if (state.settings.debugMode === 'verbose') {
+                            log('debug', `CoinGecko price: ${token} = $${price}`);
+                        }
+                    }
+                }
 
                 updatePriceUI();
                 checkPatterns();
                 updateUptime();
 
-            }, state.settings.priceInterval || 5000);
-        }
-
-        let mockPriceInterval = null;
-
-        function stopPriceMonitoring() {
-            if (mockPriceInterval) {
-                clearInterval(mockPriceInterval);
-                mockPriceInterval = null;
-            }
-            if (priceWebSocket) {
-                priceWebSocket.close();
-                priceWebSocket = null;
+            } catch (error) {
+                console.error('Error fetching CoinGecko prices:', error);
+                log('error', `CoinGecko API error: ${error.message}`);
+                state.priceSources.coingecko = { connected: false };
+                updateConnectionStatus();
             }
         }
 
-        function startPricePolling() {
-            // Poll CoinGecko API every X seconds
-            pricePollingInterval = setInterval(async () => {
-                try {
-                    // In production, you would fetch from CoinGecko API
-                    // For demo, we'll use mock data
-                    updateMockPrices();
-                } catch (error) {
-                    console.error('Error polling prices:', error);
+        async function testCoinGeckoConnection() {
+            try {
+                const url = 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd';
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
                 }
-            }, state.settings.priceInterval || 5000);
-        }
-
-        let pricePollingInterval = null;
-
-        function updatePriceUI() {
-            const priceRows = document.getElementById('priceRows');
-            const activeTokens = Array.from(document.querySelectorAll('#tokenSelector .token-btn.active'))
-                .map(btn => btn.getAttribute('data-token'));
-
-            if (activeTokens.length === 0) {
-                priceRows.innerHTML = '<tr><td colspan="5" class="text-center text-secondary">Select tokens to monitor</td></tr>';
-                return;
-            }
-
-            let html = '';
-            activeTokens.forEach(token => {
-                const price = state.prices[token] || 'N/A';
-                const prevPrice = state.priceHistory[token] && state.priceHistory[token].length > 1
-                    ? state.priceHistory[token][state.priceHistory[token].length - 2].price
-                    : null;
-
-                const change = prevPrice ? ((price - prevPrice) / prevPrice * 100).toFixed(2) : 0;
-                const changeClass = change >= 0 ? 'price-up' : 'price-down';
-                const changeSymbol = change >= 0 ? '▲' : '▼';
-
-                // Check pattern status
-                const patternStatus = checkTokenPatterns(token);
-
-                html += `
-                    <tr>
-                        <td><strong>${token}</strong></td>
-                        <td>$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td class="price-change ${changeClass}">${changeSymbol} ${Math.abs(change)}%</td>
-                        <td><span class="badge ${patternStatus.class}">${patternStatus.text}</span></td>
-                        <td>
-                            <button class="btn btn-primary btn-sm" onclick="executeManualTrade('${token}', 'buy')">Buy</button>
-                            <button class="btn btn-danger btn-sm" onclick="executeManualTrade('${token}', 'sell')">Sell</button>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            priceRows.innerHTML = html;
-
-            // Update last price update display
-            if (state.lastPriceUpdate) {
-                document.getElementById('lastPriceUpdate').textContent =
-                    state.lastPriceUpdate.toLocaleTimeString();
-            }
-        }
-
-        function updateMockPrices() {
-            // This is a fallback for when WebSocket isn't working
-            const mockTokens = ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX'];
-            const basePrices = { ETH: 3000, WBTC: 50000, UNI: 10, LINK: 15, ARB: 2, GMX: 40 };
-
-            mockTokens.forEach(token => {
-                if (!state.prices[token]) {
-                    state.prices[token] = basePrices[token] || 1;
-                    state.priceHistory[token] = [];
+                const data = await response.json();
+                if (data.ethereum?.usd) {
+                    return;
                 }
+                throw new Error('Invalid response');
+            } catch (error) {
+                throw new Error(`CoinGecko API failed: ${error.message}`);
+            }
+        }
 
-                // Random price change
-                const changePercent = (Math.random() * 4 - 2) / 100;
-                const change = state.prices[token] * changePercent;
-                const newPrice = state.prices[token] + change;
+        // Uniswap Integration
+        async function testUniswapConnection() {
+            if (!state.isConnected || !window.ethereum) {
+                throw new Error('Wallet not connected');
+            }
 
-                // Add to price history
-                const timestamp = Date.now();
-                state.priceHistory[token].push({
-                    price: state.prices[token],
-                    timestamp: timestamp
+            try {
+                // Test a simple eth_call to Uniswap Router
+                const routerAddress = CONTRACTS[state.network]?.router || CONTRACTS.arbitrum.router;
+
+                const result = await window.ethereum.request({
+                    method: 'eth_call',
+                    params: [
+                        { to: routerAddress, data: '0x86305b5b' }, // factory() call
+                        'latest'
+                    ]
                 });
 
-                if (state.priceHistory[token].length > 1000) {
-                    state.priceHistory[token].shift();
+                if (result && result !== '0x') {
+                    return; // Success
                 }
-
-                state.prices[token] = newPrice;
-                state.lastPriceUpdate = new Date();
-            });
-
-            updatePriceUI();
-            checkPatterns();
+                throw new Error('Invalid response from Uniswap Router');
+            } catch (error) {
+                throw new Error(`Uniswap connection failed: ${error.message}`);
+            }
         }
 
-        function refreshPrices() {
-            updateMockPrices();
-            showNotification('Info', 'Prices refreshed');
+        function startPriceMonitoring() {
+            // Already handled by price feeds
+        }
+
+        function stopPriceMonitoring() {
+            // Already handled by closePriceFeeds
+        }
+
+        function getActiveTokens() {
+            const activeButtons = document.querySelectorAll('#tokenSelector .token-btn.active');
+            return Array.from(activeButtons).map(btn => btn.getAttribute('data-token'));
+        }
+
+        function switchPriceSource() {
+            const source = document.getElementById('priceSourceSelect').value;
+            state.settings.primaryPriceSource = source;
+            saveSettings();
+
+            if (state.isRunning) {
+                restartPriceFeeds();
+            }
+        }
+
+        async function updateGasPrice() {
+            if (!window.ethereum) return;
+
+            try {
+                const gasPrice = await window.ethereum.request({ method: 'eth_gasPrice' });
+                const gasPriceGwei = parseInt(gasPrice) / 1e9;
+
+                document.getElementById('gasPrice').textContent = gasPriceGwei.toFixed(2);
+
+                // Update network utilization (simplified)
+                const utilization = Math.min(100, gasPriceGwei / 200 * 100);
+                document.getElementById('networkUtilization').style.width = utilization + '%';
+
+                log('info', `Gas price updated: ${gasPriceGwei.toFixed(2)} gwei`);
+
+            } catch (error) {
+                console.error('Error getting gas price:', error);
+                log('error', `Failed to get gas price: ${error.message}`);
+            }
+        }
+
+        async function refreshPrices() {
+            showLoading('priceRefreshSpinner');
+            log('info', 'Manual price refresh requested');
+
+            try {
+                if (state.priceSources.binance?.connected) {
+                    // Binance prices update via WebSocket, no action needed
+                }
+
+                if (state.priceSources.coingecko?.connected || state.settings.fallbackPriceSource === 'coingecko') {
+                    const activeTokens = getActiveTokens();
+                    const validTokens = activeTokens.filter(t => COINGECKO_IDS[t]);
+                    await fetchCoinGeckoPrices(validTokens);
+                }
+
+                log('info', 'Prices refreshed');
+                showNotification('Success', 'Prices refreshed!');
+
+            } catch (error) {
+                console.error('Error refreshing prices:', error);
+                log('error', `Price refresh failed: ${error.message}`);
+                showNotification('Error', 'Failed to refresh prices');
+            } finally {
+                hideLoading('priceRefreshSpinner');
+            }
         }
 
         // ============================================
-        // Pattern Detection
+        // Pattern Detection (Enhanced for PREPROD)
         // ============================================
 
         function checkPatterns() {
             if (!state.isRunning) return;
 
-            const tokensToCheck = state.settings.tokens ||
-                Array.from(document.querySelectorAll('#tradeTokens .token-btn.active'))
-                    .map(btn => btn.getAttribute('data-token'));
+            const tokensToCheck = state.settings.tokens || getActiveTokens();
 
             tokensToCheck.forEach(token => {
                 const patternResult = checkTokenPatterns(token);
 
                 if (patternResult.action) {
-                    // Execute trade based on pattern
-                    console.log(`Pattern detected for ${token}: ${patternResult.action}`);
+                    log('info', `Pattern detected for ${token}: ${patternResult.action} (${patternResult.pattern})`);
+
+                    // Check cooldown
+                    if (state.lastTradeTime) {
+                        const cooldown = (state.settings.tradeCooldown || 60) * 1000;
+                        const timeSinceLastTrade = Date.now() - state.lastTradeTime;
+
+                        if (timeSinceLastTrade < cooldown) {
+                            log('info', `Trade cooldown active. Skipping ${token} ${patternResult.action}`);
+                            return;
+                        }
+                    }
 
                     // Check if we have open positions for this token
                     const openPosition = state.trades.find(t =>
@@ -1534,34 +2419,33 @@
                     const openTrades = state.trades.filter(t => t.status === 'open').length;
 
                     if (openTrades >= state.settings.maxTrades) {
-                        console.log(`Max trades (${state.settings.maxTrades}) reached, skipping`);
+                        log('warn', `Max trades (${state.settings.maxTrades}) reached, skipping ${token}`);
                         return;
                     }
 
                     // Don't open new buy if we already have an open buy
                     if (patternResult.action === 'buy' && openPosition && openPosition.type === 'buy') {
-                        console.log(`Already have open buy position for ${token}, skipping`);
+                        log('info', `Already have open buy position for ${token}, skipping`);
                         return;
                     }
 
-                    // Don't open new sell if we don't have tokens
+                    // Don't open new sell if we don't have tokens (simplified check)
                     if (patternResult.action === 'sell' && (!openPosition || openPosition.type !== 'buy')) {
-                        console.log(`No open buy position for ${token}, cannot sell`);
+                        log('info', `No open buy position for ${token}, cannot sell`);
                         return;
                     }
 
-                    // Execute the trade
-                    executeTrade(token, patternResult.action);
+                    // Execute the simulated trade
+                    executeSimulatedTrade(token, patternResult.action, patternResult.pattern);
                 }
             });
         }
 
         function checkTokenPatterns(token) {
             if (!state.priceHistory[token] || state.priceHistory[token].length < 2) {
-                return { text: 'Insufficient data', class: 'badge-secondary', action: null };
+                return { text: 'Insufficient data', class: 'badge-secondary', action: null, pattern: null };
             }
 
-            const currentPrice = state.prices[token];
             const history = state.priceHistory[token];
 
             // Parse buy patterns
@@ -1570,19 +2454,31 @@
 
             // Check each buy pattern
             for (const pattern of buyPatterns) {
-                if (checkPattern(history, pattern)) {
-                    return { text: 'Buy Signal', class: 'badge-success', action: 'buy' };
+                const result = checkPattern(history, pattern);
+                if (result.matches) {
+                    return {
+                        text: 'Buy Signal',
+                        class: 'badge-success',
+                        action: 'buy',
+                        pattern: pattern.original
+                    };
                 }
             }
 
             // Check each sell pattern
             for (const pattern of sellPatterns) {
-                if (checkPattern(history, pattern)) {
-                    return { text: 'Sell Signal', class: 'badge-danger', action: 'sell' };
+                const result = checkPattern(history, pattern);
+                if (result.matches) {
+                    return {
+                        text: 'Sell Signal',
+                        class: 'badge-danger',
+                        action: 'sell',
+                        pattern: pattern.original
+                    };
                 }
             }
 
-            return { text: 'No signal', class: 'badge-secondary', action: null };
+            return { text: 'No signal', class: 'badge-secondary', action: null, pattern: null };
         }
 
         function parsePatterns(patternString) {
@@ -1592,19 +2488,31 @@
                 return patterns;
             }
 
-            // Split by OR conditions (|)
-            const orGroups = patternString.split('|');
+            // Remove whitespace and split by OR conditions (|)
+            const cleaned = patternString.replace(/\s+/g, '');
+            const orGroups = cleaned.split('|');
 
             for (const orGroup of orGroups) {
+                if (!orGroup) continue;
+
                 // Split by AND conditions (&)
                 const andConditions = orGroup.split('&');
 
                 const pattern = {
-                    conditions: andConditions.map(cond => parseCondition(cond.trim())),
-                    type: 'and'
+                    conditions: andConditions.map(cond => {
+                        const parsed = parseCondition(cond);
+                        if (parsed) {
+                            return { ...parsed, original: cond };
+                        }
+                        return null;
+                    }).filter(c => c !== null),
+                    type: 'and',
+                    original: orGroup
                 };
 
-                patterns.push(pattern);
+                if (pattern.conditions.length > 0) {
+                    patterns.push(pattern);
+                }
             }
 
             return patterns;
@@ -1612,10 +2520,12 @@
 
         function parseCondition(condition) {
             // Condition format: <_-0.5_150-450 or >_+0.3_15-150
-            const match = condition.match(/([<>]=?|>|<)_([-+]?\d+\.?\d*)_(\d+)-(\d+)/);
+            // Also support: >=_+1_60-120, <=_-2_30-60
+            const match = condition.match(/([<>]=?|>=|<=|>|<)_([-+]?\d+\.?\d*)_(\d+)-(\d+)/);
 
             if (!match) {
-                throw new Error(`Invalid pattern condition: ${condition}`);
+                log('warn', `Invalid pattern condition: ${condition}`);
+                return null;
             }
 
             return {
@@ -1629,19 +2539,21 @@
         function checkPattern(history, pattern) {
             // Check if ALL conditions in the pattern are met
             for (const condition of pattern.conditions) {
-                if (!checkCondition(history, condition)) {
-                    return false;
+                const result = checkCondition(history, condition);
+                if (!result) {
+                    return { matches: false, condition: condition };
                 }
             }
-            return true;
+            return { matches: true, pattern: pattern };
         }
 
         function checkCondition(history, condition) {
             // Condition format: { operator: '<', percentage: -0.5, minDuration: 150, maxDuration: 450 }
-            // This means: price decreased by at least 0.5% over a period of 150-450 seconds
+            // This means: price changed by at least percentage over a period of minDuration-maxDuration seconds
 
-            const currentPrice = history[history.length - 1].price;
-            const currentTime = history[history.length - 1].timestamp;
+            const currentEntry = history[history.length - 1];
+            const currentPrice = currentEntry.price;
+            const currentTime = currentEntry.timestamp;
 
             // Look for price changes in the specified time window
             const minTime = currentTime - (condition.maxDuration * 1000);
@@ -1649,9 +2561,12 @@
 
             // Find price at the beginning of the window
             let startPrice = null;
+            let startTime = null;
+
             for (let i = history.length - 1; i >= 0; i--) {
                 if (history[i].timestamp >= maxTime && history[i].timestamp <= minTime) {
                     startPrice = history[i].price;
+                    startTime = history[i].timestamp;
                     break;
                 }
             }
@@ -1681,71 +2596,129 @@
             }
         }
 
-        function testPattern() {
-            const pattern = document.getElementById('testPattern').value;
-            const pricesInput = document.getElementById('testPrices').value;
-
-            if (!pattern || !pricesInput) {
-                showNotification('Error', 'Please enter both pattern and price history');
-                return;
+        function validatePatternString(patternString) {
+            if (!patternString || patternString.trim() === '') {
+                return true; // Empty is valid
             }
 
             try {
-                const prices = pricesInput.split(',').map(p => parseFloat(p.trim()));
-
-                // Create mock history
-                const history = prices.map((price, index) => ({
-                    price: price,
-                    timestamp: Date.now() - (prices.length - index - 1) * 1000
-                }));
-
-                const patterns = parsePatterns(pattern);
-                let result = '';
-
-                for (const pattern of patterns) {
-                    const matches = checkPattern(history, pattern);
-                    result += `<p>Pattern: ${JSON.stringify(pattern)} - ${matches ? '✅ Match' : '❌ No Match'}</p>`;
-                }
-
-                document.getElementById('testResult').innerHTML = result || '<p>No patterns to test</p>';
-
+                const patterns = parsePatterns(patternString);
+                return patterns.length > 0;
             } catch (error) {
-                document.getElementById('testResult').innerHTML =
-                    `<p class="text-danger">Error: ${error.message}</p>`;
+                return false;
             }
         }
 
-        // ============================================
-        // Trading Functions
-        // ============================================
+        function validatePatterns() {
+            const buyPatterns = document.getElementById('buyPatterns').value;
+            const sellPatterns = document.getElementById('sellPatterns').value;
+            const resultDiv = document.getElementById('patternValidationResult');
 
-        async function executeTrade(token, action) {
-            if (!state.isConnected || !state.walletAddress) {
-                showNotification('Error', 'Wallet not connected');
-                return;
+            const buyValid = validatePatternString(buyPatterns);
+            const sellValid = validatePatternString(sellPatterns);
+
+            if (buyValid && sellValid) {
+                resultDiv.innerHTML = '<div class="alert alert-success">All patterns are valid!</div>';
+                log('info', 'Pattern validation: all valid');
+            } else {
+                let html = '<div class="alert alert-danger">Invalid patterns detected:</div>';
+                if (!buyValid) html += '<p>❌ Buy patterns contain errors</p>';
+                if (!sellValid) html += '<p>❌ Sell patterns contain errors</p>';
+                html += '<p>Check pattern syntax: &lt;_[-0.5]_150-450 or &gt;_[+0.3]_15-150</p>';
+                resultDiv.innerHTML = html;
+                log('error', 'Pattern validation failed');
             }
+        }
 
-            if (!state.isRunning) {
-                showNotification('Error', 'Bot is not running');
+        function loadDefaultPatterns() {
+            document.getElementById('buyPatterns').value = '<_-0.5_150-450&<_-1_300-600|>_+0.5_60-180';
+            document.getElementById('sellPatterns').value = '>_+0.8_60-300|>_+0.3_300-1800';
+            validatePatterns();
+            log('info', 'Default patterns loaded');
+        }
+
+        // ============================================
+        // Trade Simulation (Enhanced for PREPROD)
+        // ============================================
+
+        async function executeSimulatedTrade(token, action, pattern) {
+            if (!state.isConnected || !state.walletAddress) {
+                log('error', 'Cannot execute trade: wallet not connected');
                 return;
             }
 
             const tokenInfo = TOKENS[token];
             if (!tokenInfo) {
-                showNotification('Error', 'Unknown token: ' + token);
+                log('error', `Unknown token: ${token}`);
                 return;
             }
 
             const amountUSD = state.settings.tradeAmount || 100;
+            const currentPrice = state.prices[token];
 
-            // Show transaction confirmation
-            showTxModal(`Confirm ${action.toUpperCase()} ${token} for $${amountUSD}`);
+            if (!currentPrice) {
+                log('error', `No price available for ${token}`);
+                return;
+            }
 
-            // This would be called when user confirms
-            window.currentTrade = { token, action, amountUSD, tokenInfo };
+            // Calculate token amount
+            const tokenAmount = amountUSD / currentPrice;
+
+            // Simulate gas fee based on current gas price
+            const gasPriceGwei = parseFloat(document.getElementById('gasPrice')?.textContent || '100');
+            const gasFeeETH = (state.settings.gasLimit || 500000) * gasPriceGwei / 1e9 / 1e18;
+            const gasFeeUSD = gasFeeETH * (state.prices.ETH || 3000);
+
+            // Get pool information for price impact
+            const poolInfo = await getPoolInfo(token);
+            const priceImpact = calculatePriceImpact(token, tokenAmount, poolInfo);
+
+            // Calculate slippage
+            const slippagePercent = state.settings.slippage || 0.5;
+            const slippageAmount = tokenAmount * currentPrice * (slippagePercent / 100);
+
+            // Create trade record
+            const tradeId = 'trade_' + Date.now();
+            const timestamp = new Date().toISOString();
+
+            const trade = {
+                id: tradeId,
+                timestamp: timestamp,
+                token: token,
+                type: action,
+                price: currentPrice,
+                amountUSD: amountUSD,
+                tokenAmount: tokenAmount,
+                fee: gasFeeUSD,
+                status: 'open',
+                txHash: '0x' + Math.random().toString(16).substring(2, 66) + Date.now().toString(16).substring(4),
+                pnl: 0,
+                pattern: pattern,
+                gasPrice: gasPriceGwei,
+                priceImpact: priceImpact,
+                slippage: slippagePercent,
+                network: state.currentNetwork
+            };
+
+            state.trades.push(trade);
+            state.lastTradeTime = Date.now();
+            saveTrade(trade);
+
+            log('info', `Simulated ${action.toUpperCase()} ${tokenAmount.toFixed(6)} ${token} at $${currentPrice} (Pattern: ${pattern})`);
+            log('debug', `Trade details: gasFee=$${gasFeeUSD.toFixed(2)}, priceImpact=${priceImpact.toFixed(2)}%`);
+
+            // Update UI
+            updatePriceUI();
+            updateDashboard();
+            showNotification('Success', `Simulated ${action.toUpperCase()} ${tokenAmount.toFixed(6)} ${token} at $${currentPrice}`);
+
+            // If this is a sell, calculate PnL
+            if (action === 'sell') {
+                await settleTrade(trade);
+            }
         }
 
-        function executeManualTrade(token, action) {
+        async function executeManualTrade(token, action) {
             if (!state.isConnected || !state.walletAddress) {
                 showNotification('Error', 'Wallet not connected');
                 return;
@@ -1757,12 +2730,14 @@
                 return;
             }
 
-            const amountUSD = parseFloat(prompt('Enter trade amount in USD:', '100'));
+            const amountUSD = parseFloat(prompt('Enter trade amount in USD:', state.settings.tradeAmount || '100'));
             if (!amountUSD || amountUSD <= 0) {
                 return;
             }
 
-            executeTrade(token, action);
+            // Show confirmation
+            showTxModal(`Confirm ${action.toUpperCase()} ${token} for $${amountUSD}`);
+            window.currentTrade = { token, action, amountUSD, tokenInfo };
         }
 
         async function confirmTransaction() {
@@ -1773,91 +2748,581 @@
                 return;
             }
 
-            try {
-                showNotification('Info', `Executing ${action} ${token}...`);
+            await executeSimulatedTrade(token, action);
+        }
 
-                // In production, this would call Uniswap Router contract
-                // For demo, we'll simulate the trade
-                await simulateTrade(token, action, amountUSD, tokenInfo);
+        async function settleTrade(trade) {
+            // Find matching buy trade for this sell
+            const buyTrade = state.trades.find(t =>
+                t.token === trade.token &&
+                t.type === 'buy' &&
+                t.status === 'open' &&
+                t.id !== trade.id
+            );
 
-            } catch (error) {
-                console.error('Trade failed:', error);
-                showNotification('Error', 'Trade failed: ' + error.message);
+            if (buyTrade) {
+                // Close the buy trade
+                buyTrade.status = 'closed';
+                buyTrade.closedAt = trade.timestamp;
+                buyTrade.closedPrice = trade.price;
+
+                // Calculate PnL
+                const pnl = (trade.tokenAmount * trade.price) - (buyTrade.tokenAmount * buyTrade.price) - buyTrade.fee - trade.fee;
+                buyTrade.pnl = pnl;
+                trade.pnl = pnl;
+
+                // Apply stop-loss and take-profit
+                const stopLossPercent = state.settings.stopLoss || 2;
+                const takeProfitPercent = state.settings.takeProfit || 5;
+
+                if (pnl < 0) {
+                    const lossPercent = Math.abs(pnl) / (buyTrade.tokenAmount * buyTrade.price) * 100;
+                    if (lossPercent >= stopLossPercent) {
+                        buyTrade.stoppedOut = true;
+                        trade.stopLoss = true;
+                    }
+                } else {
+                    const profitPercent = pnl / (buyTrade.tokenAmount * buyTrade.price) * 100;
+                    if (profitPercent >= takeProfitPercent) {
+                        buyTrade.takeProfit = true;
+                        trade.takeProfit = true;
+                    }
+                }
+
+                updateTrade(buyTrade);
+                updateTrade(trade);
+
+                log('info', `Trade settled: ${buyTrade.token} ${buyTrade.type} -> ${trade.type}, PnL: $${pnl.toFixed(2)}`);
+                showNotification('Success', `Trade settled with PnL: $${pnl.toFixed(2)}`);
+
+                // Update charts and stats
+                updatePnLChart();
+                updateStatistics();
             }
         }
 
-        function closeTxModal() {
-            document.getElementById('txModal').classList.remove('active');
+        // ============================================
+        // Uniswap Integration (Read-Only for PREPROD)
+        // ============================================
+
+        async function getPoolInfo(token) {
+            if (!state.isConnected || !window.ethereum || !state.network) {
+                return { liquidity: 0, feeTier: 3000 };
+            }
+
+            try {
+                const tokenAddress = TOKENS[token]?.address;
+                const wethAddress = CONTRACTS[state.network]?.weth || CONTRACTS.arbitrum.weth;
+
+                if (!tokenAddress) {
+                    log('warn', `No address for token: ${token}`);
+                    return { liquidity: 0, feeTier: 3000 };
+                }
+
+                // For PREPROD, we'll use a simplified approach
+                // In a real implementation, you would:
+                // 1. Get the pool address from the Factory
+                // 2. Call the Pool contract to get liquidity
+                // 3. Determine the fee tier
+
+                // For now, return mock data based on token
+                const mockLiquidity = {
+                    ETH: 100000000,
+                    WBTC: 50000000,
+                    UNI: 10000000,
+                    LINK: 5000000,
+                    ARB: 2000000,
+                    GMX: 1000000
+                };
+
+                return {
+                    liquidity: mockLiquidity[token] || 1000000,
+                    feeTier: 3000, // 0.3% fee
+                    token0: token === 'ETH' ? wethAddress : tokenAddress,
+                    token1: token === 'ETH' ? tokenAddress : wethAddress
+                };
+
+            } catch (error) {
+                console.error('Error getting pool info:', error);
+                log('error', `Failed to get pool info for ${token}: ${error.message}`);
+                return { liquidity: 0, feeTier: 3000 };
+            }
         }
 
-        async function simulateTrade(token, action, amountUSD, tokenInfo) {
-            // Simulate trade execution
-            const tradeId = 'trade_' + Date.now();
-            const timestamp = new Date().toISOString();
-            const currentPrice = state.prices[token] || 1;
+        function calculatePriceImpact(token, tokenAmount, poolInfo) {
+            // Simplified price impact calculation
+            // Price impact = (tokenAmount / liquidity) * 100
+            // This is a rough estimate; real calculation would use the Uniswap V3 formula
 
-            // Calculate token amount
-            const tokenAmount = amountUSD / currentPrice;
+            const liquidity = poolInfo.liquidity || 1;
+            const tokenValue = tokenAmount * (state.prices[token] || 1);
 
-            // Simulate gas fee
-            const gasFee = 0.001 * (state.settings.gasLimit || 500000) *
-                (state.settings.maxGasPrice || 100) / 1e9;
+            // Normalize liquidity to USD equivalent
+            // Assume liquidity is in token units, convert to USD
+            const liquidityUSD = liquidity * (state.prices[token] || 1);
 
-            // Create trade record
-            const trade = {
-                id: tradeId,
-                timestamp: timestamp,
-                token: token,
-                type: action,
-                price: currentPrice,
-                amountUSD: amountUSD,
-                tokenAmount: tokenAmount,
-                fee: gasFee,
-                status: 'open',
-                txHash: '0x' + Math.random().toString(16).substring(2, 66),
-                pnl: 0
-            };
+            const priceImpact = (tokenValue / liquidityUSD) * 100;
 
-            state.trades.push(trade);
-            saveTrade(trade);
+            return Math.min(priceImpact, 100); // Cap at 100%
+        }
 
-            // Update UI
-            updatePriceUI();
-            updateDashboard();
+        async function simulateTrade() {
+            const token = document.getElementById('simToken').value;
+            const action = document.getElementById('simAction').value;
+            const amountUSD = parseFloat(document.getElementById('simAmount').value);
+            const slippage = parseFloat(document.getElementById('simSlippage').value);
 
-            showNotification('Success', `${action.toUpperCase()} ${tokenAmount.toFixed(6)} ${token} executed at $${currentPrice}`);
+            if (!token || !action || !amountUSD || amountUSD <= 0) {
+                showNotification('Error', 'Please fill in all fields');
+                return;
+            }
 
-            // If this is a sell, calculate PnL
-            if (action === 'sell') {
-                // Find matching buy trade
-                const buyTrade = state.trades.find(t =>
-                    t.token === token &&
-                    t.type === 'buy' &&
-                    t.status === 'open' &&
-                    t.id !== tradeId
-                );
+            showLoading('simSpinner');
+            document.getElementById('simulationResult').innerHTML = '<div class="alert alert-info">Simulating trade...</div>';
 
-                if (buyTrade) {
-                    // Close the buy trade
-                    buyTrade.status = 'closed';
-                    buyTrade.closedAt = timestamp;
-                    buyTrade.closedPrice = currentPrice;
+            try {
+                const currentPrice = state.prices[token];
+                if (!currentPrice) {
+                    throw new Error(`No price available for ${token}`);
+                }
 
-                    // Calculate PnL
-                    const pnl = (tokenAmount * currentPrice) - (buyTrade.tokenAmount * buyTrade.price) - buyTrade.fee - trade.fee;
-                    buyTrade.pnl = pnl;
-                    trade.pnl = pnl;
+                const tokenAmount = amountUSD / currentPrice;
 
-                    updateTrade(buyTrade);
-                    updateTrade(trade);
+                // Get pool info
+                const poolInfo = await getPoolInfo(token);
+                const priceImpact = calculatePriceImpact(token, tokenAmount, poolInfo);
 
-                    showNotification('Success', `Trade closed with PnL: $${pnl.toFixed(2)}`);
+                // Calculate fees
+                const feeTier = poolInfo.feeTier || 3000;
+                const feePercent = feeTier / 10000;
+                const feeAmount = tokenAmount * currentPrice * (feePercent / 100);
+
+                // Calculate slippage
+                const slippageAmount = tokenAmount * currentPrice * (slippage / 100);
+
+                // Calculate gas
+                const gasPriceGwei = parseFloat(document.getElementById('gasPrice')?.textContent || '100');
+                const gasFeeETH = (state.settings.gasLimit || 500000) * gasPriceGwei / 1e9 / 1e18;
+                const gasFeeUSD = gasFeeETH * (state.prices.ETH || 3000);
+
+                // Calculate effective price
+                const effectivePrice = action === 'buy'
+                    ? currentPrice * (1 + feePercent / 100 + slippage / 100 + priceImpact / 100)
+                    : currentPrice * (1 - feePercent / 100 - slippage / 100 - priceImpact / 100);
+
+                const effectiveAmount = amountUSD / effectivePrice;
+
+                const result = {
+                    token: token,
+                    action: action,
+                    amountUSD: amountUSD,
+                    tokenAmount: tokenAmount,
+                    currentPrice: currentPrice,
+                    effectivePrice: effectivePrice,
+                    effectiveAmount: effectiveAmount,
+                    priceImpact: priceImpact,
+                    feeAmount: feeAmount,
+                    slippageAmount: slippageAmount,
+                    gasFeeUSD: gasFeeUSD,
+                    totalCost: amountUSD + feeAmount + slippageAmount + gasFeeUSD
+                };
+
+                let html = '<div class="alert alert-success">Trade Simulation Complete</div>';
+                html += '<table class="table table-striped"><tbody>';
+                html += `<tr><td><strong>Action:</strong></td><td>${action.toUpperCase()} ${token}</td></tr>`;
+                html += `<tr><td><strong>Amount:</strong></td><td>$${amountUSD} (${tokenAmount.toFixed(6)} ${token})</td></tr>`;
+                html += `<tr><td><strong>Current Price:</strong></td><td>$${currentPrice.toFixed(2)}</td></tr>`;
+                html += `<tr><td><strong>Effective Price:</strong></td><td>$${effectivePrice.toFixed(2)}</td></tr>`;
+                html += `<tr><td><strong>Price Impact:</strong></td><td>${priceImpact.toFixed(4)}%</td></tr>`;
+                html += `<tr><td><strong>Pool Fee (${feePercent.toFixed(2)}%):</strong></td><td>$${feeAmount.toFixed(2)}</td></tr>`;
+                html += `<tr><td><strong>Slippage (${slippage}%):</strong></td><td>$${slippageAmount.toFixed(2)}</td></tr>`;
+                html += `<tr><td><strong>Gas Fee:</strong></td><td>$${gasFeeUSD.toFixed(2)}</td></tr>`;
+                html += `<tr><td><strong>Total Cost:</strong></td><td>$${result.totalCost.toFixed(2)}</td></tr>`;
+                html += '</tbody></table>';
+
+                document.getElementById('simulationResult').innerHTML = html;
+                log('info', `Trade simulation: ${action} ${tokenAmount.toFixed(6)} ${token} at $${effectivePrice.toFixed(2)}`);
+
+            } catch (error) {
+                console.error('Simulation error:', error);
+                document.getElementById('simulationResult').innerHTML =
+                    `<div class="alert alert-danger">Simulation failed: ${error.message}</div>`;
+                log('error', `Simulation failed: ${error.message}`);
+            } finally {
+                hideLoading('simSpinner');
+            }
+        }
+
+        // ============================================
+        // Backtesting (NEW for PREPROD)
+        // ============================================
+
+        async function runBacktest() {
+            const token = document.getElementById('backtestToken').value;
+            const rangeDays = parseInt(document.getElementById('backtestRange').value);
+            const patterns = document.getElementById('backtestPatterns').value;
+
+            if (!token || !rangeDays || !patterns) {
+                showNotification('Error', 'Please fill in all backtest fields');
+                return;
+            }
+
+            showLoading('backtestSpinner');
+            document.getElementById('backtestResults').style.display = 'none';
+            log('info', `Starting backtest: ${token}, ${rangeDays} days, patterns: ${patterns}`);
+
+            try {
+                // Validate patterns
+                const parsedPatterns = parsePatterns(patterns);
+                if (parsedPatterns.length === 0) {
+                    throw new Error('Invalid patterns');
+                }
+
+                // Fetch historical data
+                const historicalData = await fetchHistoricalData(token, rangeDays);
+
+                if (!historicalData || historicalData.length < 2) {
+                    throw new Error('Insufficient historical data');
+                }
+
+                // Run backtest
+                const results = await performBacktest(historicalData, parsedPatterns, token);
+
+                // Display results
+                displayBacktestResults(results);
+
+                log('info', `Backtest complete: ${results.trades.length} trades, PnL: $${results.totalPnL.toFixed(2)}`);
+                showNotification('Success', `Backtest complete: ${results.trades.length} trades`);
+
+            } catch (error) {
+                console.error('Backtest error:', error);
+                log('error', `Backtest failed: ${error.message}`);
+                showNotification('Error', 'Backtest failed: ' + error.message);
+            } finally {
+                hideLoading('backtestSpinner');
+            }
+        }
+
+        async function fetchHistoricalData(token, days) {
+            // For PREPROD, we'll use CoinGecko's historical data
+            try {
+                const cgId = COINGECKO_IDS[token];
+                if (!cgId) {
+                    throw new Error(`No CoinGecko ID for token: ${token}`);
+                }
+
+                const to = Math.floor(Date.now() / 1000);
+                const from = to - (days * 24 * 60 * 60);
+
+                const url = `https://api.coingecko.com/api/v3/coins/${cgId}/market_chart/range?vs_currency=usd&from=${from}&to=${to}`;
+
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Convert to our format
+                const prices = data.prices || [];
+                const history = prices.map(p => ({
+                    price: p[1],
+                    timestamp: p[0]
+                }));
+
+                log('info', `Fetched ${history.length} historical data points for ${token}`);
+                return history;
+
+            } catch (error) {
+                console.error('Error fetching historical data:', error);
+                throw error;
+            }
+        }
+
+        async function performBacktest(history, patterns, token) {
+            // Separate buy and sell patterns
+            const buyPatterns = patterns.filter(p => {
+                // Check if pattern is for buys (starts with < or <=)
+                return p.conditions.some(c => c.operator === '<' || c.operator === '<=');
+            });
+
+            const sellPatterns = patterns.filter(p => {
+                // Check if pattern is for sells (starts with > or >=)
+                return p.conditions.some(c => c.operator === '>' || c.operator === '>=');
+            });
+
+            const trades = [];
+            let position = null;
+            let equity = 10000; // Starting with $10,000
+            const tradeAmount = state.settings.tradeAmount || 100;
+
+            // Process each data point
+            for (let i = 1; i < history.length; i++) {
+                const current = history[i];
+                const currentPrice = current.price;
+                const currentTime = current.timestamp * 1000; // Convert to ms
+
+                // Create history up to this point
+                const currentHistory = history.slice(0, i + 1).map(h => ({
+                    price: h.price,
+                    timestamp: h.timestamp * 1000
+                }));
+
+                // Check for buy signals
+                if (!position) {
+                    for (const pattern of buyPatterns) {
+                        const result = checkPattern(currentHistory, pattern);
+                        if (result.matches) {
+                            // Buy signal
+                            const tokenAmount = tradeAmount / currentPrice;
+                            position = {
+                                type: 'buy',
+                                token: token,
+                                price: currentPrice,
+                                amountUSD: tradeAmount,
+                                tokenAmount: tokenAmount,
+                                timestamp: currentTime,
+                                pattern: pattern.original
+                            };
+                            equity -= tradeAmount;
+                            trades.push({ ...position, equity: equity });
+                            log('debug', `Backtest BUY: ${token} at $${currentPrice} (${pattern.original})`);
+                            break; // Only take first matching pattern
+                        }
+                    }
+                }
+                // Check for sell signals
+                else if (position) {
+                    for (const pattern of sellPatterns) {
+                        const result = checkPattern(currentHistory, pattern);
+                        if (result.matches) {
+                            // Sell signal
+                            const sellValue = position.tokenAmount * currentPrice;
+                            const pnl = sellValue - position.amountUSD;
+
+                            const sellTrade = {
+                                type: 'sell',
+                                token: token,
+                                price: currentPrice,
+                                amountUSD: sellValue,
+                                tokenAmount: position.tokenAmount,
+                                timestamp: currentTime,
+                                pattern: pattern.original,
+                                pnl: pnl,
+                                equity: equity + sellValue
+                            };
+
+                            equity += sellValue;
+                            trades.push(sellTrade);
+                            position = null;
+
+                            log('debug', `Backtest SELL: ${token} at $${currentPrice}, PnL: $${pnl.toFixed(2)} (${pattern.original})`);
+                            break; // Only take first matching pattern
+                        }
+                    }
                 }
             }
 
-            // Update charts and stats
-            updatePnLChart();
-            updateStatistics();
+            // Close any open position at the end
+            if (position) {
+                const finalPrice = history[history.length - 1].price;
+                const sellValue = position.tokenAmount * finalPrice;
+                const pnl = sellValue - position.amountUSD;
+
+                trades.push({
+                    type: 'sell',
+                    token: token,
+                    price: finalPrice,
+                    amountUSD: sellValue,
+                    tokenAmount: position.tokenAmount,
+                    timestamp: history[history.length - 1].timestamp * 1000,
+                    pattern: 'End of period',
+                    pnl: pnl,
+                    equity: equity + sellValue
+                });
+
+                equity += sellValue;
+            }
+
+            // Calculate statistics
+            const winningTrades = trades.filter(t => t.pnl > 0);
+            const losingTrades = trades.filter(t => t.pnl < 0);
+            const totalPnL = trades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+            const totalTrades = trades.length / 2; // Each trade pair counts as one
+            const winRate = totalTrades > 0 ? (winningTrades.length / totalTrades * 100) : 0;
+            const avgProfit = totalTrades > 0 ? (totalPnL / totalTrades) : 0;
+            const maxDrawdown = calculateMaxDrawdown(trades);
+            const profitFactor = losingTrades.length > 0
+                ? Math.abs(winningTrades.reduce((sum, t) => sum + t.pnl, 0) /
+                    losingTrades.reduce((sum, t) => sum + Math.abs(t.pnl), 0))
+                : 0;
+
+            // Calculate Sharpe Ratio (simplified)
+            const returns = trades.filter(t => t.pnl !== undefined).map(t => t.pnl);
+            const sharpeRatio = calculateSharpeRatio(returns);
+
+            return {
+                trades: trades,
+                statistics: {
+                    totalTrades: totalTrades,
+                    winningTrades: winningTrades.length,
+                    losingTrades: losingTrades.length,
+                    winRate: winRate,
+                    totalPnL: totalPnL,
+                    avgProfit: avgProfit,
+                    maxDrawdown: maxDrawdown,
+                    profitFactor: profitFactor,
+                    sharpeRatio: sharpeRatio,
+                    finalEquity: equity
+                }
+            };
+        }
+
+        function calculateMaxDrawdown(trades) {
+            let maxEquity = 10000; // Starting equity
+            let maxDrawdown = 0;
+
+            for (const trade of trades) {
+                if (trade.equity !== undefined) {
+                    if (trade.equity > maxEquity) {
+                        maxEquity = trade.equity;
+                    }
+                    const drawdown = maxEquity - trade.equity;
+                    if (drawdown > maxDrawdown) {
+                        maxDrawdown = drawdown;
+                    }
+                }
+            }
+
+            return maxDrawdown;
+        }
+
+        function calculateSharpeRatio(returns) {
+            if (returns.length < 2) return 0;
+
+            const mean = returns.reduce((sum, r) => sum + r, 0) / returns.length;
+            const variance = returns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / returns.length;
+            const stdDev = Math.sqrt(variance);
+
+            // Assume risk-free rate is 0 for crypto
+            const sharpe = mean / stdDev;
+            return isFinite(sharpe) ? sharpe : 0;
+        }
+
+        function displayBacktestResults(results) {
+            const stats = results.statistics;
+            const resultsDiv = document.getElementById('backtestResults');
+
+            // Update stats
+            document.getElementById('btTotalTrades').textContent = stats.totalTrades;
+            document.getElementById('btWinning').textContent = stats.winningTrades;
+            document.getElementById('btLosing').textContent = stats.losingTrades;
+            document.getElementById('btWinRate').textContent = stats.winRate.toFixed(1) + '%';
+            document.getElementById('btTotalPnL').textContent = '$' + stats.totalPnL.toFixed(2);
+            document.getElementById('btAvgProfit').textContent = '$' + stats.avgProfit.toFixed(2);
+            document.getElementById('btMaxDrawdown').textContent = '$' + stats.maxDrawdown.toFixed(2);
+            document.getElementById('btProfitFactor').textContent = stats.profitFactor.toFixed(2);
+            document.getElementById('btSharpeRatio').textContent = stats.sharpeRatio.toFixed(2);
+
+            // Display trade list
+            const tradeList = document.getElementById('btTradeList');
+            let html = '<h5>Trade Details</h5><table class="table table-striped"><thead><tr><th>Time</th><th>Type</th><th>Price</th><th>Amount</th><th>PnL</th><th>Equity</th></tr></thead><tbody>';
+
+            results.trades.forEach((trade, index) => {
+                const time = new Date(trade.timestamp).toLocaleString();
+                const pnlClass = trade.pnl > 0 ? 'price-up' : trade.pnl < 0 ? 'price-down' : '';
+                html += `
+                    <tr>
+                        <td>${time}</td>
+                        <td><span class="badge badge-${trade.type === 'buy' ? 'success' : 'danger'}">${trade.type.toUpperCase()}</span></td>
+                        <td>$${trade.price.toFixed(2)}</td>
+                        <td>${trade.tokenAmount.toFixed(6)}</td>
+                        <td class="${pnlClass}">$${trade.pnl ? trade.pnl.toFixed(2) : '-'}</td>
+                        <td>$${trade.equity ? trade.equity.toFixed(2) : '-'}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            tradeList.innerHTML = html;
+
+            // Draw equity curve
+            drawBacktestChart(results);
+
+            resultsDiv.style.display = 'block';
+        }
+
+        function drawBacktestChart(results) {
+            const canvas = document.getElementById('backtestChart');
+            const ctx = canvas.getContext('2d');
+
+            // Set canvas size
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = 200;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid
+            ctx.strokeStyle = '#dee2e6';
+            ctx.lineWidth = 1;
+
+            for (let i = 0; i <= 4; i++) {
+                const y = canvas.height * (i / 4);
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // Get equity data
+            const equityData = results.trades.map(t => t.equity).filter(e => e !== undefined);
+            if (equityData.length === 0) return;
+
+            const startEquity = 10000;
+            const minEquity = Math.min(...equityData, startEquity);
+            const maxEquity = Math.max(...equityData, startEquity);
+            const equityRange = maxEquity - minEquity || 1;
+
+            // Draw equity line
+            ctx.strokeStyle = '#0d6efd';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            const points = equityData.map((equity, index) => {
+                const x = (index / (equityData.length - 1)) * canvas.width;
+                const y = canvas.height - ((equity - minEquity) / equityRange) * canvas.height * 0.8 - 20;
+                return { x, y };
+            });
+
+            // Start from initial equity
+            const firstX = 0;
+            const firstY = canvas.height - ((startEquity - minEquity) / equityRange) * canvas.height * 0.8 - 20;
+            ctx.moveTo(firstX, firstY);
+
+            points.forEach(point => {
+                ctx.lineTo(point.x, point.y);
+            });
+            ctx.stroke();
+
+            // Draw dots
+            ctx.fillStyle = '#0d6efd';
+            points.forEach(point => {
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw labels
+            ctx.fillStyle = '#6c757d';
+            ctx.font = '11px Arial';
+            ctx.textAlign = 'right';
+
+            for (let i = 0; i <= 4; i++) {
+                const value = maxEquity - (i * equityRange / 4);
+                const y = canvas.height - (i * canvas.height / 4) - 5;
+                ctx.fillText('$' + value.toFixed(0), canvas.width - 5, y);
+            }
         }
 
         // ============================================
@@ -1877,16 +3342,69 @@
             updateDashboard();
         }
 
+        function updatePriceUI() {
+            const priceRows = document.getElementById('priceRows');
+            const activeTokens = getActiveTokens();
+
+            if (activeTokens.length === 0) {
+                priceRows.innerHTML = '<tr><td colspan="6" class="text-center text-secondary">Select tokens to monitor</td></tr>';
+                return;
+            }
+
+            let html = '';
+            activeTokens.forEach(token => {
+                const price = state.prices[token] || 'N/A';
+                const prevPrice = state.priceHistory[token] && state.priceHistory[token].length > 1
+                    ? state.priceHistory[token][state.priceHistory[token].length - 2].price
+                    : null;
+
+                const change = prevPrice ? ((price - prevPrice) / prevPrice * 100).toFixed(2) : 0;
+                const changeClass = change >= 0 ? 'price-up' : 'price-down';
+                const changeSymbol = change >= 0 ? '▲' : '▼';
+
+                // Check pattern status
+                const patternStatus = checkTokenPatterns(token);
+
+                // Get pool info for liquidity
+                const poolInfo = state.poolInfo?.[token];
+                const liquidity = poolInfo ? '$' + (poolInfo.liquidity * price).toFixed(0) : 'N/A';
+
+                html += `
+                    <tr>
+                        <td><strong>${token}</strong></td>
+                        <td>$${price !== 'N/A' ? price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 }) : 'N/A'}</td>
+                        <td class="price-change ${changeClass}">${changeSymbol} ${Math.abs(change)}%</td>
+                        <td class="pool-info">${liquidity}</td>
+                        <td><span class="badge ${patternStatus.class}">${patternStatus.text}</span></td>
+                        <td>
+                            <button class="btn btn-primary btn-xs" onclick="executeManualTrade('${token}', 'buy')">Buy</button>
+                            <button class="btn btn-danger btn-xs" onclick="executeManualTrade('${token}', 'sell')">Sell</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            priceRows.innerHTML = html;
+
+            // Update last price update display
+            if (state.lastPriceUpdate) {
+                document.getElementById('lastPriceUpdate').textContent = state.lastPriceUpdate.toLocaleTimeString();
+            }
+        }
+
         function updateActivePositions() {
             const activePositions = document.getElementById('activePositions');
             const openTrades = state.trades.filter(t => t.status === 'open');
 
             if (openTrades.length === 0) {
                 activePositions.innerHTML = '<p class="text-secondary">No active positions</p>';
+                document.getElementById('activeCount').textContent = '0';
                 return;
             }
 
-            let html = '<table class="table table-striped"><thead><tr><th>Token</th><th>Type</th><th>Price</th><th>Amount</th><th>Value</th><th>Unrealized PnL</th></tr></thead><tbody>';
+            document.getElementById('activeCount').textContent = openTrades.length;
+
+            let html = '<table class="table table-striped"><thead><tr><th>Token</th><th>Type</th><th>Price</th><th>Amount</th><th>Value</th><th>Unrealized PnL</th><th>Pattern</th></tr></thead><tbody>';
 
             openTrades.forEach(trade => {
                 const currentPrice = state.prices[trade.token] || trade.price;
@@ -1903,6 +3421,7 @@
                         <td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">
                             $${unrealizedPnL.toFixed(2)} (${((unrealizedPnL / (trade.tokenAmount * trade.price)) * 100).toFixed(2)}%)
                         </td>
+                        <td><small>${trade.pattern || 'Manual'}</small></td>
                     </tr>
                 `;
             });
@@ -1913,7 +3432,7 @@
 
         function updateRecentTrades() {
             const recentTrades = document.getElementById('recentTrades');
-            const trades = state.trades.slice().reverse().slice(0, 10); // Last 10 trades
+            const trades = state.trades.slice().reverse().slice(0, 10);
 
             if (trades.length === 0) {
                 recentTrades.innerHTML = '<tr><td colspan="6" class="text-center text-secondary">No trades yet</td></tr>';
@@ -1922,7 +3441,7 @@
 
             let html = '';
             trades.forEach(trade => {
-                const pnlClass = trade.pnl >= 0 ? 'price-up' : 'price-down';
+                const pnlClass = trade.pnl >= 0 ? 'price-up' : trade.pnl < 0 ? 'price-down' : '';
                 html += `
                     <tr>
                         <td>${new Date(trade.timestamp).toLocaleTimeString()}</td>
@@ -1939,29 +3458,28 @@
         }
 
         function updatePnLDisplay() {
-            const totalPnL = state.trades
-                .filter(t => t.status === 'closed')
-                .reduce((sum, trade) => sum + trade.pnl, 0);
+            const closedTrades = state.trades.filter(t => t.status === 'closed' && t.pnl !== undefined);
+            const totalPnL = closedTrades.reduce((sum, trade) => sum + trade.pnl, 0);
 
             document.getElementById('totalPnL').textContent = '$' + totalPnL.toFixed(2);
             document.getElementById('totalPnL').className = totalPnL >= 0 ? 'price-up' : 'price-down';
 
-            // Calculate daily, weekly, monthly PnL
+            // Calculate time-based PnL
             const now = new Date();
             const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
             const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-            const dailyPnL = state.trades
-                .filter(t => t.status === 'closed' && new Date(t.closedAt || t.timestamp) >= todayStart)
+            const dailyPnL = closedTrades
+                .filter(t => new Date(t.closedAt || t.timestamp) >= todayStart)
                 .reduce((sum, trade) => sum + trade.pnl, 0);
 
-            const weeklyPnL = state.trades
-                .filter(t => t.status === 'closed' && new Date(t.closedAt || t.timestamp) >= weekStart)
+            const weeklyPnL = closedTrades
+                .filter(t => new Date(t.closedAt || t.timestamp) >= weekStart)
                 .reduce((sum, trade) => sum + trade.pnl, 0);
 
-            const monthlyPnL = state.trades
-                .filter(t => t.status === 'closed' && new Date(t.closedAt || t.timestamp) >= monthStart)
+            const monthlyPnL = closedTrades
+                .filter(t => new Date(t.closedAt || t.timestamp) >= monthStart)
                 .reduce((sum, trade) => sum + trade.pnl, 0);
 
             document.getElementById('dailyPnL').textContent = '$' + dailyPnL.toFixed(2);
@@ -1975,24 +3493,20 @@
         }
 
         function updatePnLChart() {
-            // Simple text-based chart for demo
-            // In production, you would use Chart.js or similar
             const canvas = document.getElementById('pnlCanvas');
             const ctx = canvas.getContext('2d');
 
-            // Set canvas size
             canvas.width = canvas.parentElement.clientWidth;
             canvas.height = 300;
 
-            // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // Draw grid
             ctx.strokeStyle = '#dee2e6';
             ctx.lineWidth = 1;
 
-            for (let i = 0; i < 5; i++) {
-                const y = canvas.height * (i / 4);
+            for (let i = 0; i <= 5; i++) {
+                const y = canvas.height * (i / 5);
                 ctx.beginPath();
                 ctx.moveTo(0, y);
                 ctx.lineTo(canvas.width, y);
@@ -2001,11 +3515,10 @@
 
             // Get PnL data over time
             const closedTrades = state.trades
-                .filter(t => t.status === 'closed' && t.closedAt)
+                .filter(t => t.status === 'closed' && t.pnl !== undefined && t.closedAt)
                 .sort((a, b) => new Date(a.closedAt) - new Date(b.closedAt));
 
             if (closedTrades.length === 0) {
-                // Draw "No data" message
                 ctx.fillStyle = '#6c757d';
                 ctx.font = '14px Arial';
                 ctx.textAlign = 'center';
@@ -2060,16 +3573,15 @@
             ctx.font = '12px Arial';
             ctx.textAlign = 'right';
 
-            // Y-axis labels
-            for (let i = 0; i <= 4; i++) {
-                const value = maxPnL - (i * pnLRange / 4);
-                const y = canvas.height - (i * canvas.height / 4) - 10;
+            for (let i = 0; i <= 5; i++) {
+                const value = maxPnL - (i * pnLRange / 5);
+                const y = canvas.height - (i * canvas.height / 5) - 10;
                 ctx.fillText('$' + value.toFixed(2), canvas.width - 10, y);
             }
         }
 
         function updateStatistics() {
-            const closedTrades = state.trades.filter(t => t.status === 'closed');
+            const closedTrades = state.trades.filter(t => t.status === 'closed' && t.pnl !== undefined);
             const winningTrades = closedTrades.filter(t => t.pnl > 0);
             const losingTrades = closedTrades.filter(t => t.pnl < 0);
 
@@ -2109,6 +3621,12 @@
 
             document.getElementById('maxDrawdown').textContent = '$' + maxDrawdown.toFixed(2);
 
+            // Profit factor
+            const grossProfit = winningTrades.reduce((sum, t) => sum + t.pnl, 0);
+            const grossLoss = Math.abs(losingTrades.reduce((sum, t) => sum + t.pnl, 0));
+            const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss).toFixed(2) : '0.00';
+            document.getElementById('profitFactor').textContent = profitFactor;
+
             // Session stats
             const sessionStart = state.startTime ? state.startTime.toISOString() : '-';
             document.getElementById('sessionStart').textContent = sessionStart;
@@ -2119,12 +3637,35 @@
             document.getElementById('sessionTrades').textContent = sessionTrades;
 
             const sessionPnL = state.trades
-                .filter(t => state.startTime && new Date(t.timestamp) >= state.startTime && t.status === 'closed')
+                .filter(t => state.startTime && new Date(t.timestamp) >= state.startTime && t.status === 'closed' && t.pnl !== undefined)
                 .reduce((sum, t) => sum + t.pnl, 0);
             document.getElementById('sessionPnL').textContent = '$' + sessionPnL.toFixed(2);
 
             const bestTrade = Math.max(...closedTrades.map(t => t.pnl), 0);
+            const worstTrade = Math.min(...closedTrades.map(t => t.pnl), 0);
             document.getElementById('bestTrade').textContent = '$' + bestTrade.toFixed(2);
+            document.getElementById('worstTrade').textContent = '$' + worstTrade.toFixed(2);
+
+            // Best token
+            const tokenPnL = {};
+            const tokenTrades = {};
+            closedTrades.forEach(t => {
+                tokenPnL[t.token] = (tokenPnL[t.token] || 0) + t.pnl;
+                tokenTrades[t.token] = (tokenTrades[t.token] || 0) + 1;
+            });
+
+            const bestToken = Object.keys(tokenPnL).reduce((a, b) =>
+                tokenPnL[a] > tokenPnL[b] ? a : b, null);
+
+            if (bestToken) {
+                const bestTokenWinRate = closedTrades.filter(t => t.token === bestToken && t.pnl > 0).length /
+                    closedTrades.filter(t => t.token === bestToken).length * 100;
+                document.getElementById('bestToken').textContent = bestToken;
+                document.getElementById('bestTokenPnL').textContent = '$' + (tokenPnL[bestToken] || 0).toFixed(2);
+                document.getElementById('bestTokenWinRate').textContent = isFinite(bestTokenWinRate)
+                    ? bestTokenWinRate.toFixed(1) + '%'
+                    : '0%';
+            }
         }
 
         // ============================================
@@ -2133,16 +3674,16 @@
 
         function renderFullTradeHistory() {
             const fullTradeHistory = document.getElementById('fullTradeHistory');
-            const trades = state.trades.slice().reverse(); // Newest first
+            const trades = state.trades.slice().reverse();
 
             if (trades.length === 0) {
-                fullTradeHistory.innerHTML = '<tr><td colspan="9" class="text-center text-secondary">No trade history</td></tr>';
+                fullTradeHistory.innerHTML = '<tr><td colspan="8" class="text-center text-secondary">No trade history</td></tr>';
                 return;
             }
 
             let html = '';
             trades.forEach(trade => {
-                const pnlClass = trade.pnl >= 0 ? 'price-up' : 'price-down';
+                const pnlClass = trade.pnl >= 0 ? 'price-up' : trade.pnl < 0 ? 'price-down' : '';
                 html += `
                     <tr>
                         <td>${new Date(trade.timestamp).toLocaleString()}</td>
@@ -2153,7 +3694,6 @@
                         <td>$${trade.fee.toFixed(4)}</td>
                         <td><span class="badge badge-${trade.status === 'closed' ? 'success' : 'warning'}">${trade.status}</span></td>
                         <td class="${pnlClass}">$${trade.pnl.toFixed(2)}</td>
-                        <td class="code-display">${trade.txHash}</td>
                     </tr>
                 `;
             });
@@ -2172,17 +3712,17 @@
                 'Fee': trade.fee,
                 'Status': trade.status,
                 'PnL': trade.pnl,
-                'Tx Hash': trade.txHash
+                'Pattern': trade.pattern || '',
+                'Tx Hash': trade.txHash || '',
+                'Network': trade.network || ''
             }));
 
-            // Convert to CSV
             const headers = Object.keys(trades[0] || {});
             const csvContent = [
                 headers.join(','),
                 ...trades.map(row => headers.map(header => row[header]).join(','))
             ].join('\n');
 
-            // Create download link
             const blob = new Blob([csvContent], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -2192,7 +3732,20 @@
             link.click();
             document.body.removeChild(link);
 
+            log('info', 'Trade history exported');
             showNotification('Success', 'Trade history exported successfully!');
+        }
+
+        function clearTradeHistory() {
+            if (!confirm('Are you sure you want to clear all trade history?')) {
+                return;
+            }
+            state.trades = [];
+            saveAllTrades();
+            renderFullTradeHistory();
+            updateDashboard();
+            log('info', 'Trade history cleared');
+            showNotification('Success', 'Trade history cleared!');
         }
 
         // ============================================
@@ -2206,6 +3759,8 @@
             state.settings.maxTrades = parseInt(document.getElementById('maxTrades').value);
             state.settings.stopLoss = parseFloat(document.getElementById('stopLoss').value);
             state.settings.takeProfit = parseFloat(document.getElementById('takeProfit').value);
+            state.settings.trailingStop = parseFloat(document.getElementById('trailingStop').value);
+            state.settings.tradeCooldown = parseInt(document.getElementById('tradeCooldown').value);
 
             // Get selected tokens
             state.settings.tokens = Array.from(
@@ -2213,36 +3768,50 @@
             ).map(btn => btn.getAttribute('data-token'));
 
             saveSettings();
+            log('info', 'Trading settings saved');
             showNotification('Success', 'Trading settings saved!');
         }
 
-        function updatePriceProvider() {
-            const provider = document.getElementById('priceProvider').value;
-            state.settings.priceProvider = provider;
+        function savePriceSettings() {
+            state.settings.primaryPriceSource = document.getElementById('primaryPriceSource').value;
+            state.settings.fallbackPriceSource = document.getElementById('fallbackPriceSource').value;
+            state.settings.priceInterval = parseInt(document.getElementById('priceInterval').value);
+            state.settings.maxPriceAge = parseInt(document.getElementById('maxPriceAge').value);
+
             saveSettings();
+            log('info', 'Price settings saved');
+            showNotification('Success', 'Price settings saved!');
+
+            if (state.isRunning) {
+                restartPriceFeeds();
+            }
         }
 
-        async function saveApiKey() {
-            const apiKey = document.getElementById('apiKeyInput').value;
-            if (!apiKey) {
-                showNotification('Error', 'Please enter an API key');
-                return;
-            }
+        async function saveApiKeys() {
+            const coingeckoKey = document.getElementById('coingeckoApiKey').value;
 
-            try {
-                // Encrypt the API key
-                const encrypted = await encryptData(apiKey);
-                state.settings.apiKey = encrypted;
+            if (coingeckoKey) {
+                try {
+                    // Test the API key
+                    const url = `https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&x_cg_demo_api_key=${coingeckoKey}`;
+                    const response = await fetch(url);
+
+                    if (response.ok) {
+                        state.settings.coingeckoApiKey = coingeckoKey;
+                        saveSettings();
+                        log('info', 'CoinGecko API key saved and validated');
+                        showNotification('Success', 'CoinGecko API key saved!');
+                    } else {
+                        showNotification('Error', 'Invalid API key. Please check and try again.');
+                    }
+                } catch (error) {
+                    showNotification('Error', 'Failed to validate API key: ' + error.message);
+                }
+            } else {
+                state.settings.coingeckoApiKey = '';
                 saveSettings();
-
-                document.getElementById('apiKeyInput').value = '';
-                document.getElementById('apiKeyStatus').innerHTML =
-                    '<span class="badge badge-success">API key saved (encrypted)</span>';
-
-                showNotification('Success', 'API key saved securely!');
-            } catch (error) {
-                console.error('Error saving API key:', error);
-                showNotification('Error', 'Failed to save API key: ' + error.message);
+                log('info', 'CoinGecko API key cleared');
+                showNotification('Success', 'API key cleared!');
             }
         }
 
@@ -2250,18 +3819,21 @@
             state.settings.slippage = parseFloat(document.getElementById('slippage').value);
             state.settings.maxGasPrice = parseInt(document.getElementById('maxGasPrice').value);
             state.settings.gasLimit = parseInt(document.getElementById('gasLimit').value);
+            state.settings.maxPriceImpact = parseFloat(document.getElementById('maxPriceImpact').value);
             state.settings.debugMode = document.getElementById('debugMode').value;
 
             saveSettings();
+            log('info', 'Advanced settings saved');
             showNotification('Success', 'Advanced settings saved!');
         }
 
         function saveSettings() {
-            // Save settings to IndexedDB
             saveToDB('settings', state.settings);
             saveToDB('state', {
                 walletAddress: state.walletAddress,
-                isConnected: state.isConnected
+                isConnected: state.isConnected,
+                network: state.network,
+                currentNetwork: state.currentNetwork
             });
         }
 
@@ -2270,6 +3842,7 @@
                 const savedSettings = await getFromDB('settings');
                 const savedState = await getFromDB('state');
                 const savedTrades = await getAllFromDB('trades');
+                const savedLogs = await getFromDB('logs');
 
                 if (savedSettings) {
                     state.settings = { ...state.settings, ...savedSettings };
@@ -2278,18 +3851,27 @@
                 if (savedState) {
                     state.walletAddress = savedState.walletAddress;
                     state.isConnected = savedState.isConnected;
+                    state.network = savedState.network || 'arbitrum';
+                    state.currentNetwork = savedState.currentNetwork || 'Arbitrum One';
                 }
 
                 if (savedTrades) {
                     state.trades = savedTrades;
                 }
 
-                // Update UI with loaded settings
+                if (savedLogs) {
+                    state.logs = savedLogs;
+                }
+
                 updateSettingsUI();
                 updateWalletUI();
+                updateNetworkInfo();
+
+                log('info', 'Settings and data loaded from storage');
 
             } catch (error) {
                 console.error('Error loading settings:', error);
+                log('error', `Failed to load settings: ${error.message}`);
             }
         }
 
@@ -2301,15 +3883,24 @@
             document.getElementById('maxTrades').value = state.settings.maxTrades || 5;
             document.getElementById('stopLoss').value = state.settings.stopLoss || 2;
             document.getElementById('takeProfit').value = state.settings.takeProfit || 5;
+            document.getElementById('trailingStop').value = state.settings.trailingStop || 1;
+            document.getElementById('tradeCooldown').value = state.settings.tradeCooldown || 60;
             document.getElementById('slippage').value = state.settings.slippage || 0.5;
-            document.getElementById('maxGasPrice').value = state.settings.maxGasPrice || 100;
+            document.getElementById('maxGasPrice').value = state.settings.maxGasPrice || 200;
             document.getElementById('gasLimit').value = state.settings.gasLimit || 500000;
-            document.getElementById('priceInterval').value = state.settings.priceInterval || 5000;
+            document.getElementById('maxPriceImpact').value = state.settings.maxPriceImpact || 1;
             document.getElementById('debugMode').value = state.settings.debugMode || 'none';
+
+            // Price settings
+            document.getElementById('primaryPriceSource').value = state.settings.primaryPriceSource || 'binance';
+            document.getElementById('fallbackPriceSource').value = state.settings.fallbackPriceSource || 'coingecko';
+            document.getElementById('priceInterval').value = state.settings.priceInterval || 5000;
+            document.getElementById('maxPriceAge').value = state.settings.maxPriceAge || 30;
+            document.getElementById('coingeckoApiKey').value = state.settings.coingeckoApiKey || '';
 
             // Update token buttons
             if (state.settings.tokens) {
-                document.querySelectorAll('#tradeTokens .token-btn').forEach(btn => {
+                document.querySelectorAll('#tradeTokens .token-btn, #tokenSelector .token-btn').forEach(btn => {
                     const token = btn.getAttribute('data-token');
                     btn.classList.toggle('active', state.settings.tokens.includes(token));
                 });
@@ -2320,13 +3911,10 @@
             document.getElementById('backupInterval').value = state.settings.backupInterval || 30;
             document.getElementById('encryptionEnabled').checked = state.settings.encryptionEnabled !== false;
 
-            // Price provider
-            document.getElementById('priceProvider').value = state.settings.priceProvider || 'uniswap';
-            document.getElementById('customWsGroup').style.display =
-                (state.settings.priceProvider === 'custom') ? 'block' : 'none';
-            if (state.settings.customWsUrl) {
-                document.getElementById('customWsUrl').value = state.settings.customWsUrl;
-            }
+            // Log settings
+            document.getElementById('logLevel').value = state.settings.debugMode || 'info';
+            document.getElementById('maxLogEntries').value = 1000;
+            document.getElementById('logToConsole').checked = true;
         }
 
         // ============================================
@@ -2338,18 +3926,22 @@
 
             const interval = (state.settings.backupInterval || 30) * 60 * 1000;
             state.backupTimer = setInterval(createBackup, interval);
+            log('info', `Auto-backup started (every ${interval / 60000} minutes)`);
         }
 
         function stopBackupTimer() {
             if (state.backupTimer) {
                 clearInterval(state.backupTimer);
                 state.backupTimer = null;
+                log('info', 'Auto-backup stopped');
             }
         }
 
         async function createBackup() {
             try {
-                // Get all data from IndexedDB
+                showLoading('backupSpinner');
+                log('info', 'Creating backup...');
+
                 const settings = await getFromDB('settings');
                 const stateData = await getFromDB('state');
                 const trades = await getAllFromDB('trades');
@@ -2362,19 +3954,23 @@
                     trades: trades
                 };
 
-                // Encrypt if enabled
-                if (state.settings.encryptionEnabled) {
-                    const password = document.getElementById('encryptionPassword').value;
-                    if (password) {
+                // Encrypt if enabled and password is set
+                const encryptionEnabled = document.getElementById('encryptionEnabled')?.checked ?? state.settings.encryptionEnabled;
+                const password = document.getElementById('encryptionPassword')?.value;
+
+                if (encryptionEnabled && password) {
+                    try {
+                        const encrypted = await encryptData(JSON.stringify(backupData), password);
                         backupData.encrypted = true;
-                        backupData.data = await encryptData(JSON.stringify(backupData));
+                        backupData.data = encrypted;
                         delete backupData.settings;
                         delete backupData.state;
                         delete backupData.trades;
+                    } catch (error) {
+                        log('error', `Encryption failed: ${error.message}`);
                     }
                 }
 
-                // Create download
                 const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
@@ -2384,13 +3980,17 @@
                 link.click();
                 document.body.removeChild(link);
 
+                log('info', 'Backup created successfully');
                 if (!state.backupTimer) {
                     showNotification('Success', 'Backup created successfully!');
                 }
 
             } catch (error) {
                 console.error('Error creating backup:', error);
+                log('error', `Backup failed: ${error.message}`);
                 showNotification('Error', 'Failed to create backup: ' + error.message);
+            } finally {
+                hideLoading('backupSpinner');
             }
         }
 
@@ -2403,36 +4003,49 @@
             if (!file) return;
 
             try {
+                showNotification('Info', 'Restoring backup...');
+                log('info', 'Restoring backup...');
+
                 const reader = new FileReader();
                 reader.onload = async function (e) {
-                    const data = JSON.parse(e.target.result);
+                    try {
+                        const data = JSON.parse(e.target.result);
 
-                    // Handle encrypted backup
-                    if (data.encrypted) {
-                        const password = prompt('Enter encryption password to restore backup:');
-                        if (!password) {
-                            showNotification('Error', 'Password required for encrypted backup');
-                            return;
+                        // Handle encrypted backup
+                        if (data.encrypted) {
+                            const password = prompt('Enter encryption password to restore backup:');
+                            if (!password) {
+                                showNotification('Error', 'Password required for encrypted backup');
+                                return;
+                            }
+
+                            try {
+                                const decrypted = await decryptData(data.data, password);
+                                const backupData = JSON.parse(decrypted);
+                                await restoreFromBackup(backupData);
+                            } catch (error) {
+                                showNotification('Error', 'Failed to decrypt backup: ' + error.message);
+                                log('error', `Decryption failed: ${error.message}`);
+                            }
+                        } else {
+                            await restoreFromBackup(data);
                         }
 
-                        try {
-                            const decrypted = await decryptData(data.data, password);
-                            const backupData = JSON.parse(decrypted);
-                            await restoreFromBackup(backupData);
-                        } catch (error) {
-                            showNotification('Error', 'Failed to decrypt backup: ' + error.message);
-                        }
-                    } else {
-                        await restoreFromBackup(data);
+                        log('info', 'Backup restored successfully');
+                        showNotification('Success', 'Backup restored successfully! Reloading...');
+                        setTimeout(() => location.reload(), 1500);
+
+                    } catch (error) {
+                        console.error('Error parsing backup:', error);
+                        log('error', `Backup parse failed: ${error.message}`);
+                        showNotification('Error', 'Failed to parse backup: ' + error.message);
                     }
-
-                    showNotification('Success', 'Backup restored successfully!');
-                    location.reload();
                 };
                 reader.readAsText(file);
 
             } catch (error) {
                 console.error('Error restoring backup:', error);
+                log('error', `Backup restore failed: ${error.message}`);
                 showNotification('Error', 'Failed to restore backup: ' + error.message);
             }
         }
@@ -2451,9 +4064,13 @@
             if (backupData.state) {
                 state.walletAddress = backupData.state.walletAddress;
                 state.isConnected = backupData.state.isConnected;
+                state.network = backupData.state.network;
+                state.currentNetwork = backupData.state.currentNetwork;
                 await saveToDB('state', {
                     walletAddress: state.walletAddress,
-                    isConnected: state.isConnected
+                    isConnected: state.isConnected,
+                    network: state.network,
+                    currentNetwork: state.currentNetwork
                 });
             }
 
@@ -2467,7 +4084,7 @@
         }
 
         async function clearAllData() {
-            if (!confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+            if (!confirm('Are you sure you want to clear ALL data? This cannot be undone.')) {
                 return;
             }
 
@@ -2481,24 +4098,37 @@
                     maxTrades: 5,
                     stopLoss: 2,
                     takeProfit: 5,
-                    tokens: ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX'],
+                    trailingStop: 1,
+                    tokens: ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX', 'USDC', 'USDT'],
                     priceInterval: 5000,
+                    maxPriceAge: 30,
                     slippage: 0.5,
-                    maxGasPrice: 100,
+                    maxGasPrice: 200,
                     gasLimit: 500000,
+                    maxPriceImpact: 1,
+                    tradeCooldown: 60,
+                    primaryPriceSource: 'binance',
+                    fallbackPriceSource: 'coingecko',
                     autoBackup: true,
                     backupInterval: 30,
-                    encryptionEnabled: true
+                    encryptionEnabled: true,
+                    debugMode: 'none'
                 };
                 state.walletAddress = null;
                 state.isConnected = false;
+                state.network = 'arbitrum';
+                state.currentNetwork = 'Arbitrum One';
+                state.logs = [];
 
                 updateUI();
                 updateWalletUI();
+                updateSettingsUI();
+                log('info', 'All data cleared');
                 showNotification('Success', 'All data cleared!');
 
             } catch (error) {
                 console.error('Error clearing data:', error);
+                log('error', `Failed to clear data: ${error.message}`);
                 showNotification('Error', 'Failed to clear data: ' + error.message);
             }
         }
@@ -2510,8 +4140,8 @@
             const newPassword = prompt('Enter new encryption password:');
             if (!newPassword) return;
 
-            // In a real app, you would re-encrypt all data here
             showNotification('Success', 'Encryption password changed!');
+            log('info', 'Encryption password changed');
         }
 
         // ============================================
@@ -2519,7 +4149,7 @@
         // ============================================
 
         const DB_NAME = 'UniswapTradingBotDB';
-        const DB_VERSION = 1;
+        const DB_VERSION = 2;
 
         let db = null;
 
@@ -2545,7 +4175,6 @@
                 request.onupgradeneeded = function (event) {
                     const db = event.target.result;
 
-                    // Create object stores
                     if (!db.objectStoreNames.contains('settings')) {
                         db.createObjectStore('settings');
                     }
@@ -2557,6 +4186,9 @@
                         store.createIndex('timestamp', 'timestamp', { unique: false });
                         store.createIndex('token', 'token', { unique: false });
                         store.createIndex('status', 'status', { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains('logs')) {
+                        db.createObjectStore('logs');
                     }
                 };
             });
@@ -2637,6 +4269,31 @@
             await saveToDB('trades', trade);
         }
 
+        async function saveAllTrades() {
+            if (state.trades.length > 0) {
+                const database = await openDB();
+                const transaction = database.transaction('trades', 'readwrite');
+                const store = transaction.objectStore('trades');
+
+                state.trades.forEach(trade => {
+                    store.put(trade, trade.id);
+                });
+
+                return new Promise((resolve, reject) => {
+                    transaction.oncomplete = resolve;
+                    transaction.onerror = function (event) {
+                        reject(event.target.error);
+                    };
+                });
+            }
+        }
+
+        async function saveLogs() {
+            if (state.logs.length > 0) {
+                await saveToDB('logs', state.logs);
+            }
+        }
+
         async function clearDB() {
             try {
                 const database = await openDB();
@@ -2666,40 +4323,58 @@
         // Encryption Utilities
         // ============================================
 
-        async function encryptData(data) {
-            // In a real app, use Web Crypto API or a library like CryptoJS
-            // For demo purposes, we'll use a simple XOR encryption
-            // NOTE: This is NOT secure for production use!
+        async function encryptData(data, password) {
+            const encoder = new TextEncoder();
+            const iv = crypto.getRandomValues(new Uint8Array(12));
 
-            const password = document.getElementById('encryptionPassword').value || 'default-password';
+            const keyMaterial = encoder.encode(password);
+            const key = await crypto.subtle.importKey(
+                'raw',
+                keyMaterial,
+                { name: 'AES-GCM' },
+                false,
+                ['encrypt']
+            );
 
-            // Simple XOR encryption (for demo only)
-            let result = '';
-            for (let i = 0; i < data.length; i++) {
-                const charCode = data.charCodeAt(i) ^ password.charCodeAt(i % password.length);
-                result += String.fromCharCode(charCode);
-            }
+            const encrypted = await crypto.subtle.encrypt(
+                { name: 'AES-GCM', iv },
+                key,
+                encoder.encode(data)
+            );
 
-            return btoa(result);
+            return {
+                iv: Array.from(iv),
+                data: Array.from(new Uint8Array(encrypted))
+            };
         }
 
         async function decryptData(encryptedData, password) {
-            // Simple XOR decryption (for demo only)
             try {
-                const decoded = atob(encryptedData);
-                let result = '';
+                const encoder = new TextEncoder();
+                const decoder = new TextDecoder();
 
-                const actualPassword = password || document.getElementById('encryptionPassword').value || 'default-password';
+                const iv = new Uint8Array(encryptedData.iv);
+                const data = new Uint8Array(encryptedData.data);
 
-                for (let i = 0; i < decoded.length; i++) {
-                    const charCode = decoded.charCodeAt(i) ^ actualPassword.charCodeAt(i % actualPassword.length);
-                    result += String.fromCharCode(charCode);
-                }
+                const keyMaterial = encoder.encode(password);
+                const key = await crypto.subtle.importKey(
+                    'raw',
+                    keyMaterial,
+                    { name: 'AES-GCM' },
+                    false,
+                    ['decrypt']
+                );
 
-                return result;
+                const decrypted = await crypto.subtle.decrypt(
+                    { name: 'AES-GCM', iv },
+                    key,
+                    data
+                );
+
+                return decoder.decode(decrypted);
             } catch (error) {
                 console.error('Decryption failed:', error);
-                throw new Error('Failed to decrypt data');
+                throw new Error('Failed to decrypt data. Invalid password or corrupted data.');
             }
         }
 
@@ -2742,9 +4417,9 @@
             modal.classList.add('active');
         }
 
-        function showTxModal(message) {
+        function showTxModal(content) {
             const modal = document.getElementById('txModal');
-            document.getElementById('txMessage').textContent = message;
+            document.getElementById('txModalContent').innerHTML = '<p>' + content + '</p>';
             modal.classList.add('active');
         }
 
@@ -2756,48 +4431,67 @@
             document.getElementById('txModal').classList.remove('active');
         }
 
-        // Close modals when clicking outside
-        document.getElementById('notificationModal').addEventListener('click', function (e) {
-            if (e.target === this) {
-                closeModal();
-            }
-        });
+        function closeBacktestDetailModal() {
+            document.getElementById('backtestDetailModal').classList.remove('active');
+        }
 
-        document.getElementById('txModal').addEventListener('click', function (e) {
-            if (e.target === this) {
-                closeTxModal();
-            }
-        });
-
-        // ============================================
-        // WebSocket Cleanup
-        // ============================================
-
-        function closeWebSockets() {
-            if (priceWebSocket) {
-                priceWebSocket.close();
-                priceWebSocket = null;
-            }
-            if (uniswapWebSocket) {
-                uniswapWebSocket.close();
-                uniswapWebSocket = null;
+        function showLoading(elementId) {
+            const spinner = document.getElementById(elementId);
+            if (spinner) {
+                spinner.style.display = 'inline-block';
             }
         }
 
-        // Clean up on page unload
+        function hideLoading(elementId) {
+            const spinner = document.getElementById(elementId);
+            if (spinner) {
+                spinner.style.display = 'none';
+            }
+        }
+
+        // Close modals when clicking outside
+        document.getElementById('notificationModal').addEventListener('click', function (e) {
+            if (e.target === this) closeModal();
+        });
+
+        document.getElementById('txModal').addEventListener('click', function (e) {
+            if (e.target === this) closeTxModal();
+        });
+
+        document.getElementById('backtestDetailModal').addEventListener('click', function (e) {
+            if (e.target === this) closeBacktestDetailModal();
+        });
+
+        // ============================================
+        // Cleanup
+        // ============================================
+
+        function closeWebSockets() {
+            if (binanceWebSocket) {
+                binanceWebSocket.close();
+                binanceWebSocket = null;
+            }
+        }
+
         window.addEventListener('beforeunload', function () {
             closeWebSockets();
             stopPriceMonitoring();
             stopBackupTimer();
+            saveAllTrades();
+            saveLogs();
         });
 
         // ============================================
-        // Export for debugging
+        // Utility Functions
         // ============================================
 
-        window.debugState = function () {
-            console.log('Current State:', JSON.parse(JSON.stringify(state)));
-        };
+        function refreshRecentTrades() {
+            updateRecentTrades();
+        }
+
+        function toggleAutoScroll() {
+            state.autoScroll = !state.autoScroll;
+        }
     </script>
 </body>
 
