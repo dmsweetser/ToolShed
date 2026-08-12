@@ -600,7 +600,7 @@
       <button class="btn-primary" onclick="openFoodModal()">+ Add New Food</button>
     </div>
 
-    <div id="view-mymixes" class="view">
+    <div id="view-my-mixes" class="view">
       <input type="text" placeholder="Search mixes..." id="mix-filter" oninput="renderMyMixes()"
         style="width:100%; background:var(--input-bg); color:white; border:1px solid var(--border); padding:0.5rem; border-radius:5px; margin-bottom:0.5rem;">
       <div id="mixes-list"></div>
@@ -652,7 +652,7 @@
       <div class="sidebar-nav">
         <button onclick="showView('journal'); closeSidebar();">Journal</button>
         <button onclick="showView('myfoods'); closeSidebar();">Foods</button>
-        <button onclick="showView('mymixes'); closeSidebar();">Mixes</button>
+        <button onclick="showView('my-mixes'); closeSidebar();">Mixes</button>
         <button onclick="showView('shopping'); closeSidebar();">Shop</button>
         <button onclick="showView('settings'); closeSidebar();">Settings</button>
       </div>
@@ -926,7 +926,7 @@
       document.getElementById('bar-title').textContent = viewName.charAt(0).toUpperCase() + viewName.slice(1).replace(/-/g, ' ');
       if (viewName === 'journal') renderJournal();
       if (viewName === 'myfoods') renderMyFoods();
-      if (viewName === 'mymixes') renderMyMixes();
+      if (viewName === 'my-mixes') renderMyMixes();
       if (viewName === 'shopping') renderShoppingList();
     }
     function toggleSidebar() {
@@ -1080,6 +1080,12 @@
         if (container) {
           const headerSpan = container.previousElementSibling?.querySelector('.mix-total-display');
           if (headerSpan) headerSpan.textContent = `${escapeHtml(mix.Name)}: ${meal.CurrentTotals[mix.Name]} Serving(s)`;
+          const foodNames = container.querySelectorAll('.food-name');
+          mix.Foods.forEach((f, idx) => {
+            if (foodNames[idx]) {
+              foodNames[idx].textContent = `${escapeHtml(f.Name || 'Unknown')}: ${translateQuantity(f.CurrentQuantity)} ${escapeHtml(f.UnitOfMeasureDisplayValue || 'oz')}`;
+            }
+          });
         }
       });
       total = Math.round(total * 100) / 100;
