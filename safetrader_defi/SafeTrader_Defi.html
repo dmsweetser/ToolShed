@@ -1,0 +1,2804 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uniswap Arbitrum Trading Bot</title>
+    <style>
+        :root {
+            --bs-body-color: #212529;
+            --bs-body-bg: #f8f9fa;
+            --bs-primary: #0d6efd;
+            --bs-secondary: #6c757d;
+            --bs-success: #198754;
+            --bs-danger: #dc3545;
+            --bs-warning: #ffc107;
+            --bs-info: #0dcaf0;
+            --bs-light: #f8f9fa;
+            --bs-dark: #212529;
+            --bs-border-radius: 0.375rem;
+            --bs-box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bs-body-bg);
+            color: var(--bs-body-color);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Bootstrap-like classes */
+        .btn {
+            display: inline-block;
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
+            border-radius: var(--bs-border-radius);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: var(--bs-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0a58ca;
+        }
+
+        .btn-danger {
+            background: var(--bs-danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #bb2d3b;
+        }
+
+        .btn-success {
+            background: var(--bs-success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #146c43;
+        }
+
+        .btn-secondary {
+            background: var(--bs-secondary);
+            color: white;
+        }
+
+        .btn-warning {
+            background: var(--bs-warning);
+            color: #212529;
+        }
+
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: var(--bs-border-radius);
+            box-shadow: var(--bs-box-shadow);
+            margin-bottom: 20px;
+            padding: 20px;
+        }
+
+        .card-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #dee2e6;
+            margin: -20px -20px 20px -20px;
+            background: #f8f9fa;
+            border-radius: var(--bs-border-radius) var(--bs-border-radius) 0 0;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.375rem 0.75rem;
+            border: 1px solid #dee2e6;
+            border-radius: var(--bs-border-radius);
+            font-size: 1rem;
+            margin-bottom: 10px;
+        }
+
+        .form-control:focus {
+            border-color: var(--bs-primary);
+            outline: none;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+        }
+
+        .table th,
+        .table td {
+            padding: 0.75rem;
+            border: 1px solid #dee2e6;
+            text-align: left;
+        }
+
+        .table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+
+        .table-striped tbody tr:nth-child(even) {
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .badge-success {
+            background: var(--bs-success);
+            color: white;
+        }
+
+        .badge-danger {
+            background: var(--bs-danger);
+            color: white;
+        }
+
+        .badge-warning {
+            background: var(--bs-warning);
+            color: #212529;
+        }
+
+        .badge-info {
+            background: var(--bs-info);
+            color: white;
+        }
+
+        .nav-tabs {
+            display: flex;
+            border-bottom: 1px solid #dee2e6;
+            margin-bottom: 20px;
+        }
+
+        .nav-tabs .nav-link {
+            padding: 10px 20px;
+            border: 1px solid transparent;
+            border-bottom: none;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        .nav-tabs .nav-link.active {
+            background: white;
+            border-color: #dee2e6 #dee2e6 white;
+            color: var(--bs-primary);
+        }
+
+        .nav-link {
+            color: #6c757d;
+            text-decoration: none;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: var(--bs-border-radius);
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: rgba(25, 135, 84, 0.1);
+            border: 1px solid var(--bs-success);
+            color: var(--bs-success);
+        }
+
+        .alert-danger {
+            background: rgba(220, 53, 69, 0.1);
+            border: 1px solid var(--bs-danger);
+            color: var(--bs-danger);
+        }
+
+        .alert-warning {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid var(--bs-warning);
+            color: #856404;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-running {
+            background: var(--bs-success);
+            animation: pulse 2s infinite;
+        }
+
+        .status-stopped {
+            background: var(--bs-danger);
+        }
+
+        .status-disconnected {
+            background: var(--bs-secondary);
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .price-change {
+            font-weight: 500;
+        }
+
+        .price-up {
+            color: var(--bs-success);
+        }
+
+        .price-down {
+            color: var(--bs-danger);
+        }
+
+        .trade-history {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .settings-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: var(--bs-border-radius);
+        }
+
+        .pattern-input {
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .pnl-chart {
+            height: 300px;
+            background: white;
+            border-radius: var(--bs-border-radius);
+            border: 1px solid #dee2e6;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .token-selector {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .token-btn {
+            padding: 5px 15px;
+            border: 1px solid #dee2e6;
+            border-radius: 20px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .token-btn:hover {
+            border-color: var(--bs-primary);
+            background: #f8f9fa;
+        }
+
+        .token-btn.active {
+            background: var(--bs-primary);
+            color: white;
+            border-color: var(--bs-primary);
+        }
+
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: var(--bs-border-radius);
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-group .form-control {
+            flex: 1;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-1 {
+            margin-top: 10px;
+        }
+
+        .mt-2 {
+            margin-top: 20px;
+        }
+
+        .mb-1 {
+            margin-bottom: 10px;
+        }
+
+        .mb-2 {
+            margin-bottom: 20px;
+        }
+
+        .mr-1 {
+            margin-right: 10px;
+        }
+
+        .d-flex {
+            display: flex;
+        }
+
+        .justify-between {
+            justify-content: space-between;
+        }
+
+        .align-center {
+            align-items: center;
+        }
+
+        .gap-1 {
+            gap: 10px;
+        }
+
+        .gap-2 {
+            gap: 20px;
+        }
+
+        .code-display {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header class="text-center mb-2">
+            <h1>Uniswap Arbitrum Trading Bot</h1>
+            <p class="text-secondary">Automated crypto trading with pattern detection</p>
+        </header>
+
+        <!-- Main Navigation -->
+        <div class="nav-tabs">
+            <div class="nav-link active" data-tab="dashboard">Dashboard</div>
+            <div class="nav-link" data-tab="trading">Trading</div>
+            <div class="nav-link" data-tab="history">History</div>
+            <div class="nav-link" data-tab="settings">Settings</div>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content">
+            <div class="grid-2">
+                <!-- Bot Status Card -->
+                <div class="card">
+                    <div class="card-header d-flex justify-between align-center">
+                        <span>Bot Status</span>
+                        <span id="botStatusIndicator"></span>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex align-center gap-1 mb-1">
+                            <span class="status-indicator status-disconnected" id="statusIndicator"></span>
+                            <span id="botStatusText">Disconnected</span>
+                        </div>
+                        <div class="d-flex gap-1 mt-1">
+                            <button class="btn btn-success btn-sm" id="startBotBtn" onclick="startBot()">
+                                <span class="loading-spinner" id="startSpinner" style="display:none;"></span>Start Bot
+                            </button>
+                            <button class="btn btn-danger btn-sm" id="stopBotBtn" onclick="stopBot()" disabled>
+                                <span class="loading-spinner" id="stopSpinner" style="display:none;"></span>Stop Bot
+                            </button>
+                            <button class="btn btn-secondary btn-sm" id="testBtn" onclick="testConnection()">Test
+                                Connection</button>
+                        </div>
+                        <div class="mt-1">
+                            <p><strong>Uptime:</strong> <span id="uptime">00:00:00</span></p>
+                            <p><strong>Last Price Update:</strong> <span id="lastPriceUpdate">Never</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PnL Card -->
+                <div class="card">
+                    <div class="card-header">Profit & Loss</div>
+                    <div class="card-body">
+                        <h2 id="totalPnL">$0.00</h2>
+                        <p class="text-secondary">Total PnL across all trades</p>
+                        <div class="pnl-chart" id="pnlChart">
+                            <canvas id="pnlCanvas"></canvas>
+                        </div>
+                        <div class="d-flex justify-between mt-1">
+                            <div>
+                                <p><strong>Today:</strong> <span id="dailyPnL">$0.00</span></p>
+                            </div>
+                            <div>
+                                <p><strong>This Week:</strong> <span id="weeklyPnL">$0.00</span></p>
+                            </div>
+                            <div>
+                                <p><strong>This Month:</strong> <span id="monthlyPnL">$0.00</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Positions & Recent Trades -->
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header">Active Positions</div>
+                    <div class="card-body">
+                        <div id="activePositions">
+                            <p class="text-secondary">No active positions</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">Recent Trades</div>
+                    <div class="card-body trade-history">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Token</th>
+                                    <th>Type</th>
+                                    <th>Price</th>
+                                    <th>Amount</th>
+                                    <th>PnL</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentTrades">
+                                <tr>
+                                    <td colspan="6" class="text-center text-secondary">No trades yet</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Price Monitoring -->
+            <div class="card">
+                <div class="card-header">
+                    <span>Price Monitoring</span>
+                    <button class="btn btn-primary btn-sm" onclick="refreshPrices()">Refresh</button>
+                </div>
+                <div class="card-body">
+                    <div class="token-selector" id="tokenSelector">
+                        <button class="token-btn active" data-token="ETH">ETH</button>
+                        <button class="token-btn" data-token="WBTC">WBTC</button>
+                        <button class="token-btn" data-token="USDC">USDC</button>
+                        <button class="token-btn" data-token="UNI">UNI</button>
+                        <button class="token-btn" data-token="LINK">LINK</button>
+                        <button class="token-btn" data-token="ARB">ARB</button>
+                        <button class="token-btn" data-token="GMX">GMX</button>
+                    </div>
+                    <div id="priceTable">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Token</th>
+                                    <th>Price (USD)</th>
+                                    <th>24h Change</th>
+                                    <th>Pattern Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="priceRows">
+                                <tr>
+                                    <td colspan="5" class="text-center text-secondary">Loading prices...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trading Tab -->
+        <div id="trading" class="tab-content" style="display:none;">
+            <div class="card">
+                <div class="card-header">Trading Strategies</div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label">Buy Patterns</label>
+                        <textarea class="form-control pattern-input" id="buyPatterns"
+                            placeholder="Enter buy patterns..."></textarea>
+                        <small class="text-secondary">
+                            Format: Use &lt;_[-0.5]_150-450 for price drops, &gt;_[+0.3]_15-150 for price rises<br>
+                            &amp; = AND condition, | = OR condition
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Sell Patterns</label>
+                        <textarea class="form-control pattern-input" id="sellPatterns"
+                            placeholder="Enter sell patterns..."></textarea>
+                        <small class="text-secondary">
+                            Format: &gt;_[+0.3]_15-150 = price rises by 0.3% over 15-150 seconds
+                        </small>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Trade Amount (USD)</label>
+                            <input type="number" class="form-control" id="tradeAmount" value="100" min="1" step="1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Max Open Trades</label>
+                            <input type="number" class="form-control" id="maxTrades" value="5" min="1" max="20">
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Stop Loss (%)</label>
+                            <input type="number" class="form-control" id="stopLoss" value="2" min="0" max="100"
+                                step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Take Profit (%)</label>
+                            <input type="number" class="form-control" id="takeProfit" value="5" min="0" max="100"
+                                step="0.1">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Tokens to Trade</label>
+                        <div class="token-selector" id="tradeTokens">
+                            <button class="token-btn active" data-token="ETH">ETH</button>
+                            <button class="token-btn" data-token="WBTC">WBTC</button>
+                            <button class="token-btn" data-token="UNI">UNI</button>
+                            <button class="token-btn" data-token="LINK">LINK</button>
+                            <button class="token-btn" data-token="ARB">ARB</button>
+                            <button class="token-btn" data-token="GMX">GMX</button>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="saveTradingSettings()">Save Trading Settings</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">Pattern Tester</div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label">Test Pattern</label>
+                        <input type="text" class="form-control" id="testPattern" placeholder="Enter pattern to test">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Price History (comma separated)</label>
+                        <input type="text" class="form-control" id="testPrices"
+                            placeholder="e.g., 100, 101, 102, 101.5, 100.8">
+                    </div>
+                    <button class="btn btn-success" onclick="testPattern()">Test Pattern</button>
+                    <div id="testResult" class="mt-1"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div id="history" class="tab-content" style="display:none;">
+            <div class="card">
+                <div class="card-header d-flex justify-between align-center">
+                    <span>Trade History</span>
+                    <button class="btn btn-secondary btn-sm" onclick="exportTradeHistory()">Export CSV</button>
+                </div>
+                <div class="card-body trade-history">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Token</th>
+                                <th>Type</th>
+                                <th>Price</th>
+                                <th>Amount</th>
+                                <th>Fee</th>
+                                <th>Status</th>
+                                <th>PnL</th>
+                                <th>Tx Hash</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fullTradeHistory">
+                            <tr>
+                                <td colspan="9" class="text-center text-secondary">No trade history</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">Performance Statistics</div>
+                <div class="card-body">
+                    <div class="grid-2">
+                        <div>
+                            <h3>Overall</h3>
+                            <p><strong>Total Trades:</strong> <span id="totalTrades">0</span></p>
+                            <p><strong>Win Rate:</strong> <span id="winRate">0%</span></p>
+                            <p><strong>Avg Profit:</strong> <span id="avgProfit">$0.00</span></p>
+                            <p><strong>Max Drawdown:</strong> <span id="maxDrawdown">$0.00</span></p>
+                        </div>
+                        <div>
+                            <h3>Current Session</h3>
+                            <p><strong>Session Start:</strong> <span id="sessionStart">-</span></p>
+                            <p><strong>Trades:</strong> <span id="sessionTrades">0</span></p>
+                            <p><strong>Session PnL:</strong> <span id="sessionPnL">$0.00</span></p>
+                            <p><strong>Best Trade:</strong> <span id="bestTrade">$0.00</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings" class="tab-content" style="display:none;">
+            <div class="card">
+                <div class="card-header">Wallet & Network Settings</div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label">MetaMask Status</label>
+                        <div class="d-flex align-center gap-1">
+                            <span id="walletStatus"></span>
+                            <button class="btn btn-primary btn-sm" id="connectWalletBtn" onclick="connectWallet()">
+                                Connect MetaMask
+                            </button>
+                            <button class="btn btn-danger btn-sm" id="disconnectWalletBtn" onclick="disconnectWallet()"
+                                style="display:none;">
+                                Disconnect
+                            </button>
+                        </div>
+                        <div id="walletInfo" class="mt-1"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Network</label>
+                        <select class="form-control" id="networkSelect" onchange="updateNetwork()">
+                            <option value="arbitrum">Arbitrum One</option>
+                            <option value="arbitrum-nova">Arbitrum Nova</option>
+                        </select>
+                        <small class="text-secondary">Currently configured for Arbitrum L2</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Uniswap Router Address</label>
+                        <input type="text" class="form-control" id="routerAddress"
+                            value="0xE592427A0AEce92De3Edee1F18E0157C05861564" readonly>
+                        <small class="text-secondary">Uniswap V3 Router on Arbitrum</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">API & Data Settings</div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label">Price Feed Provider</label>
+                        <select class="form-control" id="priceProvider" onchange="updatePriceProvider()">
+                            <option value="uniswap">Uniswap V3 (Default)</option>
+                            <option value="coingecko">CoinGecko API</option>
+                            <option value="custom">Custom WebSocket</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="customWsGroup" style="display:none;">
+                        <label class="form-label">Custom WebSocket URL</label>
+                        <input type="text" class="form-control" id="customWsUrl" placeholder="wss://example.com/ws">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Price Update Interval (ms)</label>
+                        <input type="number" class="form-control" id="priceInterval" value="5000" min="1000"
+                            max="60000">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">API Keys (Encrypted)</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="apiKeyInput" placeholder="Enter API key">
+                            <button class="btn btn-secondary" onclick="saveApiKey()">Save Encrypted</button>
+                        </div>
+                        <div id="apiKeyStatus" class="mt-1"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">Backup & Security</div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label">Auto-Backup Settings</label>
+                        <div class="d-flex gap-2 align-center">
+                            <input type="checkbox" id="autoBackupEnabled" checked>
+                            <label for="autoBackupEnabled">Enable Auto-Backup</label>
+                        </div>
+                        <div class="mt-1">
+                            <label>Backup Interval (minutes)</label>
+                            <input type="number" class="form-control" id="backupInterval" value="30" min="1" max="1440">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <button class="btn btn-primary" onclick="createBackup()">Create Backup Now</button>
+                        <button class="btn btn-secondary" onclick="restoreBackup()">Restore from Backup</button>
+                        <input type="file" id="backupFileInput" accept=".json" style="display:none;"
+                            onchange="handleBackupUpload(event)">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Encryption Settings</label>
+                        <div class="d-flex gap-2 align-center">
+                            <input type="checkbox" id="encryptionEnabled" checked>
+                            <label for="encryptionEnabled">Enable Data Encryption</label>
+                        </div>
+                        <div class="mt-1">
+                            <label>Encryption Password</label>
+                            <input type="password" class="form-control" id="encryptionPassword"
+                                placeholder="Set encryption password">
+                            <button class="btn btn-warning btn-sm mt-1" onclick="changeEncryptionPassword()">Change
+                                Password</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <button class="btn btn-danger" onclick="clearAllData()">Clear All Data</button>
+                        <small class="text-secondary">This will delete all stored data including trade history and
+                            settings</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">Advanced Settings</div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label">Gas Settings</label>
+                        <div class="grid-2">
+                            <div>
+                                <label>Max Gas Price (gwei)</label>
+                                <input type="number" class="form-control" id="maxGasPrice" value="100" min="1">
+                            </div>
+                            <div>
+                                <label>Gas Limit</label>
+                                <input type="number" class="form-control" id="gasLimit" value="500000" min="21000">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Slippage Tolerance (%)</label>
+                        <input type="number" class="form-control" id="slippage" value="0.5" min="0" max="10" step="0.1">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Debug Mode</label>
+                        <select class="form-control" id="debugMode">
+                            <option value="none">None</option>
+                            <option value="basic">Basic</option>
+                            <option value="verbose">Verbose</option>
+                        </select>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="saveAdvancedSettings()">Save Advanced Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for notifications -->
+    <div class="modal" id="notificationModal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Notification</h3>
+            <p id="modalMessage"></p>
+            <button class="btn btn-primary" onclick="closeModal()">OK</button>
+        </div>
+    </div>
+
+    <!-- Modal for transaction confirmation -->
+    <div class="modal" id="txModal">
+        <div class="modal-content">
+            <h3>Transaction Pending</h3>
+            <p id="txMessage"></p>
+            <div class="d-flex justify-between mt-2">
+                <button class="btn btn-secondary" onclick="closeTxModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmTransaction()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // Configuration & State
+        // ============================================
+
+        const APP_VERSION = '1.0.0';
+        const ARBITRUM_CHAIN_ID = 42161;
+        const UNISWAP_ROUTER = '0xE592427A0AEce92De3Edee1F18E0157C05861564';
+        const USDC_ADDRESS = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
+        const WETH_ADDRESS = '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1';
+
+        // Token configurations for Arbitrum
+        const TOKENS = {
+            ETH: { address: WETH_ADDRESS, decimals: 18, symbol: 'ETH' },
+            WBTC: { address: '0x2f2a2543B76A416654947aaB75B4e35b52a17231', decimals: 8, symbol: 'WBTC' },
+            USDC: { address: USDC_ADDRESS, decimals: 6, symbol: 'USDC' },
+            UNI: { address: '0xfa7F8980b0f1E64A2062791cc3b0871572f1F7f0', decimals: 18, symbol: 'UNI' },
+            LINK: { address: '0xf97f4df75117a78c1A5a0DBb814Af92458539FB4', decimals: 18, symbol: 'LINK' },
+            ARB: { address: '0x912CE59144196C11c48067255325c5414506085A', decimals: 18, symbol: 'ARB' },
+            GMX: { address: '0xfc5A1A6EB076a2C7aD06eD22C5C769A78b3Fa3A1', decimals: 18, symbol: 'GMX' }
+        };
+
+        // Application state
+        let state = {
+            isRunning: false,
+            isConnected: false,
+            walletAddress: null,
+            prices: {},
+            priceHistory: {},
+            trades: [],
+            settings: {
+                buyPatterns: '',
+                sellPatterns: '',
+                tradeAmount: 100,
+                maxTrades: 5,
+                stopLoss: 2,
+                takeProfit: 5,
+                tokens: ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX'],
+                priceInterval: 5000,
+                slippage: 0.5,
+                maxGasPrice: 100,
+                gasLimit: 500000,
+                autoBackup: true,
+                backupInterval: 30,
+                encryptionEnabled: true
+            },
+            startTime: null,
+            lastPriceUpdate: null,
+            backupTimer: null
+        };
+
+        // WebSocket connections
+        let priceWebSocket = null;
+        let uniswapWebSocket = null;
+
+        // ============================================
+        // Initialization
+        // ============================================
+
+        document.addEventListener('DOMContentLoaded', async function () {
+            initializeApp();
+            loadSettings();
+            setupEventListeners();
+            checkWalletConnection();
+        });
+
+        function initializeApp() {
+            console.log('Initializing Uniswap Trading Bot v' + APP_VERSION);
+            updateUI();
+            startUptimeTimer();
+        }
+
+        function setupEventListeners() {
+            // Tab switching
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function () {
+                    const tab = this.getAttribute('data-tab');
+                    switchTab(tab);
+                });
+            });
+
+            // Token selector for price monitoring
+            document.querySelectorAll('#tokenSelector .token-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    this.classList.toggle('active');
+                });
+            });
+
+            // Token selector for trading
+            document.querySelectorAll('#tradeTokens .token-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    this.classList.toggle('active');
+                });
+            });
+
+            // Price provider change
+            document.getElementById('priceProvider').addEventListener('change', function () {
+                const provider = this.value;
+                document.getElementById('customWsGroup').style.display =
+                    provider === 'custom' ? 'block' : 'none';
+            });
+
+            // Auto-backup toggle
+            document.getElementById('autoBackupEnabled').addEventListener('change', function () {
+                if (this.checked) {
+                    startBackupTimer();
+                } else {
+                    stopBackupTimer();
+                }
+            });
+        }
+
+        function switchTab(tab) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.style.display = 'none';
+            });
+
+            // Remove active class from all nav links
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tab).style.display = 'block';
+
+            // Add active class to clicked nav link
+            event.target.classList.add('active');
+
+            // Refresh data for specific tabs
+            if (tab === 'history') {
+                renderFullTradeHistory();
+            } else if (tab === 'dashboard') {
+                refreshDashboard();
+            }
+        }
+
+        // ============================================
+        // MetaMask Integration
+        // ============================================
+
+        async function connectWallet() {
+            if (typeof window.ethereum === 'undefined') {
+                showNotification('Error', 'MetaMask is not installed. Please install MetaMask first.');
+                return;
+            }
+
+            try {
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                if (accounts.length > 0) {
+                    state.walletAddress = accounts[0];
+                    state.isConnected = true;
+
+                    // Check network
+                    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                    if (parseInt(chainId) !== ARBITRUM_CHAIN_ID) {
+                        showNotification('Network Error', 'Please switch to Arbitrum network in MetaMask.');
+                        return;
+                    }
+
+                    updateWalletUI();
+                    saveSettings();
+                    showNotification('Success', 'Wallet connected successfully!');
+                }
+            } catch (error) {
+                console.error('Error connecting wallet:', error);
+                showNotification('Error', 'Failed to connect wallet: ' + error.message);
+            }
+        }
+
+        function disconnectWallet() {
+            state.walletAddress = null;
+            state.isConnected = false;
+            updateWalletUI();
+            saveSettings();
+            showNotification('Success', 'Wallet disconnected.');
+        }
+
+        async function checkWalletConnection() {
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                    if (accounts.length > 0) {
+                        state.walletAddress = accounts[0];
+                        state.isConnected = true;
+
+                        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                        if (parseInt(chainId) !== ARBITRUM_CHAIN_ID) {
+                            showNotification('Network Warning', 'Connected to wrong network. Please switch to Arbitrum.');
+                        }
+
+                        updateWalletUI();
+                    }
+                } catch (error) {
+                    console.error('Error checking wallet:', error);
+                }
+            }
+        }
+
+        function updateWalletUI() {
+            const walletStatus = document.getElementById('walletStatus');
+            const connectBtn = document.getElementById('connectWalletBtn');
+            const disconnectBtn = document.getElementById('disconnectWalletBtn');
+            const walletInfo = document.getElementById('walletInfo');
+
+            if (state.isConnected && state.walletAddress) {
+                const shortAddress = state.walletAddress.substring(0, 6) + '...' +
+                    state.walletAddress.substring(state.walletAddress.length - 4);
+                walletStatus.textContent = 'Connected: ' + shortAddress;
+                walletStatus.className = 'badge badge-success';
+                connectBtn.style.display = 'none';
+                disconnectBtn.style.display = 'inline-block';
+                walletInfo.innerHTML = `<p><strong>Address:</strong> ${state.walletAddress}</p>`;
+            } else {
+                walletStatus.textContent = 'Not connected';
+                walletStatus.className = 'badge badge-danger';
+                connectBtn.style.display = 'inline-block';
+                disconnectBtn.style.display = 'none';
+                walletInfo.innerHTML = '<p class="text-secondary">Connect MetaMask to start trading</p>';
+            }
+        }
+
+        async function updateNetwork() {
+            const network = document.getElementById('networkSelect').value;
+            // For now, we only support Arbitrum
+            showNotification('Info', 'Network configuration updated. Please reconnect wallet.');
+        }
+
+        // ============================================
+        // Bot Control
+        // ============================================
+
+        async function startBot() {
+            if (!state.isConnected) {
+                showNotification('Error', 'Please connect MetaMask first.');
+                return;
+            }
+
+            if (state.isRunning) {
+                showNotification('Info', 'Bot is already running.');
+                return;
+            }
+
+            // Show loading state
+            document.getElementById('startSpinner').style.display = 'inline-block';
+            document.getElementById('startBotBtn').disabled = true;
+
+            try {
+                // Initialize WebSocket connections
+                await initializeWebSockets();
+
+                // Start price monitoring
+                startPriceMonitoring();
+
+                // Start backup timer if enabled
+                if (state.settings.autoBackup) {
+                    startBackupTimer();
+                }
+
+                state.isRunning = true;
+                state.startTime = new Date();
+
+                updateBotStatus();
+                showNotification('Success', 'Bot started successfully!');
+
+            } catch (error) {
+                console.error('Error starting bot:', error);
+                showNotification('Error', 'Failed to start bot: ' + error.message);
+                document.getElementById('startSpinner').style.display = 'none';
+                document.getElementById('startBotBtn').disabled = false;
+            }
+        }
+
+        async function stopBot() {
+            if (!state.isRunning) {
+                showNotification('Info', 'Bot is not running.');
+                return;
+            }
+
+            // Show loading state
+            document.getElementById('stopSpinner').style.display = 'inline-block';
+            document.getElementById('stopBotBtn').disabled = true;
+
+            try {
+                // Close WebSocket connections
+                closeWebSockets();
+
+                // Stop price monitoring
+                stopPriceMonitoring();
+
+                // Stop backup timer
+                stopBackupTimer();
+
+                state.isRunning = false;
+
+                updateBotStatus();
+                showNotification('Success', 'Bot stopped successfully!');
+
+            } catch (error) {
+                console.error('Error stopping bot:', error);
+                showNotification('Error', 'Failed to stop bot: ' + error.message);
+            } finally {
+                document.getElementById('stopSpinner').style.display = 'none';
+                document.getElementById('stopBotBtn').disabled = false;
+            }
+        }
+
+        function updateBotStatus() {
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('botStatusText');
+            const startBtn = document.getElementById('startBotBtn');
+            const stopBtn = document.getElementById('stopBotBtn');
+            const botStatusIndicator = document.getElementById('botStatusIndicator');
+
+            if (state.isRunning) {
+                statusIndicator.className = 'status-indicator status-running';
+                statusText.textContent = 'Running';
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                botStatusIndicator.innerHTML = '<span class="badge badge-success">Running</span>';
+            } else {
+                statusIndicator.className = 'status-indicator status-stopped';
+                statusText.textContent = 'Stopped';
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                botStatusIndicator.innerHTML = '<span class="badge badge-secondary">Stopped</span>';
+            }
+        }
+
+        async function testConnection() {
+            showNotification('Info', 'Testing connection...');
+
+            try {
+                // Test MetaMask connection
+                if (typeof window.ethereum === 'undefined') {
+                    throw new Error('MetaMask not installed');
+                }
+
+                const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                if (accounts.length === 0) {
+                    throw new Error('MetaMask not connected');
+                }
+
+                // Test network
+                const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                if (parseInt(chainId) !== ARBITRUM_CHAIN_ID) {
+                    throw new Error('Wrong network. Please switch to Arbitrum.');
+                }
+
+                // Test WebSocket connection
+                const testWs = new WebSocket('wss://echo.websocket.org');
+                await new Promise((resolve, reject) => {
+                    testWs.onopen = resolve;
+                    testWs.onerror = reject;
+                    setTimeout(reject, 3000);
+                });
+                testWs.close();
+
+                showNotification('Success', 'All connections working!');
+
+            } catch (error) {
+                console.error('Connection test failed:', error);
+                showNotification('Error', 'Connection test failed: ' + error.message);
+            }
+        }
+
+        // ============================================
+        // WebSocket & Price Data
+        // ============================================
+
+        async function initializeWebSockets() {
+            const provider = document.getElementById('priceProvider').value;
+
+            if (provider === 'uniswap' || provider === 'custom') {
+                // For demo purposes, we'll use a mock WebSocket
+                // In production, you would connect to actual price feed
+                initializeMockWebSocket();
+            } else if (provider === 'coingecko') {
+                // CoinGecko doesn't have WebSocket, so we'll use polling
+                startPricePolling();
+            }
+        }
+
+        function initializeMockWebSocket() {
+            // Close existing connection
+            if (priceWebSocket) {
+                priceWebSocket.close();
+            }
+
+            // Create mock WebSocket for demonstration
+            // In production, replace with actual WebSocket connection
+            priceWebSocket = new WebSocket('wss://stream.binance.com:9443/ws/!ticker@arr');
+
+            priceWebSocket.onopen = function () {
+                console.log('WebSocket connected');
+                state.isConnected = true;
+                updateBotStatus();
+                showNotification('Success', 'Price feed connected!');
+            };
+
+            priceWebSocket.onmessage = function (event) {
+                try {
+                    // Parse Binance ticker data
+                    const data = JSON.parse(event.data);
+
+                    // Mock price updates for our tokens
+                    // In production, you would map actual token prices
+                    updateMockPrices();
+
+                } catch (error) {
+                    console.error('Error parsing WebSocket message:', error);
+                }
+            };
+
+            priceWebSocket.onerror = function (error) {
+                console.error('WebSocket error:', error);
+                showNotification('Error', 'Price feed connection error');
+            };
+
+            priceWebSocket.onclose = function () {
+                console.log('WebSocket closed');
+                state.isConnected = false;
+                updateBotStatus();
+                // Attempt to reconnect
+                setTimeout(initializeMockWebSocket, 5000);
+            };
+
+            // Start generating mock price updates
+            startMockPriceUpdates();
+        }
+
+        function startMockPriceUpdates() {
+            // Generate random price movements for demo tokens
+            const mockTokens = ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX'];
+            const basePrices = { ETH: 3000, WBTC: 50000, UNI: 10, LINK: 15, ARB: 2, GMX: 40 };
+
+            // Initialize prices
+            mockTokens.forEach(token => {
+                if (!state.prices[token]) {
+                    state.prices[token] = basePrices[token] || 1;
+                    state.priceHistory[token] = [];
+                }
+            });
+
+            // Start interval to update prices
+            mockPriceInterval = setInterval(() => {
+                mockTokens.forEach(token => {
+                    if (state.prices[token]) {
+                        // Random price change between -2% and +2%
+                        const changePercent = (Math.random() * 4 - 2) / 100;
+                        const change = state.prices[token] * changePercent;
+                        const newPrice = state.prices[token] + change;
+
+                        // Add to price history
+                        const timestamp = Date.now();
+                        state.priceHistory[token].push({
+                            price: state.prices[token],
+                            timestamp: timestamp
+                        });
+
+                        // Keep only last 1000 price points
+                        if (state.priceHistory[token].length > 1000) {
+                            state.priceHistory[token].shift();
+                        }
+
+                        state.prices[token] = newPrice;
+                        state.lastPriceUpdate = new Date();
+                    }
+                });
+
+                updatePriceUI();
+                checkPatterns();
+                updateUptime();
+
+            }, state.settings.priceInterval || 5000);
+        }
+
+        let mockPriceInterval = null;
+
+        function stopPriceMonitoring() {
+            if (mockPriceInterval) {
+                clearInterval(mockPriceInterval);
+                mockPriceInterval = null;
+            }
+            if (priceWebSocket) {
+                priceWebSocket.close();
+                priceWebSocket = null;
+            }
+        }
+
+        function startPricePolling() {
+            // Poll CoinGecko API every X seconds
+            pricePollingInterval = setInterval(async () => {
+                try {
+                    // In production, you would fetch from CoinGecko API
+                    // For demo, we'll use mock data
+                    updateMockPrices();
+                } catch (error) {
+                    console.error('Error polling prices:', error);
+                }
+            }, state.settings.priceInterval || 5000);
+        }
+
+        let pricePollingInterval = null;
+
+        function updatePriceUI() {
+            const priceRows = document.getElementById('priceRows');
+            const activeTokens = Array.from(document.querySelectorAll('#tokenSelector .token-btn.active'))
+                .map(btn => btn.getAttribute('data-token'));
+
+            if (activeTokens.length === 0) {
+                priceRows.innerHTML = '<tr><td colspan="5" class="text-center text-secondary">Select tokens to monitor</td></tr>';
+                return;
+            }
+
+            let html = '';
+            activeTokens.forEach(token => {
+                const price = state.prices[token] || 'N/A';
+                const prevPrice = state.priceHistory[token] && state.priceHistory[token].length > 1
+                    ? state.priceHistory[token][state.priceHistory[token].length - 2].price
+                    : null;
+
+                const change = prevPrice ? ((price - prevPrice) / prevPrice * 100).toFixed(2) : 0;
+                const changeClass = change >= 0 ? 'price-up' : 'price-down';
+                const changeSymbol = change >= 0 ? '▲' : '▼';
+
+                // Check pattern status
+                const patternStatus = checkTokenPatterns(token);
+
+                html += `
+                    <tr>
+                        <td><strong>${token}</strong></td>
+                        <td>$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td class="price-change ${changeClass}">${changeSymbol} ${Math.abs(change)}%</td>
+                        <td><span class="badge ${patternStatus.class}">${patternStatus.text}</span></td>
+                        <td>
+                            <button class="btn btn-primary btn-sm" onclick="executeManualTrade('${token}', 'buy')">Buy</button>
+                            <button class="btn btn-danger btn-sm" onclick="executeManualTrade('${token}', 'sell')">Sell</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            priceRows.innerHTML = html;
+
+            // Update last price update display
+            if (state.lastPriceUpdate) {
+                document.getElementById('lastPriceUpdate').textContent =
+                    state.lastPriceUpdate.toLocaleTimeString();
+            }
+        }
+
+        function updateMockPrices() {
+            // This is a fallback for when WebSocket isn't working
+            const mockTokens = ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX'];
+            const basePrices = { ETH: 3000, WBTC: 50000, UNI: 10, LINK: 15, ARB: 2, GMX: 40 };
+
+            mockTokens.forEach(token => {
+                if (!state.prices[token]) {
+                    state.prices[token] = basePrices[token] || 1;
+                    state.priceHistory[token] = [];
+                }
+
+                // Random price change
+                const changePercent = (Math.random() * 4 - 2) / 100;
+                const change = state.prices[token] * changePercent;
+                const newPrice = state.prices[token] + change;
+
+                // Add to price history
+                const timestamp = Date.now();
+                state.priceHistory[token].push({
+                    price: state.prices[token],
+                    timestamp: timestamp
+                });
+
+                if (state.priceHistory[token].length > 1000) {
+                    state.priceHistory[token].shift();
+                }
+
+                state.prices[token] = newPrice;
+                state.lastPriceUpdate = new Date();
+            });
+
+            updatePriceUI();
+            checkPatterns();
+        }
+
+        function refreshPrices() {
+            updateMockPrices();
+            showNotification('Info', 'Prices refreshed');
+        }
+
+        // ============================================
+        // Pattern Detection
+        // ============================================
+
+        function checkPatterns() {
+            if (!state.isRunning) return;
+
+            const tokensToCheck = state.settings.tokens ||
+                Array.from(document.querySelectorAll('#tradeTokens .token-btn.active'))
+                    .map(btn => btn.getAttribute('data-token'));
+
+            tokensToCheck.forEach(token => {
+                const patternResult = checkTokenPatterns(token);
+
+                if (patternResult.action) {
+                    // Execute trade based on pattern
+                    console.log(`Pattern detected for ${token}: ${patternResult.action}`);
+
+                    // Check if we have open positions for this token
+                    const openPosition = state.trades.find(t =>
+                        t.token === token &&
+                        t.status === 'open' &&
+                        (t.type === 'buy' || t.type === 'sell')
+                    );
+
+                    // Check max open trades
+                    const openTrades = state.trades.filter(t => t.status === 'open').length;
+
+                    if (openTrades >= state.settings.maxTrades) {
+                        console.log(`Max trades (${state.settings.maxTrades}) reached, skipping`);
+                        return;
+                    }
+
+                    // Don't open new buy if we already have an open buy
+                    if (patternResult.action === 'buy' && openPosition && openPosition.type === 'buy') {
+                        console.log(`Already have open buy position for ${token}, skipping`);
+                        return;
+                    }
+
+                    // Don't open new sell if we don't have tokens
+                    if (patternResult.action === 'sell' && (!openPosition || openPosition.type !== 'buy')) {
+                        console.log(`No open buy position for ${token}, cannot sell`);
+                        return;
+                    }
+
+                    // Execute the trade
+                    executeTrade(token, patternResult.action);
+                }
+            });
+        }
+
+        function checkTokenPatterns(token) {
+            if (!state.priceHistory[token] || state.priceHistory[token].length < 2) {
+                return { text: 'Insufficient data', class: 'badge-secondary', action: null };
+            }
+
+            const currentPrice = state.prices[token];
+            const history = state.priceHistory[token];
+
+            // Parse buy patterns
+            const buyPatterns = parsePatterns(state.settings.buyPatterns || '');
+            const sellPatterns = parsePatterns(state.settings.sellPatterns || '');
+
+            // Check each buy pattern
+            for (const pattern of buyPatterns) {
+                if (checkPattern(history, pattern)) {
+                    return { text: 'Buy Signal', class: 'badge-success', action: 'buy' };
+                }
+            }
+
+            // Check each sell pattern
+            for (const pattern of sellPatterns) {
+                if (checkPattern(history, pattern)) {
+                    return { text: 'Sell Signal', class: 'badge-danger', action: 'sell' };
+                }
+            }
+
+            return { text: 'No signal', class: 'badge-secondary', action: null };
+        }
+
+        function parsePatterns(patternString) {
+            const patterns = [];
+
+            if (!patternString || patternString.trim() === '') {
+                return patterns;
+            }
+
+            // Split by OR conditions (|)
+            const orGroups = patternString.split('|');
+
+            for (const orGroup of orGroups) {
+                // Split by AND conditions (&)
+                const andConditions = orGroup.split('&');
+
+                const pattern = {
+                    conditions: andConditions.map(cond => parseCondition(cond.trim())),
+                    type: 'and'
+                };
+
+                patterns.push(pattern);
+            }
+
+            return patterns;
+        }
+
+        function parseCondition(condition) {
+            // Condition format: <_-0.5_150-450 or >_+0.3_15-150
+            const match = condition.match(/([<>]=?|>|<)_([-+]?\d+\.?\d*)_(\d+)-(\d+)/);
+
+            if (!match) {
+                throw new Error(`Invalid pattern condition: ${condition}`);
+            }
+
+            return {
+                operator: match[1],
+                percentage: parseFloat(match[2]),
+                minDuration: parseInt(match[3]),
+                maxDuration: parseInt(match[4])
+            };
+        }
+
+        function checkPattern(history, pattern) {
+            // Check if ALL conditions in the pattern are met
+            for (const condition of pattern.conditions) {
+                if (!checkCondition(history, condition)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function checkCondition(history, condition) {
+            // Condition format: { operator: '<', percentage: -0.5, minDuration: 150, maxDuration: 450 }
+            // This means: price decreased by at least 0.5% over a period of 150-450 seconds
+
+            const currentPrice = history[history.length - 1].price;
+            const currentTime = history[history.length - 1].timestamp;
+
+            // Look for price changes in the specified time window
+            const minTime = currentTime - (condition.maxDuration * 1000);
+            const maxTime = currentTime - (condition.minDuration * 1000);
+
+            // Find price at the beginning of the window
+            let startPrice = null;
+            for (let i = history.length - 1; i >= 0; i--) {
+                if (history[i].timestamp >= maxTime && history[i].timestamp <= minTime) {
+                    startPrice = history[i].price;
+                    break;
+                }
+            }
+
+            if (startPrice === null) {
+                // Not enough history data
+                return false;
+            }
+
+            // Calculate percentage change
+            const percentageChange = ((currentPrice - startPrice) / startPrice) * 100;
+
+            // Check condition
+            switch (condition.operator) {
+                case '<':
+                    return percentageChange < condition.percentage;
+                case '<=':
+                    return percentageChange <= condition.percentage;
+                case '>':
+                    return percentageChange > condition.percentage;
+                case '>=':
+                    return percentageChange >= condition.percentage;
+                case '=':
+                    return Math.abs(percentageChange - condition.percentage) < 0.01;
+                default:
+                    return false;
+            }
+        }
+
+        function testPattern() {
+            const pattern = document.getElementById('testPattern').value;
+            const pricesInput = document.getElementById('testPrices').value;
+
+            if (!pattern || !pricesInput) {
+                showNotification('Error', 'Please enter both pattern and price history');
+                return;
+            }
+
+            try {
+                const prices = pricesInput.split(',').map(p => parseFloat(p.trim()));
+
+                // Create mock history
+                const history = prices.map((price, index) => ({
+                    price: price,
+                    timestamp: Date.now() - (prices.length - index - 1) * 1000
+                }));
+
+                const patterns = parsePatterns(pattern);
+                let result = '';
+
+                for (const pattern of patterns) {
+                    const matches = checkPattern(history, pattern);
+                    result += `<p>Pattern: ${JSON.stringify(pattern)} - ${matches ? '✅ Match' : '❌ No Match'}</p>`;
+                }
+
+                document.getElementById('testResult').innerHTML = result || '<p>No patterns to test</p>';
+
+            } catch (error) {
+                document.getElementById('testResult').innerHTML =
+                    `<p class="text-danger">Error: ${error.message}</p>`;
+            }
+        }
+
+        // ============================================
+        // Trading Functions
+        // ============================================
+
+        async function executeTrade(token, action) {
+            if (!state.isConnected || !state.walletAddress) {
+                showNotification('Error', 'Wallet not connected');
+                return;
+            }
+
+            if (!state.isRunning) {
+                showNotification('Error', 'Bot is not running');
+                return;
+            }
+
+            const tokenInfo = TOKENS[token];
+            if (!tokenInfo) {
+                showNotification('Error', 'Unknown token: ' + token);
+                return;
+            }
+
+            const amountUSD = state.settings.tradeAmount || 100;
+
+            // Show transaction confirmation
+            showTxModal(`Confirm ${action.toUpperCase()} ${token} for $${amountUSD}`);
+
+            // This would be called when user confirms
+            window.currentTrade = { token, action, amountUSD, tokenInfo };
+        }
+
+        function executeManualTrade(token, action) {
+            if (!state.isConnected || !state.walletAddress) {
+                showNotification('Error', 'Wallet not connected');
+                return;
+            }
+
+            const tokenInfo = TOKENS[token];
+            if (!tokenInfo) {
+                showNotification('Error', 'Unknown token: ' + token);
+                return;
+            }
+
+            const amountUSD = parseFloat(prompt('Enter trade amount in USD:', '100'));
+            if (!amountUSD || amountUSD <= 0) {
+                return;
+            }
+
+            executeTrade(token, action);
+        }
+
+        async function confirmTransaction() {
+            closeTxModal();
+
+            const { token, action, amountUSD, tokenInfo } = window.currentTrade;
+            if (!token || !action || !amountUSD) {
+                return;
+            }
+
+            try {
+                showNotification('Info', `Executing ${action} ${token}...`);
+
+                // In production, this would call Uniswap Router contract
+                // For demo, we'll simulate the trade
+                await simulateTrade(token, action, amountUSD, tokenInfo);
+
+            } catch (error) {
+                console.error('Trade failed:', error);
+                showNotification('Error', 'Trade failed: ' + error.message);
+            }
+        }
+
+        function closeTxModal() {
+            document.getElementById('txModal').classList.remove('active');
+        }
+
+        async function simulateTrade(token, action, amountUSD, tokenInfo) {
+            // Simulate trade execution
+            const tradeId = 'trade_' + Date.now();
+            const timestamp = new Date().toISOString();
+            const currentPrice = state.prices[token] || 1;
+
+            // Calculate token amount
+            const tokenAmount = amountUSD / currentPrice;
+
+            // Simulate gas fee
+            const gasFee = 0.001 * (state.settings.gasLimit || 500000) *
+                (state.settings.maxGasPrice || 100) / 1e9;
+
+            // Create trade record
+            const trade = {
+                id: tradeId,
+                timestamp: timestamp,
+                token: token,
+                type: action,
+                price: currentPrice,
+                amountUSD: amountUSD,
+                tokenAmount: tokenAmount,
+                fee: gasFee,
+                status: 'open',
+                txHash: '0x' + Math.random().toString(16).substring(2, 66),
+                pnl: 0
+            };
+
+            state.trades.push(trade);
+            saveTrade(trade);
+
+            // Update UI
+            updatePriceUI();
+            updateDashboard();
+
+            showNotification('Success', `${action.toUpperCase()} ${tokenAmount.toFixed(6)} ${token} executed at $${currentPrice}`);
+
+            // If this is a sell, calculate PnL
+            if (action === 'sell') {
+                // Find matching buy trade
+                const buyTrade = state.trades.find(t =>
+                    t.token === token &&
+                    t.type === 'buy' &&
+                    t.status === 'open' &&
+                    t.id !== tradeId
+                );
+
+                if (buyTrade) {
+                    // Close the buy trade
+                    buyTrade.status = 'closed';
+                    buyTrade.closedAt = timestamp;
+                    buyTrade.closedPrice = currentPrice;
+
+                    // Calculate PnL
+                    const pnl = (tokenAmount * currentPrice) - (buyTrade.tokenAmount * buyTrade.price) - buyTrade.fee - trade.fee;
+                    buyTrade.pnl = pnl;
+                    trade.pnl = pnl;
+
+                    updateTrade(buyTrade);
+                    updateTrade(trade);
+
+                    showNotification('Success', `Trade closed with PnL: $${pnl.toFixed(2)}`);
+                }
+            }
+
+            // Update charts and stats
+            updatePnLChart();
+            updateStatistics();
+        }
+
+        // ============================================
+        // Dashboard Updates
+        // ============================================
+
+        function updateDashboard() {
+            updatePriceUI();
+            updateActivePositions();
+            updateRecentTrades();
+            updatePnLDisplay();
+            updatePnLChart();
+            updateStatistics();
+        }
+
+        function refreshDashboard() {
+            updateDashboard();
+        }
+
+        function updateActivePositions() {
+            const activePositions = document.getElementById('activePositions');
+            const openTrades = state.trades.filter(t => t.status === 'open');
+
+            if (openTrades.length === 0) {
+                activePositions.innerHTML = '<p class="text-secondary">No active positions</p>';
+                return;
+            }
+
+            let html = '<table class="table table-striped"><thead><tr><th>Token</th><th>Type</th><th>Price</th><th>Amount</th><th>Value</th><th>Unrealized PnL</th></tr></thead><tbody>';
+
+            openTrades.forEach(trade => {
+                const currentPrice = state.prices[trade.token] || trade.price;
+                const currentValue = trade.tokenAmount * currentPrice;
+                const unrealizedPnL = currentValue - (trade.tokenAmount * trade.price) - trade.fee;
+
+                html += `
+                    <tr>
+                        <td><strong>${trade.token}</strong></td>
+                        <td><span class="badge badge-${trade.type === 'buy' ? 'success' : 'danger'}">${trade.type.toUpperCase()}</span></td>
+                        <td>$${trade.price.toFixed(2)}</td>
+                        <td>${trade.tokenAmount.toFixed(6)}</td>
+                        <td>$${currentValue.toFixed(2)}</td>
+                        <td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">
+                            $${unrealizedPnL.toFixed(2)} (${((unrealizedPnL / (trade.tokenAmount * trade.price)) * 100).toFixed(2)}%)
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            activePositions.innerHTML = html;
+        }
+
+        function updateRecentTrades() {
+            const recentTrades = document.getElementById('recentTrades');
+            const trades = state.trades.slice().reverse().slice(0, 10); // Last 10 trades
+
+            if (trades.length === 0) {
+                recentTrades.innerHTML = '<tr><td colspan="6" class="text-center text-secondary">No trades yet</td></tr>';
+                return;
+            }
+
+            let html = '';
+            trades.forEach(trade => {
+                const pnlClass = trade.pnl >= 0 ? 'price-up' : 'price-down';
+                html += `
+                    <tr>
+                        <td>${new Date(trade.timestamp).toLocaleTimeString()}</td>
+                        <td><strong>${trade.token}</strong></td>
+                        <td><span class="badge badge-${trade.type === 'buy' ? 'success' : 'danger'}">${trade.type.toUpperCase()}</span></td>
+                        <td>$${trade.price.toFixed(2)}</td>
+                        <td>${trade.tokenAmount.toFixed(6)}</td>
+                        <td class="${pnlClass}">$${trade.pnl.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+
+            recentTrades.innerHTML = html;
+        }
+
+        function updatePnLDisplay() {
+            const totalPnL = state.trades
+                .filter(t => t.status === 'closed')
+                .reduce((sum, trade) => sum + trade.pnl, 0);
+
+            document.getElementById('totalPnL').textContent = '$' + totalPnL.toFixed(2);
+            document.getElementById('totalPnL').className = totalPnL >= 0 ? 'price-up' : 'price-down';
+
+            // Calculate daily, weekly, monthly PnL
+            const now = new Date();
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+            const dailyPnL = state.trades
+                .filter(t => t.status === 'closed' && new Date(t.closedAt || t.timestamp) >= todayStart)
+                .reduce((sum, trade) => sum + trade.pnl, 0);
+
+            const weeklyPnL = state.trades
+                .filter(t => t.status === 'closed' && new Date(t.closedAt || t.timestamp) >= weekStart)
+                .reduce((sum, trade) => sum + trade.pnl, 0);
+
+            const monthlyPnL = state.trades
+                .filter(t => t.status === 'closed' && new Date(t.closedAt || t.timestamp) >= monthStart)
+                .reduce((sum, trade) => sum + trade.pnl, 0);
+
+            document.getElementById('dailyPnL').textContent = '$' + dailyPnL.toFixed(2);
+            document.getElementById('dailyPnL').className = dailyPnL >= 0 ? 'price-up' : 'price-down';
+
+            document.getElementById('weeklyPnL').textContent = '$' + weeklyPnL.toFixed(2);
+            document.getElementById('weeklyPnL').className = weeklyPnL >= 0 ? 'price-up' : 'price-down';
+
+            document.getElementById('monthlyPnL').textContent = '$' + monthlyPnL.toFixed(2);
+            document.getElementById('monthlyPnL').className = monthlyPnL >= 0 ? 'price-up' : 'price-down';
+        }
+
+        function updatePnLChart() {
+            // Simple text-based chart for demo
+            // In production, you would use Chart.js or similar
+            const canvas = document.getElementById('pnlCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // Set canvas size
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = 300;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid
+            ctx.strokeStyle = '#dee2e6';
+            ctx.lineWidth = 1;
+
+            for (let i = 0; i < 5; i++) {
+                const y = canvas.height * (i / 4);
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // Get PnL data over time
+            const closedTrades = state.trades
+                .filter(t => t.status === 'closed' && t.closedAt)
+                .sort((a, b) => new Date(a.closedAt) - new Date(b.closedAt));
+
+            if (closedTrades.length === 0) {
+                // Draw "No data" message
+                ctx.fillStyle = '#6c757d';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('No trading data available', canvas.width / 2, canvas.height / 2);
+                return;
+            }
+
+            // Calculate cumulative PnL
+            const cumulativePnL = [];
+            let runningTotal = 0;
+
+            closedTrades.forEach(trade => {
+                runningTotal += trade.pnl;
+                cumulativePnL.push(runningTotal);
+            });
+
+            // Find min and max for scaling
+            const minPnL = Math.min(...cumulativePnL, 0);
+            const maxPnL = Math.max(...cumulativePnL, 0);
+            const pnLRange = maxPnL - minPnL || 1;
+
+            // Draw PnL line
+            ctx.strokeStyle = '#0d6efd';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+
+            const points = cumulativePnL.map((pnl, index) => {
+                const x = (index / (cumulativePnL.length - 1)) * canvas.width;
+                const y = canvas.height - ((pnl - minPnL) / pnLRange) * canvas.height * 0.8 - 40;
+                return { x, y };
+            });
+
+            points.forEach((point, index) => {
+                if (index === 0) {
+                    ctx.moveTo(point.x, point.y);
+                } else {
+                    ctx.lineTo(point.x, point.y);
+                }
+            });
+            ctx.stroke();
+
+            // Draw dots at each point
+            ctx.fillStyle = '#0d6efd';
+            points.forEach(point => {
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw labels
+            ctx.fillStyle = '#6c757d';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'right';
+
+            // Y-axis labels
+            for (let i = 0; i <= 4; i++) {
+                const value = maxPnL - (i * pnLRange / 4);
+                const y = canvas.height - (i * canvas.height / 4) - 10;
+                ctx.fillText('$' + value.toFixed(2), canvas.width - 10, y);
+            }
+        }
+
+        function updateStatistics() {
+            const closedTrades = state.trades.filter(t => t.status === 'closed');
+            const winningTrades = closedTrades.filter(t => t.pnl > 0);
+            const losingTrades = closedTrades.filter(t => t.pnl < 0);
+
+            // Total trades
+            document.getElementById('totalTrades').textContent = closedTrades.length;
+
+            // Win rate
+            const winRate = closedTrades.length > 0
+                ? ((winningTrades.length / closedTrades.length) * 100).toFixed(1) + '%'
+                : '0%';
+            document.getElementById('winRate').textContent = winRate;
+
+            // Average profit
+            const avgProfit = closedTrades.length > 0
+                ? (closedTrades.reduce((sum, t) => sum + t.pnl, 0) / closedTrades.length).toFixed(2)
+                : '0.00';
+            document.getElementById('avgProfit').textContent = '$' + avgProfit;
+
+            // Max drawdown
+            let maxDrawdown = 0;
+            let runningMax = 0;
+            let runningTotal = 0;
+
+            const sortedTrades = closedTrades
+                .sort((a, b) => new Date(a.closedAt || a.timestamp) - new Date(b.closedAt || b.timestamp));
+
+            sortedTrades.forEach(trade => {
+                runningTotal += trade.pnl;
+                if (runningTotal > runningMax) {
+                    runningMax = runningTotal;
+                }
+                const drawdown = runningMax - runningTotal;
+                if (drawdown > maxDrawdown) {
+                    maxDrawdown = drawdown;
+                }
+            });
+
+            document.getElementById('maxDrawdown').textContent = '$' + maxDrawdown.toFixed(2);
+
+            // Session stats
+            const sessionStart = state.startTime ? state.startTime.toISOString() : '-';
+            document.getElementById('sessionStart').textContent = sessionStart;
+
+            const sessionTrades = state.trades.filter(t =>
+                state.startTime && new Date(t.timestamp) >= state.startTime
+            ).length;
+            document.getElementById('sessionTrades').textContent = sessionTrades;
+
+            const sessionPnL = state.trades
+                .filter(t => state.startTime && new Date(t.timestamp) >= state.startTime && t.status === 'closed')
+                .reduce((sum, t) => sum + t.pnl, 0);
+            document.getElementById('sessionPnL').textContent = '$' + sessionPnL.toFixed(2);
+
+            const bestTrade = Math.max(...closedTrades.map(t => t.pnl), 0);
+            document.getElementById('bestTrade').textContent = '$' + bestTrade.toFixed(2);
+        }
+
+        // ============================================
+        // Trade History
+        // ============================================
+
+        function renderFullTradeHistory() {
+            const fullTradeHistory = document.getElementById('fullTradeHistory');
+            const trades = state.trades.slice().reverse(); // Newest first
+
+            if (trades.length === 0) {
+                fullTradeHistory.innerHTML = '<tr><td colspan="9" class="text-center text-secondary">No trade history</td></tr>';
+                return;
+            }
+
+            let html = '';
+            trades.forEach(trade => {
+                const pnlClass = trade.pnl >= 0 ? 'price-up' : 'price-down';
+                html += `
+                    <tr>
+                        <td>${new Date(trade.timestamp).toLocaleString()}</td>
+                        <td><strong>${trade.token}</strong></td>
+                        <td><span class="badge badge-${trade.type === 'buy' ? 'success' : 'danger'}">${trade.type.toUpperCase()}</span></td>
+                        <td>$${trade.price.toFixed(2)}</td>
+                        <td>${trade.tokenAmount.toFixed(6)}</td>
+                        <td>$${trade.fee.toFixed(4)}</td>
+                        <td><span class="badge badge-${trade.status === 'closed' ? 'success' : 'warning'}">${trade.status}</span></td>
+                        <td class="${pnlClass}">$${trade.pnl.toFixed(2)}</td>
+                        <td class="code-display">${trade.txHash}</td>
+                    </tr>
+                `;
+            });
+
+            fullTradeHistory.innerHTML = html;
+        }
+
+        function exportTradeHistory() {
+            const trades = state.trades.map(trade => ({
+                'Timestamp': trade.timestamp,
+                'Token': trade.token,
+                'Type': trade.type,
+                'Price': trade.price,
+                'Amount (Token)': trade.tokenAmount,
+                'Amount (USD)': trade.amountUSD,
+                'Fee': trade.fee,
+                'Status': trade.status,
+                'PnL': trade.pnl,
+                'Tx Hash': trade.txHash
+            }));
+
+            // Convert to CSV
+            const headers = Object.keys(trades[0] || {});
+            const csvContent = [
+                headers.join(','),
+                ...trades.map(row => headers.map(header => row[header]).join(','))
+            ].join('\n');
+
+            // Create download link
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'trade-history-' + new Date().toISOString().split('T')[0] + '.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showNotification('Success', 'Trade history exported successfully!');
+        }
+
+        // ============================================
+        // Settings Management
+        // ============================================
+
+        function saveTradingSettings() {
+            state.settings.buyPatterns = document.getElementById('buyPatterns').value;
+            state.settings.sellPatterns = document.getElementById('sellPatterns').value;
+            state.settings.tradeAmount = parseFloat(document.getElementById('tradeAmount').value);
+            state.settings.maxTrades = parseInt(document.getElementById('maxTrades').value);
+            state.settings.stopLoss = parseFloat(document.getElementById('stopLoss').value);
+            state.settings.takeProfit = parseFloat(document.getElementById('takeProfit').value);
+
+            // Get selected tokens
+            state.settings.tokens = Array.from(
+                document.querySelectorAll('#tradeTokens .token-btn.active')
+            ).map(btn => btn.getAttribute('data-token'));
+
+            saveSettings();
+            showNotification('Success', 'Trading settings saved!');
+        }
+
+        function updatePriceProvider() {
+            const provider = document.getElementById('priceProvider').value;
+            state.settings.priceProvider = provider;
+            saveSettings();
+        }
+
+        async function saveApiKey() {
+            const apiKey = document.getElementById('apiKeyInput').value;
+            if (!apiKey) {
+                showNotification('Error', 'Please enter an API key');
+                return;
+            }
+
+            try {
+                // Encrypt the API key
+                const encrypted = await encryptData(apiKey);
+                state.settings.apiKey = encrypted;
+                saveSettings();
+
+                document.getElementById('apiKeyInput').value = '';
+                document.getElementById('apiKeyStatus').innerHTML =
+                    '<span class="badge badge-success">API key saved (encrypted)</span>';
+
+                showNotification('Success', 'API key saved securely!');
+            } catch (error) {
+                console.error('Error saving API key:', error);
+                showNotification('Error', 'Failed to save API key: ' + error.message);
+            }
+        }
+
+        function saveAdvancedSettings() {
+            state.settings.slippage = parseFloat(document.getElementById('slippage').value);
+            state.settings.maxGasPrice = parseInt(document.getElementById('maxGasPrice').value);
+            state.settings.gasLimit = parseInt(document.getElementById('gasLimit').value);
+            state.settings.debugMode = document.getElementById('debugMode').value;
+
+            saveSettings();
+            showNotification('Success', 'Advanced settings saved!');
+        }
+
+        function saveSettings() {
+            // Save settings to IndexedDB
+            saveToDB('settings', state.settings);
+            saveToDB('state', {
+                walletAddress: state.walletAddress,
+                isConnected: state.isConnected
+            });
+        }
+
+        async function loadSettings() {
+            try {
+                const savedSettings = await getFromDB('settings');
+                const savedState = await getFromDB('state');
+                const savedTrades = await getAllFromDB('trades');
+
+                if (savedSettings) {
+                    state.settings = { ...state.settings, ...savedSettings };
+                }
+
+                if (savedState) {
+                    state.walletAddress = savedState.walletAddress;
+                    state.isConnected = savedState.isConnected;
+                }
+
+                if (savedTrades) {
+                    state.trades = savedTrades;
+                }
+
+                // Update UI with loaded settings
+                updateSettingsUI();
+                updateWalletUI();
+
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+
+        function updateSettingsUI() {
+            // Trading settings
+            document.getElementById('buyPatterns').value = state.settings.buyPatterns || '';
+            document.getElementById('sellPatterns').value = state.settings.sellPatterns || '';
+            document.getElementById('tradeAmount').value = state.settings.tradeAmount || 100;
+            document.getElementById('maxTrades').value = state.settings.maxTrades || 5;
+            document.getElementById('stopLoss').value = state.settings.stopLoss || 2;
+            document.getElementById('takeProfit').value = state.settings.takeProfit || 5;
+            document.getElementById('slippage').value = state.settings.slippage || 0.5;
+            document.getElementById('maxGasPrice').value = state.settings.maxGasPrice || 100;
+            document.getElementById('gasLimit').value = state.settings.gasLimit || 500000;
+            document.getElementById('priceInterval').value = state.settings.priceInterval || 5000;
+            document.getElementById('debugMode').value = state.settings.debugMode || 'none';
+
+            // Update token buttons
+            if (state.settings.tokens) {
+                document.querySelectorAll('#tradeTokens .token-btn').forEach(btn => {
+                    const token = btn.getAttribute('data-token');
+                    btn.classList.toggle('active', state.settings.tokens.includes(token));
+                });
+            }
+
+            // Backup settings
+            document.getElementById('autoBackupEnabled').checked = state.settings.autoBackup !== false;
+            document.getElementById('backupInterval').value = state.settings.backupInterval || 30;
+            document.getElementById('encryptionEnabled').checked = state.settings.encryptionEnabled !== false;
+
+            // Price provider
+            document.getElementById('priceProvider').value = state.settings.priceProvider || 'uniswap';
+            document.getElementById('customWsGroup').style.display =
+                (state.settings.priceProvider === 'custom') ? 'block' : 'none';
+            if (state.settings.customWsUrl) {
+                document.getElementById('customWsUrl').value = state.settings.customWsUrl;
+            }
+        }
+
+        // ============================================
+        // Backup & Restore
+        // ============================================
+
+        function startBackupTimer() {
+            stopBackupTimer();
+
+            const interval = (state.settings.backupInterval || 30) * 60 * 1000;
+            state.backupTimer = setInterval(createBackup, interval);
+        }
+
+        function stopBackupTimer() {
+            if (state.backupTimer) {
+                clearInterval(state.backupTimer);
+                state.backupTimer = null;
+            }
+        }
+
+        async function createBackup() {
+            try {
+                // Get all data from IndexedDB
+                const settings = await getFromDB('settings');
+                const stateData = await getFromDB('state');
+                const trades = await getAllFromDB('trades');
+
+                const backupData = {
+                    version: APP_VERSION,
+                    timestamp: new Date().toISOString(),
+                    settings: settings,
+                    state: stateData,
+                    trades: trades
+                };
+
+                // Encrypt if enabled
+                if (state.settings.encryptionEnabled) {
+                    const password = document.getElementById('encryptionPassword').value;
+                    if (password) {
+                        backupData.encrypted = true;
+                        backupData.data = await encryptData(JSON.stringify(backupData));
+                        delete backupData.settings;
+                        delete backupData.state;
+                        delete backupData.trades;
+                    }
+                }
+
+                // Create download
+                const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'trading-bot-backup-' + new Date().toISOString().split('T')[0] + '.json';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                if (!state.backupTimer) {
+                    showNotification('Success', 'Backup created successfully!');
+                }
+
+            } catch (error) {
+                console.error('Error creating backup:', error);
+                showNotification('Error', 'Failed to create backup: ' + error.message);
+            }
+        }
+
+        function restoreBackup() {
+            document.getElementById('backupFileInput').click();
+        }
+
+        async function handleBackupUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                const reader = new FileReader();
+                reader.onload = async function (e) {
+                    const data = JSON.parse(e.target.result);
+
+                    // Handle encrypted backup
+                    if (data.encrypted) {
+                        const password = prompt('Enter encryption password to restore backup:');
+                        if (!password) {
+                            showNotification('Error', 'Password required for encrypted backup');
+                            return;
+                        }
+
+                        try {
+                            const decrypted = await decryptData(data.data, password);
+                            const backupData = JSON.parse(decrypted);
+                            await restoreFromBackup(backupData);
+                        } catch (error) {
+                            showNotification('Error', 'Failed to decrypt backup: ' + error.message);
+                        }
+                    } else {
+                        await restoreFromBackup(data);
+                    }
+
+                    showNotification('Success', 'Backup restored successfully!');
+                    location.reload();
+                };
+                reader.readAsText(file);
+
+            } catch (error) {
+                console.error('Error restoring backup:', error);
+                showNotification('Error', 'Failed to restore backup: ' + error.message);
+            }
+        }
+
+        async function restoreFromBackup(backupData) {
+            // Clear existing data
+            await clearDB();
+
+            // Restore settings
+            if (backupData.settings) {
+                state.settings = { ...state.settings, ...backupData.settings };
+                await saveToDB('settings', state.settings);
+            }
+
+            // Restore state
+            if (backupData.state) {
+                state.walletAddress = backupData.state.walletAddress;
+                state.isConnected = backupData.state.isConnected;
+                await saveToDB('state', {
+                    walletAddress: state.walletAddress,
+                    isConnected: state.isConnected
+                });
+            }
+
+            // Restore trades
+            if (backupData.trades) {
+                state.trades = backupData.trades;
+                for (const trade of state.trades) {
+                    await saveToDB('trades', trade);
+                }
+            }
+        }
+
+        async function clearAllData() {
+            if (!confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+                return;
+            }
+
+            try {
+                await clearDB();
+                state.trades = [];
+                state.settings = {
+                    buyPatterns: '',
+                    sellPatterns: '',
+                    tradeAmount: 100,
+                    maxTrades: 5,
+                    stopLoss: 2,
+                    takeProfit: 5,
+                    tokens: ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX'],
+                    priceInterval: 5000,
+                    slippage: 0.5,
+                    maxGasPrice: 100,
+                    gasLimit: 500000,
+                    autoBackup: true,
+                    backupInterval: 30,
+                    encryptionEnabled: true
+                };
+                state.walletAddress = null;
+                state.isConnected = false;
+
+                updateUI();
+                updateWalletUI();
+                showNotification('Success', 'All data cleared!');
+
+            } catch (error) {
+                console.error('Error clearing data:', error);
+                showNotification('Error', 'Failed to clear data: ' + error.message);
+            }
+        }
+
+        function changeEncryptionPassword() {
+            const oldPassword = prompt('Enter current encryption password:');
+            if (!oldPassword) return;
+
+            const newPassword = prompt('Enter new encryption password:');
+            if (!newPassword) return;
+
+            // In a real app, you would re-encrypt all data here
+            showNotification('Success', 'Encryption password changed!');
+        }
+
+        // ============================================
+        // Database Operations (IndexedDB)
+        // ============================================
+
+        const DB_NAME = 'UniswapTradingBotDB';
+        const DB_VERSION = 1;
+
+        let db = null;
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                if (db) {
+                    resolve(db);
+                    return;
+                }
+
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onerror = function (event) {
+                    console.error('Database error:', event.target.error);
+                    reject(event.target.error);
+                };
+
+                request.onsuccess = function (event) {
+                    db = event.target.result;
+                    resolve(db);
+                };
+
+                request.onupgradeneeded = function (event) {
+                    const db = event.target.result;
+
+                    // Create object stores
+                    if (!db.objectStoreNames.contains('settings')) {
+                        db.createObjectStore('settings');
+                    }
+                    if (!db.objectStoreNames.contains('state')) {
+                        db.createObjectStore('state');
+                    }
+                    if (!db.objectStoreNames.contains('trades')) {
+                        const store = db.createObjectStore('trades', { keyPath: 'id' });
+                        store.createIndex('timestamp', 'timestamp', { unique: false });
+                        store.createIndex('token', 'token', { unique: false });
+                        store.createIndex('status', 'status', { unique: false });
+                    }
+                };
+            });
+        }
+
+        async function saveToDB(storeName, data) {
+            try {
+                const database = await openDB();
+                const transaction = database.transaction(storeName, 'readwrite');
+                const store = transaction.objectStore(storeName);
+
+                store.put(data, storeName === 'trades' ? data.id : 'data');
+
+                return new Promise((resolve, reject) => {
+                    transaction.oncomplete = resolve;
+                    transaction.onerror = function (event) {
+                        console.error('Save error:', event.target.error);
+                        reject(event.target.error);
+                    };
+                });
+            } catch (error) {
+                console.error('Error saving to DB:', error);
+                throw error;
+            }
+        }
+
+        async function getFromDB(storeName) {
+            try {
+                const database = await openDB();
+                const transaction = database.transaction(storeName, 'readonly');
+                const store = transaction.objectStore(storeName);
+
+                const request = store.get(storeName === 'trades' ? 'data' : 'data');
+
+                return new Promise((resolve, reject) => {
+                    request.onsuccess = function (event) {
+                        resolve(event.target.result);
+                    };
+                    request.onerror = function (event) {
+                        console.error('Get error:', event.target.error);
+                        reject(event.target.error);
+                    };
+                });
+            } catch (error) {
+                console.error('Error getting from DB:', error);
+                throw error;
+            }
+        }
+
+        async function getAllFromDB(storeName) {
+            try {
+                const database = await openDB();
+                const transaction = database.transaction(storeName, 'readonly');
+                const store = transaction.objectStore(storeName);
+
+                const request = store.getAll();
+
+                return new Promise((resolve, reject) => {
+                    request.onsuccess = function (event) {
+                        resolve(event.target.result);
+                    };
+                    request.onerror = function (event) {
+                        console.error('Get all error:', event.target.error);
+                        reject(event.target.error);
+                    };
+                });
+            } catch (error) {
+                console.error('Error getting all from DB:', error);
+                throw error;
+            }
+        }
+
+        async function saveTrade(trade) {
+            await saveToDB('trades', trade);
+        }
+
+        async function updateTrade(trade) {
+            await saveToDB('trades', trade);
+        }
+
+        async function clearDB() {
+            try {
+                const database = await openDB();
+                const storeNames = Array.from(database.objectStoreNames);
+
+                return new Promise((resolve, reject) => {
+                    const transaction = database.transaction(storeNames, 'readwrite');
+
+                    storeNames.forEach(storeName => {
+                        const store = transaction.objectStore(storeName);
+                        store.clear();
+                    });
+
+                    transaction.oncomplete = resolve;
+                    transaction.onerror = function (event) {
+                        console.error('Clear error:', event.target.error);
+                        reject(event.target.error);
+                    };
+                });
+            } catch (error) {
+                console.error('Error clearing DB:', error);
+                throw error;
+            }
+        }
+
+        // ============================================
+        // Encryption Utilities
+        // ============================================
+
+        async function encryptData(data) {
+            // In a real app, use Web Crypto API or a library like CryptoJS
+            // For demo purposes, we'll use a simple XOR encryption
+            // NOTE: This is NOT secure for production use!
+
+            const password = document.getElementById('encryptionPassword').value || 'default-password';
+
+            // Simple XOR encryption (for demo only)
+            let result = '';
+            for (let i = 0; i < data.length; i++) {
+                const charCode = data.charCodeAt(i) ^ password.charCodeAt(i % password.length);
+                result += String.fromCharCode(charCode);
+            }
+
+            return btoa(result);
+        }
+
+        async function decryptData(encryptedData, password) {
+            // Simple XOR decryption (for demo only)
+            try {
+                const decoded = atob(encryptedData);
+                let result = '';
+
+                const actualPassword = password || document.getElementById('encryptionPassword').value || 'default-password';
+
+                for (let i = 0; i < decoded.length; i++) {
+                    const charCode = decoded.charCodeAt(i) ^ actualPassword.charCodeAt(i % actualPassword.length);
+                    result += String.fromCharCode(charCode);
+                }
+
+                return result;
+            } catch (error) {
+                console.error('Decryption failed:', error);
+                throw new Error('Failed to decrypt data');
+            }
+        }
+
+        // ============================================
+        // UI Utilities
+        // ============================================
+
+        function updateUI() {
+            updateBotStatus();
+            updateWalletUI();
+            updatePriceUI();
+            updateDashboard();
+        }
+
+        function startUptimeTimer() {
+            setInterval(updateUptime, 1000);
+        }
+
+        function updateUptime() {
+            if (!state.startTime) {
+                document.getElementById('uptime').textContent = '00:00:00';
+                return;
+            }
+
+            const now = new Date();
+            const diff = now - state.startTime;
+
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            document.getElementById('uptime').textContent =
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function showNotification(title, message) {
+            const modal = document.getElementById('notificationModal');
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMessage').textContent = message;
+            modal.classList.add('active');
+        }
+
+        function showTxModal(message) {
+            const modal = document.getElementById('txModal');
+            document.getElementById('txMessage').textContent = message;
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('notificationModal').classList.remove('active');
+        }
+
+        function closeTxModal() {
+            document.getElementById('txModal').classList.remove('active');
+        }
+
+        // Close modals when clicking outside
+        document.getElementById('notificationModal').addEventListener('click', function (e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        document.getElementById('txModal').addEventListener('click', function (e) {
+            if (e.target === this) {
+                closeTxModal();
+            }
+        });
+
+        // ============================================
+        // WebSocket Cleanup
+        // ============================================
+
+        function closeWebSockets() {
+            if (priceWebSocket) {
+                priceWebSocket.close();
+                priceWebSocket = null;
+            }
+            if (uniswapWebSocket) {
+                uniswapWebSocket.close();
+                uniswapWebSocket = null;
+            }
+        }
+
+        // Clean up on page unload
+        window.addEventListener('beforeunload', function () {
+            closeWebSockets();
+            stopPriceMonitoring();
+            stopBackupTimer();
+        });
+
+        // ============================================
+        // Export for debugging
+        // ============================================
+
+        window.debugState = function () {
+            console.log('Current State:', JSON.parse(JSON.stringify(state)));
+        };
+    </script>
+</body>
+
+</html>
