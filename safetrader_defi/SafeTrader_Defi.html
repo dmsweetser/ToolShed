@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Arbitrum Trading Bot - PREPROD</title>
+    <title>Uniswap Arbitrum Trading Bot - PROD</title>
     <style>
         :root {
             --bs-body-color: #212529;
@@ -614,7 +614,7 @@
     <div class="container">
         <header class="text-center mb-2">
             <h1>Uniswap Arbitrum Trading Bot</h1>
-            <p class="text-secondary">PREPROD - Real Data, Simulated Trades</p>
+            <p class="text-secondary">PROD - Live Trading Mode (Enable Test Mode for Simulation)</p>
         </header>
 
         <!-- Main Navigation -->
@@ -773,16 +773,8 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="token-selector" id="tokenSelector">
-                        <button class="token-btn active" data-token="ETH">ETH</button>
-                        <button class="token-btn" data-token="WBTC">WBTC</button>
-                        <button class="token-btn" data-token="USDC">USDC</button>
-                        <button class="token-btn" data-token="UNI">UNI</button>
-                        <button class="token-btn" data-token="LINK">LINK</button>
-                        <button class="token-btn" data-token="ARB">ARB</button>
-                        <button class="token-btn" data-token="GMX">GMX</button>
-                        <button class="token-btn" data-token="USDT">USDT</button>
-                    </div>
+                    <div class="alert alert-info mb-2">Auto-Monitoring: All eligible tokens are automatically tracked
+                        and traded based on market liquidity.</div>
                     <div id="priceTable">
                         <table class="table">
                             <thead>
@@ -830,12 +822,39 @@
                             Example: &gt;_+0.5_60-300|&gt;_+0.2_300-1800
                         </small>
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">Test Mode</label>
+                        <div class="d-flex align-center gap-1">
+                            <input type="checkbox" id="testModeEnabled">
+                            <label for="testModeEnabled">Enable Test Mode (Simulation)</label>
+                        </div>
+                    </div>
 
                     <div class="grid-3">
                         <div class="form-group">
-                            <label class="form-label">Trade Amount (USD)</label>
-                            <input type="number" class="form-control" id="tradeAmount" value="100" min="1" step="1">
+                            <label class="form-label">Total Trade Capital (USD)</label>
+                            <input type="number" class="form-control" id="totalTradeCapital" value="200" min="1"
+                                step="1">
                         </div>
+                        <div class="form-group">
+                            <label class="form-label">Trade Step (USD)</label>
+                            <input type="number" class="form-control" id="tradeStep" value="3.0" min="0.1" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Min Trade Amount (USD)</label>
+                            <input type="number" class="form-control" id="minTradeAmount" value="0.5" min="0.1"
+                                step="0.1">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Profit Destination Address</label>
+                        <input type="text" class="form-control" id="profitAddress" placeholder="0x..." value="">
+                        <small class="text-secondary">Profits from micro-scalping will be tracked and sent to this
+                            address.</small>
+                    </div>
+
+                    <div class="grid-3">
                         <div class="form-group">
                             <label class="form-label">Max Open Trades</label>
                             <input type="number" class="form-control" id="maxTrades" value="5" min="1" max="20">
@@ -843,6 +862,11 @@
                         <div class="form-group">
                             <label class="form-label">Cooldown (sec)</label>
                             <input type="number" class="form-control" id="tradeCooldown" value="60" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Stop Loss (%)</label>
+                            <input type="number" class="form-control" id="stopLoss" value="2" min="0" max="100"
+                                step="0.1">
                         </div>
                     </div>
 
@@ -1396,7 +1420,10 @@
             settings: {
                 buyPatterns: '',
                 sellPatterns: '',
-                tradeAmount: 100,
+                totalTradeCapital: 200,
+                minTradeAmount: 0.5,
+                tradeStep: 3.0,
+                profitAddress: '',
                 maxTrades: 5,
                 stopLoss: 2,
                 takeProfit: 5,
@@ -1414,7 +1441,8 @@
                 autoBackup: true,
                 backupInterval: 30,
                 encryptionEnabled: true,
-                debugMode: 'none'
+                debugMode: 'none',
+                isTestMode: false
             },
             startTime: null,
             lastPriceUpdate: null,
@@ -1832,6 +1860,12 @@
             if (state.isRunning) {
                 showNotification('Info', 'Bot is already running.');
                 return;
+            }
+
+            if (state.settings.isTestMode) {
+                log('info', 'Test Mode enabled: Running in simulation mode.');
+            } else {
+                log('info', 'PROD Mode enabled: Live trading active.');
             }
 
             showLoading('startSpinner');
@@ -2320,8 +2354,7 @@
         }
 
         function getActiveTokens() {
-            const activeButtons = document.querySelectorAll('#tokenSelector .token-btn.active');
-            return Array.from(activeButtons).map(btn => btn.getAttribute('data-token'));
+            return Object.keys(TOKENS);
         }
 
         function switchPriceSource() {
@@ -2495,23 +2528,30 @@
             for (const orGroup of orGroups) {
                 if (!orGroup) continue;
 
-                // Split by AND conditions (&)
-                const andConditions = orGroup.split('&');
+                // Split by sequential THEN conditions (>>)
+                const sequences = orGroup.split('>>');
 
-                const pattern = {
-                    conditions: andConditions.map(cond => {
-                        const parsed = parseCondition(cond);
-                        if (parsed) {
-                            return { ...parsed, original: cond };
-                        }
-                        return null;
-                    }).filter(c => c !== null),
-                    type: 'and',
-                    original: orGroup
-                };
+                for (const sequence of sequences) {
+                    if (!sequence) continue;
 
-                if (pattern.conditions.length > 0) {
-                    patterns.push(pattern);
+                    // Split by AND conditions (&) within each sequence step
+                    const andConditions = sequence.split('&');
+
+                    const pattern = {
+                        conditions: andConditions.map(cond => {
+                            const parsed = parseCondition(cond);
+                            if (parsed) {
+                                return { ...parsed, original: cond };
+                            }
+                            return null;
+                        }).filter(c => c !== null),
+                        type: 'sequence',
+                        original: sequence
+                    };
+
+                    if (pattern.conditions.length > 0) {
+                        patterns.push(pattern);
+                    }
                 }
             }
 
@@ -2537,7 +2577,18 @@
         }
 
         function checkPattern(history, pattern) {
-            // Check if ALL conditions in the pattern are met
+            if (pattern.type === 'sequence') {
+                // Sequential pattern: each condition must match in order
+                for (const condition of pattern.conditions) {
+                    const result = checkCondition(history, condition);
+                    if (!result) {
+                        return { matches: false, condition: condition };
+                    }
+                }
+                return { matches: true, pattern: pattern };
+            }
+
+            // Check if ALL conditions in the pattern are met (AND logic)
             for (const condition of pattern.conditions) {
                 const result = checkCondition(history, condition);
                 if (!result) {
@@ -2653,7 +2704,10 @@
                 return;
             }
 
-            const amountUSD = state.settings.tradeAmount || 100;
+            let amountUSD = state.settings.tradeStep || 3.0;
+            if (amountUSD < state.settings.minTradeAmount) amountUSD = state.settings.minTradeAmount;
+            if (amountUSD > state.settings.totalTradeCapital) amountUSD = state.settings.totalTradeCapital;
+
             const currentPrice = state.prices[token];
 
             if (!currentPrice) {
@@ -3755,17 +3809,19 @@
         function saveTradingSettings() {
             state.settings.buyPatterns = document.getElementById('buyPatterns').value;
             state.settings.sellPatterns = document.getElementById('sellPatterns').value;
-            state.settings.tradeAmount = parseFloat(document.getElementById('tradeAmount').value);
+            state.settings.totalTradeCapital = parseFloat(document.getElementById('totalTradeCapital').value);
+            state.settings.minTradeAmount = parseFloat(document.getElementById('minTradeAmount').value);
+            state.settings.tradeStep = parseFloat(document.getElementById('tradeStep').value);
+            state.settings.profitAddress = document.getElementById('profitAddress').value.trim();
+            state.settings.isTestMode = document.getElementById('testModeEnabled').checked;
             state.settings.maxTrades = parseInt(document.getElementById('maxTrades').value);
             state.settings.stopLoss = parseFloat(document.getElementById('stopLoss').value);
             state.settings.takeProfit = parseFloat(document.getElementById('takeProfit').value);
             state.settings.trailingStop = parseFloat(document.getElementById('trailingStop').value);
             state.settings.tradeCooldown = parseInt(document.getElementById('tradeCooldown').value);
 
-            // Get selected tokens
-            state.settings.tokens = Array.from(
-                document.querySelectorAll('#tradeTokens .token-btn.active')
-            ).map(btn => btn.getAttribute('data-token'));
+            // Auto-monitor all tokens
+            state.settings.tokens = Object.keys(TOKENS);
 
             saveSettings();
             log('info', 'Trading settings saved');
@@ -3879,7 +3935,11 @@
             // Trading settings
             document.getElementById('buyPatterns').value = state.settings.buyPatterns || '';
             document.getElementById('sellPatterns').value = state.settings.sellPatterns || '';
-            document.getElementById('tradeAmount').value = state.settings.tradeAmount || 100;
+            document.getElementById('totalTradeCapital').value = state.settings.totalTradeCapital || 200;
+            document.getElementById('minTradeAmount').value = state.settings.minTradeAmount || 0.5;
+            document.getElementById('tradeStep').value = state.settings.tradeStep || 3.0;
+            document.getElementById('profitAddress').value = state.settings.profitAddress || '';
+            document.getElementById('testModeEnabled').checked = state.settings.isTestMode || false;
             document.getElementById('maxTrades').value = state.settings.maxTrades || 5;
             document.getElementById('stopLoss').value = state.settings.stopLoss || 2;
             document.getElementById('takeProfit').value = state.settings.takeProfit || 5;
@@ -3897,14 +3957,6 @@
             document.getElementById('priceInterval').value = state.settings.priceInterval || 5000;
             document.getElementById('maxPriceAge').value = state.settings.maxPriceAge || 30;
             document.getElementById('coingeckoApiKey').value = state.settings.coingeckoApiKey || '';
-
-            // Update token buttons
-            if (state.settings.tokens) {
-                document.querySelectorAll('#tradeTokens .token-btn, #tokenSelector .token-btn').forEach(btn => {
-                    const token = btn.getAttribute('data-token');
-                    btn.classList.toggle('active', state.settings.tokens.includes(token));
-                });
-            }
 
             // Backup settings
             document.getElementById('autoBackupEnabled').checked = state.settings.autoBackup !== false;
