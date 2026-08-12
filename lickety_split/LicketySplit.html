@@ -1024,7 +1024,7 @@
         const div = document.createElement('div');
         div.className = 'mix-section';
         div.innerHTML = `
-          <div class="mix-header" onclick="toggleMix('${mix.ID}')">
+          <div class="mix-header" id="mix-header-${mix.ID}" onclick="toggleMix('${mix.ID}')">
             <span class="mix-total-display">${escapeHtml(mix.Name)}: ${meal.CurrentTotals[mix.Name] || '0'} Serving(s)</span>
             <span>${mix.ShowMix ? '▲' : '▼'}</span>
           </div>
@@ -1077,9 +1077,9 @@
         meal.CurrentTotals[mix.Name] = translateQuantity(mixTotal);
         total += mixTotal;
         const container = document.getElementById('mix-' + mix.ID);
+        const headerSpan = document.getElementById('mix-header-' + mix.ID)?.querySelector('.mix-total-display');
+        if (headerSpan) headerSpan.textContent = `${escapeHtml(mix.Name)}: ${meal.CurrentTotals[mix.Name]} Serving(s)`;
         if (container) {
-          const headerSpan = container.previousElementSibling?.querySelector('.mix-total-display');
-          if (headerSpan) headerSpan.textContent = `${escapeHtml(mix.Name)}: ${meal.CurrentTotals[mix.Name]} Serving(s)`;
           const foodNames = container.querySelectorAll('.food-name');
           mix.Foods.forEach((f, idx) => {
             if (foodNames[idx]) {
