@@ -1044,7 +1044,7 @@
                 <div class="food-name">${escapeHtml(f.Name || 'Unknown')}: ${translateQuantity(f.CurrentQuantity)} ${escapeHtml(f.UnitOfMeasureDisplayValue || 'oz')}</div>
                 <div class="food-controls">
                   <button onclick="adjustFood('${mix.ID}', '${f.ID}', -${getUnitIncrement(f.ID)})">-</button>
-                  <input type="number" step="${getUnitIncrement(f.ID)}" value="${f.CurrentQuantity}" oninput="setFoodQty('${mix.ID}', '${f.ID}', this.value)">
+                  <input type="number" step="${getUnitIncrement(f.ID)}" value="${f.CurrentQuantity}" data-mix-id="${mix.ID}" data-food-id="${f.ID}" oninput="setFoodQty('${mix.ID}', '${f.ID}', this.value)">
                   <button onclick="adjustFood('${mix.ID}', '${f.ID}', ${getUnitIncrement(f.ID)})">+</button>
                   <button onclick="removeFood('${mix.ID}', '${f.ID}')" style="background:#941d12;">×</button>
                 </div>
@@ -1159,6 +1159,8 @@
         food.CurrentQuantity = Math.max(0, (food.CurrentQuantity || 0) + delta);
         saveData();
         updateTotalsUI(meal);
+        const input = document.querySelector(`input[data-mix-id="${mixId}"][data-food-id="${foodId}"]`);
+        if (input) input.value = food.CurrentQuantity;
       }
     }
 
@@ -1171,6 +1173,8 @@
         food.CurrentQuantity = Math.max(0, parseFloat(val) || 0);
         saveData();
         updateTotalsUI(meal);
+        const input = document.querySelector(`input[data-mix-id="${mixId}"][data-food-id="${foodId}"]`);
+        if (input) input.value = food.CurrentQuantity;
       }
     }
 
