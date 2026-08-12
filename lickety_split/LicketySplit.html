@@ -64,10 +64,12 @@
       background: transparent;
       color: var(--text);
       border: none;
-      font-size: 1rem;
+      font-size: 1.2rem;
       cursor: pointer;
-      padding: 0.5rem;
-      border-radius: 4px;
+      padding: 0.8rem;
+      border-radius: 8px;
+      min-height: 48px;
+      min-width: 48px;
     }
 
     .bar button:active {
@@ -78,11 +80,13 @@
       background: transparent;
       color: var(--text);
       border: none;
-      font-size: 1.5rem;
+      font-size: 2rem;
       cursor: pointer;
-      padding: 0.5rem;
-      border-radius: 4px;
+      padding: 0.8rem;
+      border-radius: 8px;
       z-index: 150;
+      min-height: 48px;
+      min-width: 48px;
     }
 
     .sidebar {
@@ -113,11 +117,12 @@
       background: var(--primary);
       color: var(--text);
       border: 1px solid var(--border);
-      padding: 0.8rem;
-      border-radius: 5px;
+      padding: 1rem;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 1rem;
+      font-size: 1.1rem;
       text-align: left;
+      min-height: 50px;
     }
 
     .sidebar-nav button:hover {
@@ -329,10 +334,12 @@
       background: var(--primary);
       color: white;
       border: none;
-      padding: 0.4rem 0.8rem;
-      border-radius: 5px;
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
       cursor: pointer;
       flex-shrink: 0;
+      font-size: 1rem;
+      min-height: 48px;
     }
 
     .form-group {
@@ -352,31 +359,36 @@
       background: var(--input-bg);
       color: white;
       border: 1px solid var(--border);
-      padding: 0.5rem;
-      border-radius: 5px;
+      padding: 0.7rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      min-height: 48px;
     }
 
     .btn-primary {
       background: var(--primary);
       color: white;
       border: none;
-      padding: 0.6rem 1rem;
-      border-radius: 5px;
+      padding: 0.8rem 1.2rem;
+      border-radius: 8px;
       cursor: pointer;
       width: 100%;
       margin-top: 0.5rem;
-      font-size: 1rem;
+      font-size: 1.1rem;
+      min-height: 52px;
     }
 
     .btn-secondary {
       background: transparent;
       color: white;
       border: 1px solid var(--border);
-      padding: 0.6rem 1rem;
-      border-radius: 5px;
+      padding: 0.8rem 1.2rem;
+      border-radius: 8px;
       cursor: pointer;
       width: 100%;
       margin-top: 0.5rem;
+      font-size: 1.1rem;
+      min-height: 52px;
     }
 
     .modal-overlay {
@@ -399,11 +411,11 @@
 
     .modal {
       background: var(--primary);
-      padding: 1.2rem;
-      border-radius: 10px;
+      padding: 1.5rem;
+      border-radius: 12px;
       width: 100%;
-      max-width: 400px;
-      max-height: 80vh;
+      max-width: 450px;
+      max-height: 85vh;
       overflow-y: auto;
     }
 
@@ -464,16 +476,20 @@
     }
 
     .checkbox-item input[type="checkbox"] {
-      transform: scale(1.2);
+      transform: scale(1.5);
+      min-width: 24px;
+      min-height: 24px;
     }
 
     .checkbox-item input[type="number"] {
-      width: 60px;
+      width: 80px;
       background: var(--input-bg);
       color: white;
       border: 1px solid var(--border);
-      padding: 0.2rem;
-      border-radius: 4px;
+      padding: 0.4rem;
+      border-radius: 6px;
+      font-size: 1rem;
+      min-height: 44px;
     }
 
     .hidden {
