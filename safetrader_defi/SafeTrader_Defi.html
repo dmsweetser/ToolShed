@@ -1526,10 +1526,12 @@
             });
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.classList.remove('active');
+                if (link.getAttribute('data-tab') === tab) {
+                    link.classList.add('active');
+                }
             });
 
             document.getElementById(tab).classList.add('active');
-            event.target.classList.add('active');
 
             if (tab === 'history') {
                 renderFullTradeHistory();
@@ -1851,8 +1853,8 @@
         // ============================================
 
         async function startBot() {
-            if (!state.isConnected) {
-                showNotification('Error', 'Please connect MetaMask first.');
+            if (!state.isConnected && !state.settings.isTestMode) {
+                showNotification('Error', 'Please connect MetaMask first or enable Test Mode.');
                 log('error', 'Cannot start bot: wallet not connected');
                 return;
             }
@@ -1863,7 +1865,9 @@
             }
 
             if (state.settings.isTestMode) {
-                log('info', 'Test Mode enabled: Running in simulation mode.');
+                state.isConnected = true;
+                state.walletAddress = '0xTestModeWallet1234567890abcdef12345678';
+                log('info', 'Test Mode enabled: Running in simulation mode without wallet.');
             } else {
                 log('info', 'PROD Mode enabled: Live trading active.');
             }
@@ -2008,6 +2012,15 @@
         async function testConnection() {
             log('info', 'Testing all connections...');
             showNotification('Info', 'Testing connections...');
+
+            if (state.settings.isTestMode) {
+                log('info', 'Test Mode: Skipping live connection tests. Simulating success.');
+                state.priceSources.binance = { connected: true, lastUpdate: Date.now() };
+                state.priceSources.coingecko = { connected: true, lastUpdate: Date.now() };
+                updateConnectionStatus();
+                showNotification('Success', 'Test Mode: All simulated connections working!');
+                return;
+            }
 
             try {
                 // Test MetaMask
@@ -2368,7 +2381,15 @@
         }
 
         async function updateGasPrice() {
-            if (!window.ethereum) return;
+            if (!window.ethereum) {
+                if (state.settings.isTestMode) {
+                    const mockGas = 15.50;
+                    document.getElementById('gasPrice').textContent = mockGas.toFixed(2);
+                    document.getElementById('networkUtilization').style.width = (mockGas / 200 * 100) + '%';
+                    log('info', `Test Mode: Mock gas price set to ${mockGas.toFixed(2)} gwei`);
+                }
+                return;
+            }
 
             try {
                 const gasPrice = await window.ethereum.request({ method: 'eth_gasPrice' });
@@ -2693,7 +2714,7 @@
         // ============================================
 
         async function executeSimulatedTrade(token, action, pattern) {
-            if (!state.isConnected || !state.walletAddress) {
+            if (!state.isConnected && !state.settings.isTestMode) {
                 log('error', 'Cannot execute trade: wallet not connected');
                 return;
             }
