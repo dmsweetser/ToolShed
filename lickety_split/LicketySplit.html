@@ -1160,7 +1160,10 @@
         saveData();
         updateTotalsUI(meal);
         const input = document.querySelector(`input[data-mix-id="${mixId}"][data-food-id="${foodId}"]`);
-        if (input) input.value = food.CurrentQuantity;
+        if (input) {
+          input.value = food.CurrentQuantity;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
       }
     }
 
@@ -1174,7 +1177,10 @@
         saveData();
         updateTotalsUI(meal);
         const input = document.querySelector(`input[data-mix-id="${mixId}"][data-food-id="${foodId}"]`);
-        if (input) input.value = food.CurrentQuantity;
+        if (input) {
+          input.value = food.CurrentQuantity;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
       }
     }
 
