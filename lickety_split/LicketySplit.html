@@ -154,9 +154,9 @@
     }
 
     .date-nav button {
-      font-size: 1.2rem;
-      width: 36px;
-      height: 36px;
+      font-size: 1.4rem;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       background: var(--primary);
       color: white;
@@ -167,10 +167,11 @@
       background: var(--input-bg);
       color: white;
       border: 1px solid var(--border);
-      padding: 0.4rem;
-      border-radius: 5px;
-      width: 140px;
+      padding: 0.6rem;
+      border-radius: 8px;
+      width: 160px;
       text-align: center;
+      font-size: 1rem;
     }
 
     .meal-tabs {
@@ -217,17 +218,20 @@
       background: var(--input-bg);
       color: white;
       border: 1px solid var(--border);
-      padding: 0.4rem;
-      border-radius: 5px;
+      padding: 0.7rem;
+      border-radius: 8px;
+      font-size: 1rem;
     }
 
     .food-adder button {
       background: var(--primary);
       color: white;
       border: none;
-      padding: 0 0.8rem;
-      border-radius: 5px;
+      padding: 0 1rem;
+      border-radius: 8px;
       cursor: pointer;
+      min-height: 44px;
+      font-size: 1.2rem;
     }
 
     .mix-section {
@@ -282,20 +286,22 @@
       background: var(--primary);
       color: white;
       border: none;
-      padding: 0.2rem 0.5rem;
-      border-radius: 4px;
+      padding: 0.5rem 0.8rem;
+      border-radius: 6px;
       cursor: pointer;
-      font-size: 0.8rem;
+      font-size: 1rem;
+      min-height: 40px;
     }
 
     .food-controls input[type="number"] {
-      width: 60px;
+      width: 70px;
       background: var(--input-bg);
       color: white;
       border: 1px solid var(--border);
-      padding: 0.2rem;
-      border-radius: 4px;
+      padding: 0.4rem;
+      border-radius: 6px;
       text-align: center;
+      font-size: 1rem;
     }
 
     .note-area {
@@ -303,11 +309,12 @@
       background: var(--input-bg);
       color: white;
       border: 1px solid var(--border);
-      padding: 0.4rem;
-      border-radius: 5px;
+      padding: 0.8rem;
+      border-radius: 8px;
       margin-top: 0.5rem;
-      min-height: 60px;
+      min-height: 80px;
       resize: vertical;
+      font-size: 1rem;
     }
 
     .list-item {
@@ -359,36 +366,36 @@
       background: var(--input-bg);
       color: white;
       border: 1px solid var(--border);
-      padding: 0.7rem;
-      border-radius: 8px;
-      font-size: 1rem;
-      min-height: 48px;
+      padding: 0.9rem;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      min-height: 52px;
     }
 
     .btn-primary {
       background: var(--primary);
       color: white;
       border: none;
-      padding: 0.8rem 1.2rem;
-      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      border-radius: 10px;
       cursor: pointer;
       width: 100%;
       margin-top: 0.5rem;
       font-size: 1.1rem;
-      min-height: 52px;
+      min-height: 56px;
     }
 
     .btn-secondary {
       background: transparent;
       color: white;
       border: 1px solid var(--border);
-      padding: 0.8rem 1.2rem;
-      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      border-radius: 10px;
       cursor: pointer;
       width: 100%;
       margin-top: 0.5rem;
       font-size: 1.1rem;
-      min-height: 52px;
+      min-height: 56px;
     }
 
     .modal-overlay {
@@ -482,18 +489,32 @@
     }
 
     .checkbox-item input[type="number"] {
-      width: 80px;
+      width: 90px;
       background: var(--input-bg);
       color: white;
       border: 1px solid var(--border);
-      padding: 0.4rem;
-      border-radius: 6px;
-      font-size: 1rem;
-      min-height: 44px;
+      padding: 0.5rem;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      min-height: 48px;
     }
 
     .hidden {
       display: none !important;
+    }
+
+    .modal input,
+    .modal select,
+    .modal textarea {
+      width: 100%;
+      background: var(--input-bg);
+      color: white;
+      border: 1px solid var(--border);
+      padding: 0.8rem;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      min-height: 48px;
+      margin-bottom: 0.5rem;
     }
 
     ::-webkit-scrollbar {
