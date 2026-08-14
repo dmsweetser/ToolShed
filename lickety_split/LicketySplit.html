@@ -890,7 +890,7 @@
     }
 
     function translateQuantity(qty) {
-      if (qty == null || qty === 0) return '0';
+      if (qty == null || qty === 0 || isNaN(qty)) return '0';
       qty = Math.round(qty * 10000) / 10000;
       const format = appData.options?.FoodInMixQuantityDisplayFormat || 'Fraction';
       if (format === 'Fraction') {
