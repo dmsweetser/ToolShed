@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Arbitrum Trading Bot - Dynamic Tokens</title>
+    <title>Uniswap Arbitrum Trading Bot - Final</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -612,9 +612,7 @@
                             data will appear here.</span>
                     </div>
 
-                    <button class="btn btn-primary" onclick="saveTradingSettings()">
-                        Save Trading Settings
-                    </button>
+                    <button class="btn btn-primary" onclick="saveTradingSettings()">Save Trading Settings</button>
                 </div>
             </div>
 
@@ -894,7 +892,7 @@
             // ======================
             // Configuration
             // ======================
-            const APP_VERSION = '3.1.0';
+            const APP_VERSION = '4.0.0';
             const ARBITRUM_CHAIN_ID = 42161;
             const ARBITRUM_GOERLI_CHAIN_ID = 421613;
 
@@ -910,6 +908,28 @@
                     usdc: '0x329439558254224a394519447336f4853855b15d',
                     weth: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1'
                 }
+            };
+
+            // Token to CoinGecko ID mapping
+            const COINGECKO_MAP = {
+                ETH: 'ethereum',
+                WBTC: 'wrapped-bitcoin',
+                BTC: 'bitcoin',
+                BNB: 'binancecoin',
+                USDC: 'usd-coin',
+                USDT: 'tether',
+                UNI: 'uniswap',
+                LINK: 'chainlink',
+                ARB: 'arbitrum',
+                GMX: 'gmx',
+                SOL: 'solana',
+                ADA: 'cardano',
+                DOT: 'polkadot',
+                MATIC: 'matic-network',
+                AVAX: 'avalanche-2',
+                PEPE: 'pepe',
+                DOGE: 'dogecoin',
+                SHIB: 'shiba-inu'
             };
 
             // ======================
@@ -989,18 +1009,22 @@
             async function discoverTokens() {
                 log('info', 'Discovering available tokens from price sources...');
                 try {
-                    // Try Binance first
+                    // Clear existing tokens
+                    state.availableTokens = [];
+
+                    // Discover from primary source
                     if (state.settings.primaryPriceSource === 'binance') {
                         await fetchBinanceTokens();
                     }
-                    // Always try CoinGecko as fallback
+
+                    // Always try CoinGecko as well
                     await fetchCoinGeckoTokens();
 
                     // Remove duplicates and sort
                     state.availableTokens = [...new Set(state.availableTokens)].sort();
                     state.settings.tokens = [...state.availableTokens];
 
-                    log('info', `Discovered ${state.availableTokens.length} tokens: ${state.availableTokens.join(', ')}`);
+                    log('info', `Discovered ${state.availableTokens.length} tokens: ${state.availableTokens.slice(0, 10).join(', ')}...`);
                     updateTokenSelectors();
                     updatePriceUI();
                 } catch (error) {
@@ -1020,14 +1044,17 @@
                     const data = await response.json();
                     const usdtPairs = data.symbols
                         .filter(s => s.quoteAsset === 'USDT' && s.status === 'TRADING')
-                        .map(s => s.baseAsset);
+                        .map(s => {
+                            // Map Binance symbols to standard token symbols
+                            let token = s.baseAsset;
+                            if (token === 'BTC') token = 'WBTC';
+                            if (token === 'BNB') token = 'BNB';
+                            return token;
+                        });
 
-                    // Filter for common tokens (exclude stablecoins and obscure tokens)
-                    const commonTokens = ['BTC', 'ETH', 'BNB', 'SOL', 'ADA', 'DOT', 'AVAX', 'MATIC', 'LINK', 'UNI', 'ARB', 'GMX', 'PEPE', 'DOGE', 'SHIB'];
-                    const filteredTokens = usdtPairs.filter(token =>
-                        commonTokens.includes(token) ||
-                        token.includes('USD') || token.includes('BTC') || token.includes('ETH')
-                    );
+                    // Filter for common tokens
+                    const commonTokens = ['ETH', 'WBTC', 'BNB', 'SOL', 'ADA', 'DOT', 'AVAX', 'MATIC', 'LINK', 'UNI', 'ARB', 'GMX', 'PEPE', 'DOGE', 'SHIB'];
+                    const filteredTokens = usdtPairs.filter(token => commonTokens.includes(token));
 
                     state.availableTokens = [...state.availableTokens, ...filteredTokens];
                 } catch (error) {
@@ -1396,6 +1423,9 @@
                         log('info', 'Test Mode: Running in simulation mode.');
                     }
 
+                    // Rediscover tokens when starting
+                    await discoverTokens();
+
                     await initializePriceFeeds();
                     if (state.settings.autoBackup) startBackupTimer();
 
@@ -1485,7 +1515,10 @@
 
             // Binance WebSocket
             async function initializeBinanceWebSocket() {
-                if (binanceWebSocket) binanceWebSocket.close();
+                if (binanceWebSocket) {
+                    binanceWebSocket.close();
+                    binanceWebSocket = null;
+                }
 
                 const activeTokens = state.settings.tokens;
                 if (activeTokens.length === 0) {
@@ -1494,72 +1527,103 @@
                 }
 
                 // Map tokens to Binance symbols (e.g., ETH -> ETHUSDT)
-                const binanceSymbols = activeTokens.map(token => {
-                    // Handle special cases
-                    if (token === 'WBTC') return 'BTCUSDT';
-                    if (token === 'BNB') return 'BNBUSDT';
-                    return `${token}USDT`;
-                }).filter(s => s);
+                const symbolMap = {
+                    ETH: 'ETHUSDT',
+                    WBTC: 'BTCUSDT',
+                    BTC: 'BTCUSDT',
+                    BNB: 'BNBUSDT',
+                    USDC: 'USDCUSDT',
+                    USDT: 'USDTUSDT',
+                    UNI: 'UNIUSDT',
+                    LINK: 'LINKUSDT',
+                    ARB: 'ARBUSDT',
+                    GMX: 'GMXUSDT',
+                    SOL: 'SOLUSDT',
+                    ADA: 'ADAUSDT',
+                    DOT: 'DOTUSDT',
+                    MATIC: 'MATICUSDT',
+                    AVAX: 'AVAXUSDT',
+                    PEPE: 'PEPEUSDT',
+                    DOGE: 'DOGEUSDT',
+                    SHIB: 'SHIBUSDT'
+                };
+
+                const binanceSymbols = activeTokens
+                    .map(token => symbolMap[token] || `${token}USDT`)
+                    .filter(s => s);
 
                 if (binanceSymbols.length === 0) {
                     log('warn', 'No valid Binance symbols for selected tokens');
                     return;
                 }
 
+                // Binance WebSocket can handle up to 200 streams per connection
+                // For simplicity, we'll use a single connection with all symbols
                 const socketUrl = `wss://stream.binance.com:9443/ws/${binanceSymbols.map(s => s.toLowerCase() + '@ticker').join('/')}`;
 
-                binanceWebSocket = new WebSocket(socketUrl);
+                try {
+                    binanceWebSocket = new WebSocket(socketUrl);
 
-                binanceWebSocket.onopen = () => {
-                    state.priceSources.binance = { connected: true, lastUpdate: Date.now() };
-                    log('info', `Binance WebSocket connected (${binanceSymbols.length} symbols)`);
-                };
-
-                binanceWebSocket.onmessage = (event) => {
-                    try {
-                        const data = JSON.parse(event.data);
-                        const symbol = data.s;
-                        const price = parseFloat(data.c);
-                        const priceChange = parseFloat(data.p);
-
-                        // Map Binance symbol back to token (e.g., ETHUSDT -> ETH)
-                        let token = symbol.replace('USDT', '');
-                        if (token === 'BTC') token = 'WBTC'; // Special case
-                        if (token === 'BNB') token = 'BNB';
-
-                        // Only process tokens we're monitoring
-                        if (!state.settings.tokens.includes(token)) return;
-
-                        // Store price
-                        state.prices[token] = price;
-                        state.priceHistory[token] = state.priceHistory[token] || [];
-                        state.priceHistory[token].push({ price, timestamp: Date.now(), source: 'binance' });
-                        if (state.priceHistory[token].length > 100) state.priceHistory[token].shift();
-
-                        state.lastPriceUpdate = new Date();
+                    binanceWebSocket.onopen = () => {
                         state.priceSources.binance = { connected: true, lastUpdate: Date.now() };
+                        log('info', `Binance WebSocket connected (${binanceSymbols.length} symbols)`);
+                    };
 
-                        updatePriceUI();
-                    } catch (error) {
-                        log('error', `Binance message error: ${error.message}`);
-                    }
-                };
+                    binanceWebSocket.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            if (!data.s || !data.c) return; // Skip invalid messages
 
-                binanceWebSocket.onerror = (error) => {
+                            const symbol = data.s;
+                            const price = parseFloat(data.c);
+                            const priceChange = parseFloat(data.p);
+
+                            // Map Binance symbol back to token (e.g., ETHUSDT -> ETH)
+                            let token = symbol.replace('USDT', '');
+                            if (token === 'BTC') token = 'WBTC'; // Special case
+                            if (token === 'BNB') token = 'BNB';
+
+                            // Only process tokens we're monitoring
+                            if (!state.settings.tokens.includes(token)) return;
+
+                            // Store price
+                            state.prices[token] = price;
+                            state.priceHistory[token] = state.priceHistory[token] || [];
+                            state.priceHistory[token].push({ price, timestamp: Date.now(), source: 'binance' });
+                            if (state.priceHistory[token].length > 100) state.priceHistory[token].shift();
+
+                            state.lastPriceUpdate = new Date();
+                            state.priceSources.binance = { connected: true, lastUpdate: Date.now() };
+
+                            updatePriceUI();
+                        } catch (error) {
+                            log('error', `Binance message parse error: ${error.message}`);
+                        }
+                    };
+
+                    binanceWebSocket.onerror = (error) => {
+                        state.priceSources.binance = { connected: false };
+                        log('error', `Binance WebSocket error: ${error.message || 'Connection failed'}`);
+                    };
+
+                    binanceWebSocket.onclose = () => {
+                        state.priceSources.binance = { connected: false };
+                        log('warn', 'Binance WebSocket closed. Reconnecting in 5 seconds...');
+                        // Attempt to reconnect after delay
+                        setTimeout(initializeBinanceWebSocket, 5000);
+                    };
+                } catch (error) {
                     state.priceSources.binance = { connected: false };
-                    log('error', `Binance WebSocket error: ${error.message}`);
-                };
-
-                binanceWebSocket.onclose = () => {
-                    state.priceSources.binance = { connected: false };
-                    log('warn', 'Binance WebSocket closed. Reconnecting...');
-                    setTimeout(initializeBinanceWebSocket, 5000);
-                };
+                    log('error', `Binance WebSocket creation failed: ${error.message}`);
+                }
             }
 
             // CoinGecko Polling
             async function initializeCoinGeckoPolling() {
-                if (pricePollingInterval) clearInterval(pricePollingInterval);
+                if (pricePollingInterval) {
+                    clearInterval(pricePollingInterval);
+                    pricePollingInterval = null;
+                }
 
                 const activeTokens = state.settings.tokens;
                 if (activeTokens.length === 0) {
@@ -1569,36 +1633,15 @@
 
                 const interval = state.settings.priceInterval || 10000;
                 pricePollingInterval = setInterval(() => fetchCoinGeckoPrices(activeTokens), interval);
+
+                // Initial fetch
                 await fetchCoinGeckoPrices(activeTokens);
             }
 
             async function fetchCoinGeckoPrices(tokens) {
                 try {
                     const apiKey = state.settings.coingeckoApiKey;
-                    const ids = tokens.map(token => {
-                        // Map token symbols to CoinGecko IDs
-                        const cgMap = {
-                            ETH: 'ethereum',
-                            WBTC: 'wrapped-bitcoin',
-                            BTC: 'bitcoin',
-                            BNB: 'binancecoin',
-                            USDC: 'usd-coin',
-                            USDT: 'tether',
-                            UNI: 'uniswap',
-                            LINK: 'chainlink',
-                            ARB: 'arbitrum',
-                            GMX: 'gmx',
-                            SOL: 'solana',
-                            ADA: 'cardano',
-                            DOT: 'polkadot',
-                            MATIC: 'matic-network',
-                            AVAX: 'avalanche-2',
-                            PEPE: 'pepe',
-                            DOGE: 'dogecoin',
-                            SHIB: 'shiba-inu'
-                        };
-                        return cgMap[token] || token.toLowerCase();
-                    }).join(',');
+                    const ids = tokens.map(token => COINGECKO_MAP[token] || token.toLowerCase()).join(',');
                     const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&precision=full` +
                         (apiKey ? `&x_cg_demo_api_key=${apiKey}` : '');
 
@@ -1609,27 +1652,7 @@
                     state.priceSources.coingecko = { connected: true, lastUpdate: Date.now() };
 
                     tokens.forEach(token => {
-                        const cgMap = {
-                            ETH: 'ethereum',
-                            WBTC: 'wrapped-bitcoin',
-                            BTC: 'bitcoin',
-                            BNB: 'binancecoin',
-                            USDC: 'usd-coin',
-                            USDT: 'tether',
-                            UNI: 'uniswap',
-                            LINK: 'chainlink',
-                            ARB: 'arbitrum',
-                            GMX: 'gmx',
-                            SOL: 'solana',
-                            ADA: 'cardano',
-                            DOT: 'polkadot',
-                            MATIC: 'matic-network',
-                            AVAX: 'avalanche-2',
-                            PEPE: 'pepe',
-                            DOGE: 'dogecoin',
-                            SHIB: 'shiba-inu'
-                        };
-                        const cgId = cgMap[token] || token.toLowerCase();
+                        const cgId = COINGECKO_MAP[token] || token.toLowerCase();
                         if (data[cgId]?.usd) {
                             const price = parseFloat(data[cgId].usd);
                             state.prices[token] = price;
@@ -1651,9 +1674,11 @@
                 const source = document.getElementById('priceSourceSelect').value;
                 state.settings.primaryPriceSource = source;
                 saveSettings();
+
                 if (state.isRunning) {
                     await restartPriceFeeds();
-                    await discoverTokens(); // Rediscover tokens when source changes
+                    // Rediscover tokens when source changes
+                    await discoverTokens();
                 }
             }
 
@@ -1707,7 +1732,7 @@
 
                 const currentPrice = state.prices[token];
                 if (!currentPrice) {
-                    showNotification('Error', `No price for ${token}.`);
+                    showNotification('Error', `No price available for ${token}.`);
                     return;
                 }
 
