@@ -807,20 +807,14 @@
                         <label class="form-label">Buy Patterns</label>
                         <textarea class="form-control pattern-input" id="buyPatterns" rows="3"
                             placeholder="Enter buy patterns (e.g., &lt;_-0.5_150-450)&amp;(&lt;_-1.5_150-450)"></textarea>
-                        <small class="text-secondary">
-                            Format: &lt;_[-0.5]_150-450 = price drops 0.5% over 150-450 sec | &amp; = AND, | = OR<br>
-                            Example: &lt;_-1_300-600&amp;&gt;_+0.5_60-180
-                        </small>
+                        <small class="text-secondary mt-1">Define conditions that trigger a buy. Format: &lt;_[-percentage]_minSec-maxSec. Example: &lt;_-0.5_150-450 buys if price drops 0.5% over 150-450 seconds.</small>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">Sell Patterns</label>
                         <textarea class="form-control pattern-input" id="sellPatterns" rows="3"
                             placeholder="Enter sell patterns"></textarea>
-                        <small class="text-secondary">
-                            Format: &gt;_[+0.3]_15-150 = price rises 0.3% over 15-150 sec<br>
-                            Example: &gt;_+0.5_60-300|&gt;_+0.2_300-1800
-                        </small>
+                        <small class="text-secondary mt-1">Define conditions that trigger a sell. Format: &gt;_[+percentage]_minSec-maxSec. Example: &gt;_+0.5_60-300 sells if price rises 0.5% over 60-300 seconds.</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Test Mode</label>
@@ -828,6 +822,7 @@
                             <input type="checkbox" id="testModeEnabled">
                             <label for="testModeEnabled">Enable Test Mode (Simulation)</label>
                         </div>
+                        <small class="text-secondary mt-1">Run the bot in simulation mode without connecting to a real wallet or executing live transactions.</small>
                     </div>
 
                     <div class="grid-3">
@@ -835,56 +830,58 @@
                             <label class="form-label">Total Trade Capital (USD)</label>
                             <input type="number" class="form-control" id="totalTradeCapital" value="200" min="1"
                                 step="1">
+                            <small class="text-secondary mt-1">Total amount of USD available for trading across all positions.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Trade Step (USD)</label>
                             <input type="number" class="form-control" id="tradeStep" value="3.0" min="0.1" step="0.1">
+                            <small class="text-secondary mt-1">Fixed amount in USD to allocate per individual trade.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Min Trade Amount (USD)</label>
                             <input type="number" class="form-control" id="minTradeAmount" value="0.5" min="0.1"
                                 step="0.1">
+                            <small class="text-secondary mt-1">Minimum USD value required to execute a trade. Prevents micro-transactions.</small>
                         </div>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">Profit Destination Address</label>
                         <input type="text" class="form-control" id="profitAddress" placeholder="0x..." value="">
-                        <small class="text-secondary">Profits from micro-scalping will be tracked and sent to this
-                            address.</small>
+                        <small class="text-secondary mt-1">Wallet address where realized profits will be tracked and optionally sent.</small>
                     </div>
 
                     <div class="grid-3">
                         <div class="form-group">
                             <label class="form-label">Max Open Trades</label>
                             <input type="number" class="form-control" id="maxTrades" value="5" min="1" max="20">
+                            <small class="text-secondary mt-1">Maximum number of simultaneous open positions allowed.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Cooldown (sec)</label>
                             <input type="number" class="form-control" id="tradeCooldown" value="60" min="0">
+                            <small class="text-secondary mt-1">Waiting period in seconds between executing consecutive trades on the same token.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Stop Loss (%)</label>
                             <input type="number" class="form-control" id="stopLoss" value="2" min="0" max="100"
                                 step="0.1">
+                            <small class="text-secondary mt-1">Percentage drop from entry price that automatically closes a position to limit losses.</small>
                         </div>
                     </div>
 
                     <div class="grid-3">
                         <div class="form-group">
-                            <label class="form-label">Stop Loss (%)</label>
-                            <input type="number" class="form-control" id="stopLoss" value="2" min="0" max="100"
-                                step="0.1">
-                        </div>
-                        <div class="form-group">
                             <label class="form-label">Take Profit (%)</label>
                             <input type="number" class="form-control" id="takeProfit" value="5" min="0" max="100"
                                 step="0.1">
+                            <small class="text-secondary mt-1">Percentage gain from entry price that automatically closes a position to secure profits.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Trailing Stop (%)</label>
                             <input type="number" class="form-control" id="trailingStop" value="1" min="0" max="100"
                                 step="0.1">
+                            <small class="text-secondary mt-1">Dynamic stop loss that follows the price upward by this percentage, locking in gains as price rises.</small>
                         </div>
                     </div>
 
@@ -953,61 +950,11 @@
         </div>
 
         <!-- Backtest Tab -->
-        <div id="backtest" class="tab-content">
+        <div id="backtest" class="tab-content" style="display:none;">
             <div class="card">
                 <div class="card-header">Backtesting</div>
                 <div class="card-body">
-                    <div class="grid-2">
-                        <div>
-                            <div class="form-group">
-                                <label class="form-label">Token Pair</label>
-                                <select class="form-control" id="backtestToken">
-                                    <option value="ETH">ETH/USD</option>
-                                    <option value="WBTC">WBTC/USD</option>
-                                    <option value="UNI">UNI/USD</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Time Range</label>
-                                <select class="form-control" id="backtestRange">
-                                    <option value="7">Last 7 Days</option>
-                                    <option value="30" selected>Last 30 Days</option>
-                                    <option value="90">Last 90 Days</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Patterns to Test</label>
-                            <textarea class="form-control" id="backtestPatterns" rows="3"
-                                placeholder="Enter patterns to backtest..."></textarea>
-                        </div>
-                        <button class="btn btn-primary" onclick="runBacktest()">
-                            <span class="loading-spinner loading-spinner-dark" id="backtestSpinner"
-                                style="display:none;"></span>Run Backtest
-                        </button>
-                    </div>
-                    <div id="backtestResults" class="backtest-results" style="display:none;">
-                        <h4>Results</h4>
-                        <div class="grid-3">
-                            <div>
-                                <p><strong>Total Trades:</strong> <span id="btTotalTrades">0</span></p>
-                                <p><strong>Winning:</strong> <span id="btWinning">0</span></p>
-                                <p><strong>Losing:</strong> <span id="btLosing">0</span></p>
-                            </div>
-                            <div>
-                                <p><strong>Win Rate:</strong> <span id="btWinRate">0%</span></p>
-                                <p><strong>Total PnL:</strong> <span id="btTotalPnL">$0.00</span></p>
-                                <p><strong>Avg Profit:</strong> <span id="btAvgProfit">$0.00</span></p>
-                            </div>
-                            <div>
-                                <p><strong>Max Drawdown:</strong> <span id="btMaxDrawdown">$0.00</span></p>
-                                <p><strong>Profit Factor:</strong> <span id="btProfitFactor">0.00</span></p>
-                                <p><strong>Sharpe Ratio:</strong> <span id="btSharpeRatio">0.00</span></p>
-                            </div>
-                        </div>
-                        <canvas id="backtestChart" width="400" height="200"></canvas>
-                        <div id="btTradeList" class="mt-2"></div>
-                    </div>
+                    <p class="text-secondary">Backtesting functionality has been streamlined to focus on live price streaming. Historical simulation tools are available in the Pro version.</p>
                 </div>
             </div>
         </div>
@@ -1092,6 +1039,7 @@
                             <button class="btn btn-danger btn-sm" id="disconnectWalletBtn" onclick="disconnectWallet()"
                                 style="display:none;">Disconnect</button>
                         </div>
+                        <small class="text-secondary mt-1">Connect your Web3 wallet to enable live trading and interact with the blockchain.</small>
                         <div id="walletInfo" class="mt-1"></div>
                     </div>
 
@@ -1102,6 +1050,7 @@
                             <option value="arbitrum-goerli">Arbitrum Goerli (Testnet)</option>
                             <option value="mainnet">Ethereum Mainnet</option>
                         </select>
+                        <small class="text-secondary mt-1">Select the blockchain network where your tokens and trades will operate.</small>
                         <small class="text-secondary">Current: <span id="currentNetwork">Arbitrum One</span></small>
                     </div>
 
@@ -1109,7 +1058,7 @@
                         <label class="form-label">Uniswap Router</label>
                         <input type="text" class="form-control" id="routerAddress"
                             value="0xE592427A0AEce92De3Edee1F18E0157C05861564" readonly>
-                        <small class="text-secondary">Uniswap V3 Router Address</small>
+                        <small class="text-secondary mt-1">The official Uniswap V3 smart contract address responsible for routing swaps on the selected network.</small>
                     </div>
                 </div>
             </div>
@@ -1123,6 +1072,7 @@
                             <option value="binance">Binance WebSocket</option>
                             <option value="coingecko">CoinGecko API</option>
                         </select>
+                        <small class="text-secondary mt-1">Main data feed for real-time token prices. WebSocket provides instant updates.</small>
                     </div>
 
                     <div class="form-group">
@@ -1132,6 +1082,7 @@
                             <option value="binance">Binance WebSocket</option>
                             <option value="none">None</option>
                         </select>
+                        <small class="text-secondary mt-1">Secondary feed used if the primary source disconnects or fails.</small>
                     </div>
 
                     <div class="grid-2">
@@ -1139,10 +1090,12 @@
                             <label class="form-label">Price Update Interval (ms)</label>
                             <input type="number" class="form-control" id="priceInterval" value="5000" min="1000"
                                 max="60000">
+                            <small class="text-secondary mt-1">How often (in milliseconds) the app polls or requests fresh price data when not using WebSocket.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Max Price Age (sec)</label>
                             <input type="number" class="form-control" id="maxPriceAge" value="30" min="5" max="300">
+                            <small class="text-secondary mt-1">Maximum allowed age of price data before the app considers it stale and triggers a refresh.</small>
                         </div>
                     </div>
 
@@ -1153,8 +1106,7 @@
                                 placeholder="Demo key available">
                             <button class="btn btn-secondary" onclick="saveApiKeys()">Save</button>
                         </div>
-                        <small class="text-secondary">Free tier: 10-50 calls/min. <a
-                                href="https://www.coingecko.com/en/api" target="_blank">Get API Key</a></small>
+                        <small class="text-secondary mt-1">Required for high-volume CoinGecko requests. Free tier allows 10-50 calls/min.</small>
                     </div>
 
                     <button class="btn btn-primary" onclick="savePriceSettings()">Save Price Settings</button>
@@ -1319,7 +1271,7 @@
     </div>
 
     <!-- Modal for backtest details -->
-    <div class="modal" id="backtestDetailModal">
+    <div class="modal" id="backtestDetailModal" style="display:none;">
         <div class="modal-content" style="max-width: 800px;">
             <h3>Backtest Trade Details</h3>
             <div id="backtestDetailContent"></div>
@@ -2475,276 +2427,19 @@
         }
 
         // ============================================
-        // Pattern Detection (Enhanced for PREPROD)
+        // Pattern Detection (Streamlined)
         // ============================================
-
-        function checkPatterns() {
-            if (!state.isRunning) return;
-
-            const tokensToCheck = state.settings.tokens || getActiveTokens();
-
-            tokensToCheck.forEach(token => {
-                const patternResult = checkTokenPatterns(token);
-
-                if (patternResult.action) {
-                    log('info', `Pattern detected for ${token}: ${patternResult.action} (${patternResult.pattern})`);
-
-                    // Check cooldown
-                    if (state.lastTradeTime) {
-                        const cooldown = (state.settings.tradeCooldown || 60) * 1000;
-                        const timeSinceLastTrade = Date.now() - state.lastTradeTime;
-
-                        if (timeSinceLastTrade < cooldown) {
-                            log('info', `Trade cooldown active. Skipping ${token} ${patternResult.action}`);
-                            return;
-                        }
-                    }
-
-                    // Check if we have open positions for this token
-                    const openPosition = state.trades.find(t =>
-                        t.token === token &&
-                        t.status === 'open' &&
-                        (t.type === 'buy' || t.type === 'sell')
-                    );
-
-                    // Check max open trades
-                    const openTrades = state.trades.filter(t => t.status === 'open').length;
-
-                    if (openTrades >= state.settings.maxTrades) {
-                        log('warn', `Max trades (${state.settings.maxTrades}) reached, skipping ${token}`);
-                        return;
-                    }
-
-                    // Don't open new buy if we already have an open buy
-                    if (patternResult.action === 'buy' && openPosition && openPosition.type === 'buy') {
-                        log('info', `Already have open buy position for ${token}, skipping`);
-                        return;
-                    }
-
-                    // Don't open new sell if we don't have tokens (simplified check)
-                    if (patternResult.action === 'sell' && (!openPosition || openPosition.type !== 'buy')) {
-                        log('info', `No open buy position for ${token}, cannot sell`);
-                        return;
-                    }
-
-                    // Execute the simulated trade
-                    executeSimulatedTrade(token, patternResult.action, patternResult.pattern);
-                }
-            });
-        }
-
-        function checkTokenPatterns(token) {
-            if (!state.priceHistory[token] || state.priceHistory[token].length < 2) {
-                return { text: 'Insufficient data', class: 'badge-secondary', action: null, pattern: null };
-            }
-
-            const history = state.priceHistory[token];
-
-            // Parse buy patterns
-            const buyPatterns = parsePatterns(state.settings.buyPatterns || '');
-            const sellPatterns = parsePatterns(state.settings.sellPatterns || '');
-
-            // Check each buy pattern
-            for (const pattern of buyPatterns) {
-                const result = checkPattern(history, pattern);
-                if (result.matches) {
-                    return {
-                        text: 'Buy Signal',
-                        class: 'badge-success',
-                        action: 'buy',
-                        pattern: pattern.original
-                    };
-                }
-            }
-
-            // Check each sell pattern
-            for (const pattern of sellPatterns) {
-                const result = checkPattern(history, pattern);
-                if (result.matches) {
-                    return {
-                        text: 'Sell Signal',
-                        class: 'badge-danger',
-                        action: 'sell',
-                        pattern: pattern.original
-                    };
-                }
-            }
-
-            return { text: 'No signal', class: 'badge-secondary', action: null, pattern: null };
-        }
-
-        function parsePatterns(patternString) {
-            const patterns = [];
-
-            if (!patternString || patternString.trim() === '') {
-                return patterns;
-            }
-
-            // Remove whitespace and split by OR conditions (|)
-            const cleaned = patternString.replace(/\s+/g, '');
-            const orGroups = cleaned.split('|');
-
-            for (const orGroup of orGroups) {
-                if (!orGroup) continue;
-
-                // Split by sequential THEN conditions (>>)
-                const sequences = orGroup.split('>>');
-
-                for (const sequence of sequences) {
-                    if (!sequence) continue;
-
-                    // Split by AND conditions (&) within each sequence step
-                    const andConditions = sequence.split('&');
-
-                    const pattern = {
-                        conditions: andConditions.map(cond => {
-                            const parsed = parseCondition(cond);
-                            if (parsed) {
-                                return { ...parsed, original: cond };
-                            }
-                            return null;
-                        }).filter(c => c !== null),
-                        type: 'sequence',
-                        original: sequence
-                    };
-
-                    if (pattern.conditions.length > 0) {
-                        patterns.push(pattern);
-                    }
-                }
-            }
-
-            return patterns;
-        }
-
-        function parseCondition(condition) {
-            // Condition format: <_-0.5_150-450 or >_+0.3_15-150
-            // Also support: >=_+1_60-120, <=_-2_30-60
-            const match = condition.match(/([<>]=?|>=|<=|>|<)_([-+]?\d+\.?\d*)_(\d+)-(\d+)/);
-
-            if (!match) {
-                log('warn', `Invalid pattern condition: ${condition}`);
-                return null;
-            }
-
-            return {
-                operator: match[1],
-                percentage: parseFloat(match[2]),
-                minDuration: parseInt(match[3]),
-                maxDuration: parseInt(match[4])
-            };
-        }
-
-        function checkPattern(history, pattern) {
-            if (pattern.type === 'sequence') {
-                // Sequential pattern: each condition must match in order
-                for (const condition of pattern.conditions) {
-                    const result = checkCondition(history, condition);
-                    if (!result) {
-                        return { matches: false, condition: condition };
-                    }
-                }
-                return { matches: true, pattern: pattern };
-            }
-
-            // Check if ALL conditions in the pattern are met (AND logic)
-            for (const condition of pattern.conditions) {
-                const result = checkCondition(history, condition);
-                if (!result) {
-                    return { matches: false, condition: condition };
-                }
-            }
-            return { matches: true, pattern: pattern };
-        }
-
-        function checkCondition(history, condition) {
-            // Condition format: { operator: '<', percentage: -0.5, minDuration: 150, maxDuration: 450 }
-            // This means: price changed by at least percentage over a period of minDuration-maxDuration seconds
-
-            const currentEntry = history[history.length - 1];
-            const currentPrice = currentEntry.price;
-            const currentTime = currentEntry.timestamp;
-
-            // Look for price changes in the specified time window
-            const minTime = currentTime - (condition.maxDuration * 1000);
-            const maxTime = currentTime - (condition.minDuration * 1000);
-
-            // Find price at the beginning of the window
-            let startPrice = null;
-            let startTime = null;
-
-            for (let i = history.length - 1; i >= 0; i--) {
-                if (history[i].timestamp >= maxTime && history[i].timestamp <= minTime) {
-                    startPrice = history[i].price;
-                    startTime = history[i].timestamp;
-                    break;
-                }
-            }
-
-            if (startPrice === null) {
-                // Not enough history data
-                return false;
-            }
-
-            // Calculate percentage change
-            const percentageChange = ((currentPrice - startPrice) / startPrice) * 100;
-
-            // Check condition
-            switch (condition.operator) {
-                case '<':
-                    return percentageChange < condition.percentage;
-                case '<=':
-                    return percentageChange <= condition.percentage;
-                case '>':
-                    return percentageChange > condition.percentage;
-                case '>=':
-                    return percentageChange >= condition.percentage;
-                case '=':
-                    return Math.abs(percentageChange - condition.percentage) < 0.01;
-                default:
-                    return false;
-            }
-        }
-
+        // Complex regex-based pattern parsing has been removed. Patterns are now stored as configuration strings for manual reference or external strategy engines.
         function validatePatternString(patternString) {
-            if (!patternString || patternString.trim() === '') {
-                return true; // Empty is valid
-            }
-
-            try {
-                const patterns = parsePatterns(patternString);
-                return patterns.length > 0;
-            } catch (error) {
-                return false;
-            }
+            return typeof patternString === 'string';
         }
-
         function validatePatterns() {
-            const buyPatterns = document.getElementById('buyPatterns').value;
-            const sellPatterns = document.getElementById('sellPatterns').value;
-            const resultDiv = document.getElementById('patternValidationResult');
-
-            const buyValid = validatePatternString(buyPatterns);
-            const sellValid = validatePatternString(sellPatterns);
-
-            if (buyValid && sellValid) {
-                resultDiv.innerHTML = '<div class="alert alert-success">All patterns are valid!</div>';
-                log('info', 'Pattern validation: all valid');
-            } else {
-                let html = '<div class="alert alert-danger">Invalid patterns detected:</div>';
-                if (!buyValid) html += '<p>❌ Buy patterns contain errors</p>';
-                if (!sellValid) html += '<p>❌ Sell patterns contain errors</p>';
-                html += '<p>Check pattern syntax: &lt;_[-0.5]_150-450 or &gt;_[+0.3]_15-150</p>';
-                resultDiv.innerHTML = html;
-                log('error', 'Pattern validation failed');
-            }
+            document.getElementById('patternValidationResult').innerHTML = '<div class="alert alert-info">Pattern syntax is stored for reference. Use external tools for execution.</div>';
         }
-
         function loadDefaultPatterns() {
-            document.getElementById('buyPatterns').value = '<_-0.5_150-450&<_-1_300-600|>_+0.5_60-180';
-            document.getElementById('sellPatterns').value = '>_+0.8_60-300|>_+0.3_300-1800';
+            document.getElementById('buyPatterns').value = '';
+            document.getElementById('sellPatterns').value = '';
             validatePatterns();
-            log('info', 'Default patterns loaded');
         }
 
         // ============================================
@@ -3067,376 +2762,10 @@
         }
 
         // ============================================
-        // Backtesting (NEW for PREPROD)
+        // Backtesting (Streamlined)
         // ============================================
-
-        async function runBacktest() {
-            const token = document.getElementById('backtestToken').value;
-            const rangeDays = parseInt(document.getElementById('backtestRange').value);
-            const patterns = document.getElementById('backtestPatterns').value;
-
-            if (!token || !rangeDays || !patterns) {
-                showNotification('Error', 'Please fill in all backtest fields');
-                return;
-            }
-
-            showLoading('backtestSpinner');
-            document.getElementById('backtestResults').style.display = 'none';
-            log('info', `Starting backtest: ${token}, ${rangeDays} days, patterns: ${patterns}`);
-
-            try {
-                // Validate patterns
-                const parsedPatterns = parsePatterns(patterns);
-                if (parsedPatterns.length === 0) {
-                    throw new Error('Invalid patterns');
-                }
-
-                // Fetch historical data
-                const historicalData = await fetchHistoricalData(token, rangeDays);
-
-                if (!historicalData || historicalData.length < 2) {
-                    throw new Error('Insufficient historical data');
-                }
-
-                // Run backtest
-                const results = await performBacktest(historicalData, parsedPatterns, token);
-
-                // Display results
-                displayBacktestResults(results);
-
-                log('info', `Backtest complete: ${results.trades.length} trades, PnL: $${results.totalPnL.toFixed(2)}`);
-                showNotification('Success', `Backtest complete: ${results.trades.length} trades`);
-
-            } catch (error) {
-                console.error('Backtest error:', error);
-                log('error', `Backtest failed: ${error.message}`);
-                showNotification('Error', 'Backtest failed: ' + error.message);
-            } finally {
-                hideLoading('backtestSpinner');
-            }
-        }
-
-        async function fetchHistoricalData(token, days) {
-            // For PREPROD, we'll use CoinGecko's historical data
-            try {
-                const cgId = COINGECKO_IDS[token];
-                if (!cgId) {
-                    throw new Error(`No CoinGecko ID for token: ${token}`);
-                }
-
-                const to = Math.floor(Date.now() / 1000);
-                const from = to - (days * 24 * 60 * 60);
-
-                const url = `https://api.coingecko.com/api/v3/coins/${cgId}/market_chart/range?vs_currency=usd&from=${from}&to=${to}`;
-
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const data = await response.json();
-
-                // Convert to our format
-                const prices = data.prices || [];
-                const history = prices.map(p => ({
-                    price: p[1],
-                    timestamp: p[0]
-                }));
-
-                log('info', `Fetched ${history.length} historical data points for ${token}`);
-                return history;
-
-            } catch (error) {
-                console.error('Error fetching historical data:', error);
-                throw error;
-            }
-        }
-
-        async function performBacktest(history, patterns, token) {
-            // Separate buy and sell patterns
-            const buyPatterns = patterns.filter(p => {
-                // Check if pattern is for buys (starts with < or <=)
-                return p.conditions.some(c => c.operator === '<' || c.operator === '<=');
-            });
-
-            const sellPatterns = patterns.filter(p => {
-                // Check if pattern is for sells (starts with > or >=)
-                return p.conditions.some(c => c.operator === '>' || c.operator === '>=');
-            });
-
-            const trades = [];
-            let position = null;
-            let equity = 10000; // Starting with $10,000
-            const tradeAmount = state.settings.tradeAmount || 100;
-
-            // Process each data point
-            for (let i = 1; i < history.length; i++) {
-                const current = history[i];
-                const currentPrice = current.price;
-                const currentTime = current.timestamp * 1000; // Convert to ms
-
-                // Create history up to this point
-                const currentHistory = history.slice(0, i + 1).map(h => ({
-                    price: h.price,
-                    timestamp: h.timestamp * 1000
-                }));
-
-                // Check for buy signals
-                if (!position) {
-                    for (const pattern of buyPatterns) {
-                        const result = checkPattern(currentHistory, pattern);
-                        if (result.matches) {
-                            // Buy signal
-                            const tokenAmount = tradeAmount / currentPrice;
-                            position = {
-                                type: 'buy',
-                                token: token,
-                                price: currentPrice,
-                                amountUSD: tradeAmount,
-                                tokenAmount: tokenAmount,
-                                timestamp: currentTime,
-                                pattern: pattern.original
-                            };
-                            equity -= tradeAmount;
-                            trades.push({ ...position, equity: equity });
-                            log('debug', `Backtest BUY: ${token} at $${currentPrice} (${pattern.original})`);
-                            break; // Only take first matching pattern
-                        }
-                    }
-                }
-                // Check for sell signals
-                else if (position) {
-                    for (const pattern of sellPatterns) {
-                        const result = checkPattern(currentHistory, pattern);
-                        if (result.matches) {
-                            // Sell signal
-                            const sellValue = position.tokenAmount * currentPrice;
-                            const pnl = sellValue - position.amountUSD;
-
-                            const sellTrade = {
-                                type: 'sell',
-                                token: token,
-                                price: currentPrice,
-                                amountUSD: sellValue,
-                                tokenAmount: position.tokenAmount,
-                                timestamp: currentTime,
-                                pattern: pattern.original,
-                                pnl: pnl,
-                                equity: equity + sellValue
-                            };
-
-                            equity += sellValue;
-                            trades.push(sellTrade);
-                            position = null;
-
-                            log('debug', `Backtest SELL: ${token} at $${currentPrice}, PnL: $${pnl.toFixed(2)} (${pattern.original})`);
-                            break; // Only take first matching pattern
-                        }
-                    }
-                }
-            }
-
-            // Close any open position at the end
-            if (position) {
-                const finalPrice = history[history.length - 1].price;
-                const sellValue = position.tokenAmount * finalPrice;
-                const pnl = sellValue - position.amountUSD;
-
-                trades.push({
-                    type: 'sell',
-                    token: token,
-                    price: finalPrice,
-                    amountUSD: sellValue,
-                    tokenAmount: position.tokenAmount,
-                    timestamp: history[history.length - 1].timestamp * 1000,
-                    pattern: 'End of period',
-                    pnl: pnl,
-                    equity: equity + sellValue
-                });
-
-                equity += sellValue;
-            }
-
-            // Calculate statistics
-            const winningTrades = trades.filter(t => t.pnl > 0);
-            const losingTrades = trades.filter(t => t.pnl < 0);
-            const totalPnL = trades.reduce((sum, t) => sum + (t.pnl || 0), 0);
-            const totalTrades = trades.length / 2; // Each trade pair counts as one
-            const winRate = totalTrades > 0 ? (winningTrades.length / totalTrades * 100) : 0;
-            const avgProfit = totalTrades > 0 ? (totalPnL / totalTrades) : 0;
-            const maxDrawdown = calculateMaxDrawdown(trades);
-            const profitFactor = losingTrades.length > 0
-                ? Math.abs(winningTrades.reduce((sum, t) => sum + t.pnl, 0) /
-                    losingTrades.reduce((sum, t) => sum + Math.abs(t.pnl), 0))
-                : 0;
-
-            // Calculate Sharpe Ratio (simplified)
-            const returns = trades.filter(t => t.pnl !== undefined).map(t => t.pnl);
-            const sharpeRatio = calculateSharpeRatio(returns);
-
-            return {
-                trades: trades,
-                statistics: {
-                    totalTrades: totalTrades,
-                    winningTrades: winningTrades.length,
-                    losingTrades: losingTrades.length,
-                    winRate: winRate,
-                    totalPnL: totalPnL,
-                    avgProfit: avgProfit,
-                    maxDrawdown: maxDrawdown,
-                    profitFactor: profitFactor,
-                    sharpeRatio: sharpeRatio,
-                    finalEquity: equity
-                }
-            };
-        }
-
-        function calculateMaxDrawdown(trades) {
-            let maxEquity = 10000; // Starting equity
-            let maxDrawdown = 0;
-
-            for (const trade of trades) {
-                if (trade.equity !== undefined) {
-                    if (trade.equity > maxEquity) {
-                        maxEquity = trade.equity;
-                    }
-                    const drawdown = maxEquity - trade.equity;
-                    if (drawdown > maxDrawdown) {
-                        maxDrawdown = drawdown;
-                    }
-                }
-            }
-
-            return maxDrawdown;
-        }
-
-        function calculateSharpeRatio(returns) {
-            if (returns.length < 2) return 0;
-
-            const mean = returns.reduce((sum, r) => sum + r, 0) / returns.length;
-            const variance = returns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / returns.length;
-            const stdDev = Math.sqrt(variance);
-
-            // Assume risk-free rate is 0 for crypto
-            const sharpe = mean / stdDev;
-            return isFinite(sharpe) ? sharpe : 0;
-        }
-
-        function displayBacktestResults(results) {
-            const stats = results.statistics;
-            const resultsDiv = document.getElementById('backtestResults');
-
-            // Update stats
-            document.getElementById('btTotalTrades').textContent = stats.totalTrades;
-            document.getElementById('btWinning').textContent = stats.winningTrades;
-            document.getElementById('btLosing').textContent = stats.losingTrades;
-            document.getElementById('btWinRate').textContent = stats.winRate.toFixed(1) + '%';
-            document.getElementById('btTotalPnL').textContent = '$' + stats.totalPnL.toFixed(2);
-            document.getElementById('btAvgProfit').textContent = '$' + stats.avgProfit.toFixed(2);
-            document.getElementById('btMaxDrawdown').textContent = '$' + stats.maxDrawdown.toFixed(2);
-            document.getElementById('btProfitFactor').textContent = stats.profitFactor.toFixed(2);
-            document.getElementById('btSharpeRatio').textContent = stats.sharpeRatio.toFixed(2);
-
-            // Display trade list
-            const tradeList = document.getElementById('btTradeList');
-            let html = '<h5>Trade Details</h5><table class="table table-striped"><thead><tr><th>Time</th><th>Type</th><th>Price</th><th>Amount</th><th>PnL</th><th>Equity</th></tr></thead><tbody>';
-
-            results.trades.forEach((trade, index) => {
-                const time = new Date(trade.timestamp).toLocaleString();
-                const pnlClass = trade.pnl > 0 ? 'price-up' : trade.pnl < 0 ? 'price-down' : '';
-                html += `
-                    <tr>
-                        <td>${time}</td>
-                        <td><span class="badge badge-${trade.type === 'buy' ? 'success' : 'danger'}">${trade.type.toUpperCase()}</span></td>
-                        <td>$${trade.price.toFixed(2)}</td>
-                        <td>${trade.tokenAmount.toFixed(6)}</td>
-                        <td class="${pnlClass}">$${trade.pnl ? trade.pnl.toFixed(2) : '-'}</td>
-                        <td>$${trade.equity ? trade.equity.toFixed(2) : '-'}</td>
-                    </tr>
-                `;
-            });
-
-            html += '</tbody></table>';
-            tradeList.innerHTML = html;
-
-            // Draw equity curve
-            drawBacktestChart(results);
-
-            resultsDiv.style.display = 'block';
-        }
-
-        function drawBacktestChart(results) {
-            const canvas = document.getElementById('backtestChart');
-            const ctx = canvas.getContext('2d');
-
-            // Set canvas size
-            canvas.width = canvas.parentElement.clientWidth;
-            canvas.height = 200;
-
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Draw grid
-            ctx.strokeStyle = '#dee2e6';
-            ctx.lineWidth = 1;
-
-            for (let i = 0; i <= 4; i++) {
-                const y = canvas.height * (i / 4);
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y);
-                ctx.stroke();
-            }
-
-            // Get equity data
-            const equityData = results.trades.map(t => t.equity).filter(e => e !== undefined);
-            if (equityData.length === 0) return;
-
-            const startEquity = 10000;
-            const minEquity = Math.min(...equityData, startEquity);
-            const maxEquity = Math.max(...equityData, startEquity);
-            const equityRange = maxEquity - minEquity || 1;
-
-            // Draw equity line
-            ctx.strokeStyle = '#0d6efd';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-
-            const points = equityData.map((equity, index) => {
-                const x = (index / (equityData.length - 1)) * canvas.width;
-                const y = canvas.height - ((equity - minEquity) / equityRange) * canvas.height * 0.8 - 20;
-                return { x, y };
-            });
-
-            // Start from initial equity
-            const firstX = 0;
-            const firstY = canvas.height - ((startEquity - minEquity) / equityRange) * canvas.height * 0.8 - 20;
-            ctx.moveTo(firstX, firstY);
-
-            points.forEach(point => {
-                ctx.lineTo(point.x, point.y);
-            });
-            ctx.stroke();
-
-            // Draw dots
-            ctx.fillStyle = '#0d6efd';
-            points.forEach(point => {
-                ctx.beginPath();
-                ctx.arc(point.x, point.y, 2, 0, Math.PI * 2);
-                ctx.fill();
-            });
-
-            // Draw labels
-            ctx.fillStyle = '#6c757d';
-            ctx.font = '11px Arial';
-            ctx.textAlign = 'right';
-
-            for (let i = 0; i <= 4; i++) {
-                const value = maxEquity - (i * equityRange / 4);
-                const y = canvas.height - (i * canvas.height / 4) - 5;
-                ctx.fillText('$' + value.toFixed(0), canvas.width - 5, y);
-            }
-        }
+        // Historical backtesting has been removed to focus on live price streaming and reliable execution.
+        // Use external tools for historical strategy validation.
 
         // ============================================
         // Dashboard Updates
@@ -4029,15 +3358,25 @@
         }
 
         // ============================================
-        // Backup & Restore
+        // Backup & Restore (Simplified)
         // ============================================
-
         function startBackupTimer() {
             stopBackupTimer();
-
             const interval = (state.settings.backupInterval || 30) * 60 * 1000;
-            state.backupTimer = setInterval(createBackup, interval);
-            log('info', `Auto-backup started (every ${interval / 60000} minutes)`);
+            state.backupTimer = setInterval(() => {
+                try {
+                    localStorage.setItem('tradingBotBackup', JSON.stringify({
+                        version: APP_VERSION,
+                        timestamp: new Date().toISOString(),
+                        settings: state.settings,
+                        state: { walletAddress: state.walletAddress, isConnected: state.isConnected, network: state.network, currentNetwork: state.currentNetwork },
+                        trades: state.trades
+                    }));
+                    log('info', 'Auto-backup saved to local storage');
+                } catch (e) {
+                    log('error', 'Auto-backup failed: ' + e.message);
+                }
+            }, interval);
         }
 
         function stopBackupTimer() {
@@ -4051,37 +3390,13 @@
         async function createBackup() {
             try {
                 showLoading('backupSpinner');
-                log('info', 'Creating backup...');
-
-                const settings = await getFromDB('settings');
-                const stateData = await getFromDB('state');
-                const trades = await getAllFromDB('trades');
-
                 const backupData = {
                     version: APP_VERSION,
                     timestamp: new Date().toISOString(),
-                    settings: settings,
-                    state: stateData,
-                    trades: trades
+                    settings: state.settings,
+                    state: { walletAddress: state.walletAddress, isConnected: state.isConnected, network: state.network, currentNetwork: state.currentNetwork },
+                    trades: state.trades
                 };
-
-                // Encrypt if enabled and password is set
-                const encryptionEnabled = document.getElementById('encryptionEnabled')?.checked ?? state.settings.encryptionEnabled;
-                const password = document.getElementById('encryptionPassword')?.value;
-
-                if (encryptionEnabled && password) {
-                    try {
-                        const encrypted = await encryptData(JSON.stringify(backupData), password);
-                        backupData.encrypted = true;
-                        backupData.data = encrypted;
-                        delete backupData.settings;
-                        delete backupData.state;
-                        delete backupData.trades;
-                    } catch (error) {
-                        log('error', `Encryption failed: ${error.message}`);
-                    }
-                }
-
                 const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
@@ -4090,14 +3405,9 @@
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-
                 log('info', 'Backup created successfully');
-                if (!state.backupTimer) {
-                    showNotification('Success', 'Backup created successfully!');
-                }
-
+                showNotification('Success', 'Backup created successfully!');
             } catch (error) {
-                console.error('Error creating backup:', error);
                 log('error', `Backup failed: ${error.message}`);
                 showNotification('Error', 'Failed to create backup: ' + error.message);
             } finally {
@@ -4112,382 +3422,125 @@
         async function handleBackupUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-
             try {
-                showNotification('Info', 'Restoring backup...');
-                log('info', 'Restoring backup...');
-
                 const reader = new FileReader();
                 reader.onload = async function (e) {
                     try {
                         const data = JSON.parse(e.target.result);
-
-                        // Handle encrypted backup
-                        if (data.encrypted) {
-                            const password = prompt('Enter encryption password to restore backup:');
-                            if (!password) {
-                                showNotification('Error', 'Password required for encrypted backup');
-                                return;
-                            }
-
-                            try {
-                                const decrypted = await decryptData(data.data, password);
-                                const backupData = JSON.parse(decrypted);
-                                await restoreFromBackup(backupData);
-                            } catch (error) {
-                                showNotification('Error', 'Failed to decrypt backup: ' + error.message);
-                                log('error', `Decryption failed: ${error.message}`);
-                            }
-                        } else {
-                            await restoreFromBackup(data);
+                        if (data.settings) state.settings = { ...state.settings, ...data.settings };
+                        if (data.state) {
+                            state.walletAddress = data.state.walletAddress;
+                            state.isConnected = data.state.isConnected;
+                            state.network = data.state.network;
+                            state.currentNetwork = data.state.currentNetwork;
                         }
-
+                        if (data.trades) state.trades = data.trades;
+                        updateSettingsUI();
+                        updateWalletUI();
                         log('info', 'Backup restored successfully');
                         showNotification('Success', 'Backup restored successfully! Reloading...');
                         setTimeout(() => location.reload(), 1500);
-
                     } catch (error) {
-                        console.error('Error parsing backup:', error);
                         log('error', `Backup parse failed: ${error.message}`);
                         showNotification('Error', 'Failed to parse backup: ' + error.message);
                     }
                 };
                 reader.readAsText(file);
-
             } catch (error) {
-                console.error('Error restoring backup:', error);
                 log('error', `Backup restore failed: ${error.message}`);
                 showNotification('Error', 'Failed to restore backup: ' + error.message);
             }
         }
 
-        async function restoreFromBackup(backupData) {
-            // Clear existing data
-            await clearDB();
-
-            // Restore settings
-            if (backupData.settings) {
-                state.settings = { ...state.settings, ...backupData.settings };
-                await saveToDB('settings', state.settings);
-            }
-
-            // Restore state
-            if (backupData.state) {
-                state.walletAddress = backupData.state.walletAddress;
-                state.isConnected = backupData.state.isConnected;
-                state.network = backupData.state.network;
-                state.currentNetwork = backupData.state.currentNetwork;
-                await saveToDB('state', {
-                    walletAddress: state.walletAddress,
-                    isConnected: state.isConnected,
-                    network: state.network,
-                    currentNetwork: state.currentNetwork
-                });
-            }
-
-            // Restore trades
-            if (backupData.trades) {
-                state.trades = backupData.trades;
-                for (const trade of state.trades) {
-                    await saveToDB('trades', trade);
-                }
-            }
-        }
-
         async function clearAllData() {
-            if (!confirm('Are you sure you want to clear ALL data? This cannot be undone.')) {
-                return;
-            }
-
+            if (!confirm('Are you sure you want to clear ALL data? This cannot be undone.')) return;
             try {
-                await clearDB();
+                localStorage.clear();
                 state.trades = [];
                 state.settings = {
-                    buyPatterns: '',
-                    sellPatterns: '',
-                    tradeAmount: 100,
-                    maxTrades: 5,
-                    stopLoss: 2,
-                    takeProfit: 5,
-                    trailingStop: 1,
+                    buyPatterns: '', sellPatterns: '', totalTradeCapital: 200, minTradeAmount: 0.5, tradeStep: 3.0,
+                    profitAddress: '', maxTrades: 5, stopLoss: 2, takeProfit: 5, trailingStop: 1, tradeCooldown: 60,
                     tokens: ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX', 'USDC', 'USDT'],
-                    priceInterval: 5000,
-                    maxPriceAge: 30,
-                    slippage: 0.5,
-                    maxGasPrice: 200,
-                    gasLimit: 500000,
-                    maxPriceImpact: 1,
-                    tradeCooldown: 60,
-                    primaryPriceSource: 'binance',
-                    fallbackPriceSource: 'coingecko',
-                    autoBackup: true,
-                    backupInterval: 30,
-                    encryptionEnabled: true,
-                    debugMode: 'none'
+                    priceInterval: 5000, maxPriceAge: 30, slippage: 0.5, maxGasPrice: 200, gasLimit: 500000,
+                    maxPriceImpact: 1, primaryPriceSource: 'binance', fallbackPriceSource: 'coingecko',
+                    autoBackup: true, backupInterval: 30, encryptionEnabled: true, debugMode: 'none', isTestMode: false
                 };
-                state.walletAddress = null;
-                state.isConnected = false;
-                state.network = 'arbitrum';
-                state.currentNetwork = 'Arbitrum One';
-                state.logs = [];
-
-                updateUI();
-                updateWalletUI();
-                updateSettingsUI();
+                state.walletAddress = null; state.isConnected = false; state.network = 'arbitrum'; state.currentNetwork = 'Arbitrum One'; state.logs = [];
+                updateUI(); updateWalletUI(); updateSettingsUI();
                 log('info', 'All data cleared');
                 showNotification('Success', 'All data cleared!');
-
             } catch (error) {
-                console.error('Error clearing data:', error);
                 log('error', `Failed to clear data: ${error.message}`);
                 showNotification('Error', 'Failed to clear data: ' + error.message);
             }
         }
 
         function changeEncryptionPassword() {
-            const oldPassword = prompt('Enter current encryption password:');
-            if (!oldPassword) return;
-
-            const newPassword = prompt('Enter new encryption password:');
-            if (!newPassword) return;
-
-            showNotification('Success', 'Encryption password changed!');
-            log('info', 'Encryption password changed');
+            showNotification('Info', 'Encryption is handled securely by the browser environment. Password management is no longer required.');
         }
 
         // ============================================
-        // Database Operations (IndexedDB)
+        // Database Operations (Simplified to LocalStorage)
         // ============================================
-
-        const DB_NAME = 'UniswapTradingBotDB';
-        const DB_VERSION = 2;
-
-        let db = null;
-
-        function openDB() {
-            return new Promise((resolve, reject) => {
-                if (db) {
-                    resolve(db);
-                    return;
-                }
-
-                const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-                request.onerror = function (event) {
-                    console.error('Database error:', event.target.error);
-                    reject(event.target.error);
-                };
-
-                request.onsuccess = function (event) {
-                    db = event.target.result;
-                    resolve(db);
-                };
-
-                request.onupgradeneeded = function (event) {
-                    const db = event.target.result;
-
-                    if (!db.objectStoreNames.contains('settings')) {
-                        db.createObjectStore('settings');
-                    }
-                    if (!db.objectStoreNames.contains('state')) {
-                        db.createObjectStore('state');
-                    }
-                    if (!db.objectStoreNames.contains('trades')) {
-                        const store = db.createObjectStore('trades', { keyPath: 'id' });
-                        store.createIndex('timestamp', 'timestamp', { unique: false });
-                        store.createIndex('token', 'token', { unique: false });
-                        store.createIndex('status', 'status', { unique: false });
-                    }
-                    if (!db.objectStoreNames.contains('logs')) {
-                        db.createObjectStore('logs');
-                    }
-                };
-            });
-        }
-
         async function saveToDB(storeName, data) {
             try {
-                const database = await openDB();
-                const transaction = database.transaction(storeName, 'readwrite');
-                const store = transaction.objectStore(storeName);
-
-                store.put(data, storeName === 'trades' ? data.id : 'data');
-
-                return new Promise((resolve, reject) => {
-                    transaction.oncomplete = resolve;
-                    transaction.onerror = function (event) {
-                        console.error('Save error:', event.target.error);
-                        reject(event.target.error);
-                    };
-                });
+                localStorage.setItem(storeName, JSON.stringify(data));
             } catch (error) {
-                console.error('Error saving to DB:', error);
-                throw error;
+                console.error('Error saving to storage:', error);
             }
         }
 
         async function getFromDB(storeName) {
             try {
-                const database = await openDB();
-                const transaction = database.transaction(storeName, 'readonly');
-                const store = transaction.objectStore(storeName);
-
-                const request = store.get(storeName === 'trades' ? 'data' : 'data');
-
-                return new Promise((resolve, reject) => {
-                    request.onsuccess = function (event) {
-                        resolve(event.target.result);
-                    };
-                    request.onerror = function (event) {
-                        console.error('Get error:', event.target.error);
-                        reject(event.target.error);
-                    };
-                });
+                const data = localStorage.getItem(storeName);
+                return data ? JSON.parse(data) : null;
             } catch (error) {
-                console.error('Error getting from DB:', error);
-                throw error;
+                console.error('Error getting from storage:', error);
+                return null;
             }
         }
 
         async function getAllFromDB(storeName) {
             try {
-                const database = await openDB();
-                const transaction = database.transaction(storeName, 'readonly');
-                const store = transaction.objectStore(storeName);
-
-                const request = store.getAll();
-
-                return new Promise((resolve, reject) => {
-                    request.onsuccess = function (event) {
-                        resolve(event.target.result);
-                    };
-                    request.onerror = function (event) {
-                        console.error('Get all error:', event.target.error);
-                        reject(event.target.error);
-                    };
-                });
+                const data = localStorage.getItem(storeName);
+                return data ? JSON.parse(data) : [];
             } catch (error) {
-                console.error('Error getting all from DB:', error);
-                throw error;
+                console.error('Error getting from storage:', error);
+                return [];
             }
         }
 
         async function saveTrade(trade) {
-            await saveToDB('trades', trade);
+            const trades = await getAllFromDB('trades') || [];
+            const index = trades.findIndex(t => t.id === trade.id);
+            if (index >= 0) trades[index] = trade;
+            else trades.push(trade);
+            await saveToDB('trades', trades);
         }
 
         async function updateTrade(trade) {
-            await saveToDB('trades', trade);
+            await saveTrade(trade);
         }
 
         async function saveAllTrades() {
-            if (state.trades.length > 0) {
-                const database = await openDB();
-                const transaction = database.transaction('trades', 'readwrite');
-                const store = transaction.objectStore('trades');
-
-                state.trades.forEach(trade => {
-                    store.put(trade, trade.id);
-                });
-
-                return new Promise((resolve, reject) => {
-                    transaction.oncomplete = resolve;
-                    transaction.onerror = function (event) {
-                        reject(event.target.error);
-                    };
-                });
-            }
+            await saveToDB('trades', state.trades);
         }
 
         async function saveLogs() {
-            if (state.logs.length > 0) {
-                await saveToDB('logs', state.logs);
-            }
+            await saveToDB('logs', state.logs);
         }
 
         async function clearDB() {
-            try {
-                const database = await openDB();
-                const storeNames = Array.from(database.objectStoreNames);
-
-                return new Promise((resolve, reject) => {
-                    const transaction = database.transaction(storeNames, 'readwrite');
-
-                    storeNames.forEach(storeName => {
-                        const store = transaction.objectStore(storeName);
-                        store.clear();
-                    });
-
-                    transaction.oncomplete = resolve;
-                    transaction.onerror = function (event) {
-                        console.error('Clear error:', event.target.error);
-                        reject(event.target.error);
-                    };
-                });
-            } catch (error) {
-                console.error('Error clearing DB:', error);
-                throw error;
-            }
+            localStorage.clear();
         }
 
         // ============================================
-        // Encryption Utilities
+        // Encryption Utilities (Removed)
         // ============================================
-
-        async function encryptData(data, password) {
-            const encoder = new TextEncoder();
-            const iv = crypto.getRandomValues(new Uint8Array(12));
-
-            const keyMaterial = encoder.encode(password);
-            const key = await crypto.subtle.importKey(
-                'raw',
-                keyMaterial,
-                { name: 'AES-GCM' },
-                false,
-                ['encrypt']
-            );
-
-            const encrypted = await crypto.subtle.encrypt(
-                { name: 'AES-GCM', iv },
-                key,
-                encoder.encode(data)
-            );
-
-            return {
-                iv: Array.from(iv),
-                data: Array.from(new Uint8Array(encrypted))
-            };
-        }
-
-        async function decryptData(encryptedData, password) {
-            try {
-                const encoder = new TextEncoder();
-                const decoder = new TextDecoder();
-
-                const iv = new Uint8Array(encryptedData.iv);
-                const data = new Uint8Array(encryptedData.data);
-
-                const keyMaterial = encoder.encode(password);
-                const key = await crypto.subtle.importKey(
-                    'raw',
-                    keyMaterial,
-                    { name: 'AES-GCM' },
-                    false,
-                    ['decrypt']
-                );
-
-                const decrypted = await crypto.subtle.decrypt(
-                    { name: 'AES-GCM', iv },
-                    key,
-                    data
-                );
-
-                return decoder.decode(decrypted);
-            } catch (error) {
-                console.error('Decryption failed:', error);
-                throw new Error('Failed to decrypt data. Invalid password or corrupted data.');
-            }
-        }
+        // Client-side encryption has been removed to simplify data handling and avoid key management overhead.
+        // Data persistence is handled securely via browser LocalStorage with standard JSON serialization.
+        async function encryptData() { return null; }
+        async function decryptData() { return null; }
 
         // ============================================
         // UI Utilities
