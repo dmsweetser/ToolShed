@@ -596,6 +596,7 @@
         .tab-content {
             display: none;
         }
+
         .tab-content.active {
             display: block;
         }
@@ -1813,6 +1814,11 @@
             }
         }
 
+        function checkPatterns() {
+            const activeTokens = getActiveTokens();
+            activeTokens.forEach(token => checkTokenPatterns(token));
+        }
+
         async function checkNetwork() {
             if (!state.isConnected || !window.ethereum) return;
 
@@ -2216,7 +2222,7 @@
             }
 
             // Create WebSocket connection
-            const socketUrl = 'wss://stream.binance.com:9443/ws/' +
+            const socketUrl = 'wss://stream.binance.com:9443/stream?streams=' + 
                 binanceSymbols.map(s => s.toLowerCase() + '@ticker').join('/');
 
             binanceWebSocket = new WebSocket(socketUrl);
@@ -2232,44 +2238,46 @@
                     const data = JSON.parse(event.data);
 
                     // Extract symbol and price
-                    const symbol = data.s;
-                    const price = parseFloat(data.c);
-                    const priceChange = parseFloat(data.p);
-                    const volume = parseFloat(data.v);
+                    if (data.stream && data.data) {
+                        const symbol = data.stream.replace('@ticker', '').toUpperCase();
+                        const price = parseFloat(data.c);
+                        const priceChange = parseFloat(data.p);
+                        const volume = parseFloat(data.v);
 
-                    // Map Binance symbol back to token
-                    const token = Object.entries(BINANCE_SYMBOLS).find(
-                        ([k, v]) => v === symbol
-                    )?.[0];
+                        // Map Binance symbol back to token
+                        const token = Object.entries(BINANCE_SYMBOLS).find(
+                            ([k, v]) => v === symbol
+                        )?.[0];
 
-                    if (token) {
-                        // Store price
-                        const prevPrice = state.prices[token];
-                        state.prices[token] = price;
-                        state.priceHistory[token] = state.priceHistory[token] || [];
+                        if (token) {
+                            // Store price
+                            const prevPrice = state.prices[token];
+                            state.prices[token] = price;
+                            state.priceHistory[token] = state.priceHistory[token] || [];
 
-                        state.priceHistory[token].push({
-                            price: price,
-                            timestamp: Date.now(),
-                            source: 'binance'
-                        });
+                            state.priceHistory[token].push({
+                                price: price,
+                                timestamp: Date.now(),
+                                source: 'binance'
+                            });
 
-                        // Keep only recent history (last 1000 points)
-                        if (state.priceHistory[token].length > 1000) {
-                            state.priceHistory[token].shift();
-                        }
+                            // Keep only recent history (last 1000 points)
+                            if (state.priceHistory[token].length > 1000) {
+                                state.priceHistory[token].shift();
+                            }
 
-                        state.lastPriceUpdate = new Date();
-                        state.priceSources.binance = { connected: true, lastUpdate: Date.now() };
+                            state.lastPriceUpdate = new Date();
+                            state.priceSources.binance = { connected: true, lastUpdate: Date.now() };
 
-                        // Update UI
-                        updatePriceUI();
-                        checkPatterns();
-                        updateUptime();
+                            // Update UI
+                            updatePriceUI();
+                            checkPatterns();
+                            updateUptime();
 
-                        // Log price update
-                        if (state.settings.debugMode === 'verbose') {
-                            log('debug', `Price update: ${token} = $${price} (${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}%)`);
+                            // Log price update
+                            if (state.settings.debugMode === 'verbose') {
+                                log('debug', `Price update: ${token} = $${price} (${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}%)`);
+                            }
                         }
                     }
 
@@ -2291,8 +2299,16 @@
                 log('warn', 'Binance WebSocket closed. Attempting to reconnect...');
                 updateConnectionStatus();
 
-                // Attempt to reconnect after delay
-                setTimeout(initializeBinanceWebSocket, 5000);
+                if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                    reconnectAttempts++;
+                    const delay = Math.min(5000 * reconnectAttempts, 30000);
+                    setTimeout(initializeBinanceWebSocket, delay);
+                } else {
+                    // Fall back to CoinGecko
+                    if (state.settings.fallbackPriceSource === 'coingecko') {
+                        initializeCoinGeckoPolling();
+                    }
+                }
             };
         }
 
@@ -2394,9 +2410,11 @@
                     }
                 }
 
+                // Now calls checkPatterns() after price updates
                 updatePriceUI();
                 checkPatterns();
                 updateUptime();
+                updateGasPrice();
 
             } catch (error) {
                 console.error('Error fetching CoinGecko prices:', error);
