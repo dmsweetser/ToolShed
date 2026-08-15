@@ -1395,6 +1395,10 @@
         const ARBITRUM_GOERLI_CHAIN_ID = 421613;
         const MAINNET_CHAIN_ID = 1;
 
+        // WebSocket reconnection variables
+        let reconnectAttempts = 0;
+        const MAX_RECONNECT_ATTEMPTS = 5;
+
         // Contract Addresses
         const CONTRACTS = {
             arbitrum: {
@@ -1424,67 +1428,6 @@
         let BINANCE_SYMBOLS = {};
         let COINGECKO_IDS = {};
 
-        async function fetchAvailableTokens() {
-            try {
-                log('info', 'Fetching available tokens from CoinGecko...');
-                const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false');
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const data = await response.json();
-
-                AVAILABLE_TOKENS = data.map(c => c.symbol.toUpperCase());
-                TOKENS = {};
-
-                AVAILABLE_TOKENS.forEach(symbol => {
-                    const coinData = data.find(c => c.symbol.toUpperCase() === symbol);
-                    TOKENS[symbol] = {
-                        address: null,
-                        decimals: coinData?.decimals || 18,
-                        symbol: symbol,
-                        isNative: symbol === 'ETH',
-                        cgId: coinData?.id
-                    };
-                    BINANCE_SYMBOLS[symbol] = `${symbol}USDT`;
-                    if (coinData?.id) COINGECKO_IDS[symbol] = coinData.id;
-                });
-
-                log('info', `Loaded ${AVAILABLE_TOKENS.length} tokens.`);
-                updateTokenSelectors();
-            } catch (error) {
-                console.error('Error fetching tokens:', error);
-                log('warn', `Failed to fetch tokens dynamically: ${error.message}. Using fallback list.`);
-                // Fallback to a robust default set
-                AVAILABLE_TOKENS = ['ETH', 'WBTC', 'USDC', 'USDT', 'UNI', 'LINK', 'ARB', 'GMX', 'PEPE', 'DOGE', 'SHIB', 'MATIC', 'SOL', 'ADA', 'DOT'];
-                TOKENS = {
-                    ETH: { address: null, decimals: 18, symbol: 'ETH', isNative: true },
-                    WBTC: { address: '0x2f2a2543B76A416654947aaB75B4e35b52a17231', decimals: 8, symbol: 'WBTC' },
-                    USDC: { address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', decimals: 6, symbol: 'USDC' },
-                    USDT: { address: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', decimals: 6, symbol: 'USDT' },
-                    UNI: { address: '0xfa7F8980b0f1E64A2062791cc3b0871572f1F7f0', decimals: 18, symbol: 'UNI' },
-                    LINK: { address: '0xf97f4df75117a78c1A5a0DBb814Af92458539FB4', decimals: 18, symbol: 'LINK' },
-                    ARB: { address: '0x912CE59144196C11c48067255325c5414506085A', decimals: 18, symbol: 'ARB' },
-                    GMX: { address: '0xfc5A1A6EB076a2C7aD06eD22C5C769A78b3Fa3A1', decimals: 18, symbol: 'GMX' },
-                    PEPE: { address: null, decimals: 18, symbol: 'PEPE' },
-                    DOGE: { address: null, decimals: 8, symbol: 'DOGE' },
-                    SHIB: { address: null, decimals: 18, symbol: 'SHIB' },
-                    MATIC: { address: '0x7d1afa7b718fb893db30a3abc0cfc608aacfbfe0', decimals: 18, symbol: 'MATIC' },
-                    SOL: { address: null, decimals: 9, symbol: 'SOL' },
-                    ADA: { address: null, decimals: 6, symbol: 'ADA' }
-                };
-                AVAILABLE_TOKENS.forEach(s => {
-                    BINANCE_SYMBOLS[s] = `${s}USDT`;
-                    COINGECKO_IDS[s] = s.toLowerCase();
-                });
-                updateTokenSelectors();
-            }
-        }
-
-        function getActiveTokens() {
-            return AVAILABLE_TOKENS.length > 0 ? AVAILABLE_TOKENS : Object.keys(TOKENS);
-        }
-
-        // Uniswap V3 Fee Tiers
-        const FEE_TIERS = [500, 3000, 10000, 100000]; // 0.05%, 0.3%, 1%, 10%
-
         // ============================================
         // Application State
         // ============================================
@@ -1498,6 +1441,7 @@
             priceHistory: {},
             priceSources: {},
             trades: [],
+            poolInfo: {},
             settings: {
                 buyPatterns: '',
                 sellPatterns: '',
@@ -1593,6 +1537,7 @@
                 if (state.isRunning) {
                     restartPriceFeeds();
                 }
+                updateConnectionStatus();
             });
 
             // Log auto-scroll toggle
@@ -1814,11 +1759,6 @@
             }
         }
 
-        function checkPatterns() {
-            const activeTokens = getActiveTokens();
-            activeTokens.forEach(token => checkTokenPatterns(token));
-        }
-
         async function checkNetwork() {
             if (!state.isConnected || !window.ethereum) return;
 
@@ -1865,16 +1805,18 @@
 
         function updateTokenAddresses() {
             if (!state.network) return;
+
             for (const symbol in TOKENS) {
                 const token = TOKENS[symbol];
                 if (token.isNative) {
                     token.address = null;
-                } else if (token.address && typeof token.address === 'object' && token.address[state.network]) {
-                    token.address = token.address[state.network];
+                } else if (CONTRACTS[state.network] && CONTRACTS[state.network][symbol]) {
+                    token.address = CONTRACTS[state.network][symbol];
+                } else if (CONTRACTS[state.network]?.usdc && symbol === 'USDC') {
+                    token.address = CONTRACTS[state.network].usdc;
+                } else if (CONTRACTS[state.network]?.weth && symbol === 'ETH') {
+                    token.address = null; // ETH is native
                 }
-            }
-            if (TOKENS.USDC && CONTRACTS[state.network]?.usdc) {
-                TOKENS.USDC.address = CONTRACTS[state.network].usdc;
             }
         }
 
@@ -1903,10 +1845,10 @@
                 const walletInfo = document.getElementById('walletInfo');
                 if (walletInfo) {
                     walletInfo.innerHTML = `
-                        <p><strong>Address:</strong> ${state.walletAddress}</p>
-                        <p><strong>ETH Balance:</strong> ${ethBalance.toFixed(6)} ETH</p>
-                        <p><strong>Network:</strong> ${state.currentNetwork || 'Unknown'}</p>
-                    `;
+                    <p><strong>Address:</strong> ${state.walletAddress}</p>
+                    <p><strong>ETH Balance:</strong> ${ethBalance.toFixed(6)} ETH</p>
+                    <p><strong>Network:</strong> ${state.currentNetwork || 'Unknown'}</p>
+                `;
                 }
 
                 log('info', `ETH balance: ${ethBalance.toFixed(6)}`);
@@ -2073,34 +2015,34 @@
             const walletStatus = document.getElementById('walletStatus');
 
             if (binanceStatus) {
-                const binanceConnected = state.priceSources.binance?.connected || false;
+                const binanceConnected = state.priceSources?.binance?.connected || false;
                 binanceStatus.className = `status-item ${binanceConnected ? 'status-connected' : 'status-disconnected'}`;
-                binanceStatus.innerHTML = binanceConnected ? 'Binance &check;' : 'Binance &times;';
+                binanceStatus.innerHTML = binanceConnected ? 'Binance &check;' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Binance';
             }
 
             if (coingeckoStatus) {
-                const coingeckoConnected = state.priceSources.coingecko?.connected || false;
+                const coingeckoConnected = state.priceSources?.coingecko?.connected || false;
                 coingeckoStatus.className = `status-item ${coingeckoConnected ? 'status-connected' : 'status-disconnected'}`;
-                coingeckoStatus.innerHTML = coingeckoConnected ? 'CoinGecko &check;' : 'CoinGecko &times;';
+                coingeckoStatus.innerHTML = coingeckoConnected ? 'CoinGecko &check;' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> CoinGecko';
             }
 
             if (uniswapStatus) {
                 const uniswapConnected = state.isConnected && state.network;
                 uniswapStatus.className = `status-item ${uniswapConnected ? 'status-connected' : 'status-disconnected'}`;
-                uniswapStatus.innerHTML = uniswapConnected ? 'Uniswap &check;' : 'Uniswap &times;';
+                uniswapStatus.innerHTML = uniswapConnected ? 'Uniswap &check;' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Uniswap';
             }
 
             if (walletStatus) {
                 const walletConnected = state.isConnected;
                 walletStatus.className = `status-item ${walletConnected ? 'status-connected' : 'status-disconnected'}`;
-                walletStatus.innerHTML = walletConnected ? 'Wallet &check;' : 'Wallet &times;';
+                walletStatus.innerHTML = walletConnected ? 'Wallet &check;' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Wallet';
             }
 
             // Update price source display
             const priceSource = document.getElementById('priceSource');
             if (priceSource) {
-                const activeSource = state.priceSources.binance?.connected ? 'Binance' :
-                    state.priceSources.coingecko?.connected ? 'CoinGecko' : 'None';
+                const activeSource = state.priceSources?.binance?.connected ? 'Binance' :
+                    state.priceSources?.coingecko?.connected ? 'CoinGecko' : 'None';
                 priceSource.textContent = activeSource;
             }
         }
@@ -2155,7 +2097,7 @@
         }
 
         // ============================================
-        // Price Feed Integration (PREPROD)
+        // Price Feed Integration
         // ============================================
 
         async function initializePriceFeeds() {
@@ -2222,12 +2164,13 @@
             }
 
             // Create WebSocket connection
-            const socketUrl = 'wss://stream.binance.com:9443/stream?streams=' + 
-                binanceSymbols.map(s => s.toLowerCase() + '@ticker').join('/');
+            const streams = binanceSymbols.map(s => `${s.toLowerCase()}@ticker`);
+            const socketUrl = `wss://stream.binance.com:9443/ws/${streams.join('/')}`;
 
             binanceWebSocket = new WebSocket(socketUrl);
 
             binanceWebSocket.onopen = function () {
+                reconnectAttempts = 0;
                 state.priceSources.binance = { connected: true, lastUpdate: Date.now() };
                 log('info', `Binance WebSocket connected (${binanceSymbols.length} symbols)`);
                 updateConnectionStatus();
@@ -2238,8 +2181,8 @@
                     const data = JSON.parse(event.data);
 
                     // Extract symbol and price
-                    if (data.stream && data.data) {
-                        const symbol = data.stream.replace('@ticker', '').toUpperCase();
+                    if (data.s && data.c) {
+                        const symbol = data.s.toUpperCase();
                         const price = parseFloat(data.c);
                         const priceChange = parseFloat(data.p);
                         const volume = parseFloat(data.v);
@@ -2410,7 +2353,7 @@
                     }
                 }
 
-                // Now calls checkPatterns() after price updates
+                // Update UI and check patterns
                 updatePriceUI();
                 checkPatterns();
                 updateUptime();
@@ -2479,15 +2422,42 @@
         }
 
         // ============================================
-        // Pattern Detection (Streamlined)
+        // Pattern Detection
         // ============================================
-        // Complex regex-based pattern parsing has been removed. Patterns are now stored as configuration strings for manual reference or external strategy engines.
+
+        function checkPatterns() {
+            const activeTokens = getActiveTokens();
+            activeTokens.forEach(token => checkTokenPatterns(token));
+        }
+
+        function checkTokenPatterns(token) {
+            // Simplified: Return a default status
+            const history = state.priceHistory[token] || [];
+            if (history.length < 2) {
+                return { class: 'badge-secondary', text: 'No Data' };
+            }
+
+            const latest = history[history.length - 1];
+            const previous = history[history.length - 2];
+            const change = ((latest.price - previous.price) / previous.price * 100);
+
+            if (change > 1) {
+                return { class: 'badge-success', text: 'Bullish' };
+            } else if (change < -1) {
+                return { class: 'badge-danger', text: 'Bearish' };
+            } else {
+                return { class: 'badge-warning', text: 'Neutral' };
+            }
+        }
+
         function validatePatternString(patternString) {
             return typeof patternString === 'string';
         }
+
         function validatePatterns() {
             document.getElementById('patternValidationResult').innerHTML = '<div class="alert alert-info">Pattern syntax is stored for reference. Use external tools for execution.</div>';
         }
+
         function loadDefaultPatterns() {
             document.getElementById('buyPatterns').value = '';
             document.getElementById('sellPatterns').value = '';
@@ -2495,7 +2465,7 @@
         }
 
         // ============================================
-        // Trade Simulation (Enhanced for PREPROD)
+        // Trade Simulation
         // ============================================
 
         async function executeSimulatedTrade(token, action, pattern) {
@@ -2580,7 +2550,7 @@
         }
 
         async function executeManualTrade(token, action) {
-            if (!state.isConnected || !state.walletAddress) {
+            if (!state.isConnected && !state.settings.isTestMode) {
                 showNotification('Error', 'Wallet not connected');
                 return;
             }
@@ -2591,7 +2561,7 @@
                 return;
             }
 
-            const amountUSD = parseFloat(prompt('Enter trade amount in USD:', state.settings.tradeAmount || '100'));
+            const amountUSD = parseFloat(prompt('Enter trade amount in USD:', state.settings.tradeStep || '100'));
             if (!amountUSD || amountUSD <= 0) {
                 return;
             }
@@ -2609,11 +2579,12 @@
                 return;
             }
 
-            await executeSimulatedTrade(token, action);
+            await executeSimulatedTrade(token, action, 'Manual');
         }
 
         async function settleTrade(trade) {
-            // Find matching buy trade for this sell
+            if (trade.type !== 'sell') return; // Only settle sell trades
+
             const buyTrade = state.trades.find(t =>
                 t.token === trade.token &&
                 t.type === 'buy' &&
@@ -2621,49 +2592,52 @@
                 t.id !== trade.id
             );
 
-            if (buyTrade) {
-                // Close the buy trade
-                buyTrade.status = 'closed';
-                buyTrade.closedAt = trade.timestamp;
-                buyTrade.closedPrice = trade.price;
-
-                // Calculate PnL
-                const pnl = (trade.tokenAmount * trade.price) - (buyTrade.tokenAmount * buyTrade.price) - buyTrade.fee - trade.fee;
-                buyTrade.pnl = pnl;
-                trade.pnl = pnl;
-
-                // Apply stop-loss and take-profit
-                const stopLossPercent = state.settings.stopLoss || 2;
-                const takeProfitPercent = state.settings.takeProfit || 5;
-
-                if (pnl < 0) {
-                    const lossPercent = Math.abs(pnl) / (buyTrade.tokenAmount * buyTrade.price) * 100;
-                    if (lossPercent >= stopLossPercent) {
-                        buyTrade.stoppedOut = true;
-                        trade.stopLoss = true;
-                    }
-                } else {
-                    const profitPercent = pnl / (buyTrade.tokenAmount * buyTrade.price) * 100;
-                    if (profitPercent >= takeProfitPercent) {
-                        buyTrade.takeProfit = true;
-                        trade.takeProfit = true;
-                    }
-                }
-
-                updateTrade(buyTrade);
-                updateTrade(trade);
-
-                log('info', `Trade settled: ${buyTrade.token} ${buyTrade.type} -> ${trade.type}, PnL: $${pnl.toFixed(2)}`);
-                showNotification('Success', `Trade settled with PnL: $${pnl.toFixed(2)}`);
-
-                // Update charts and stats
-                updatePnLChart();
-                updateStatistics();
+            if (!buyTrade) {
+                log('warn', `No matching buy trade found for ${trade.token}`);
+                return;
             }
+
+            // Close the buy trade
+            buyTrade.status = 'closed';
+            buyTrade.closedAt = trade.timestamp;
+            buyTrade.closedPrice = trade.price;
+
+            // Calculate PnL
+            const pnl = (trade.tokenAmount * trade.price) - (buyTrade.tokenAmount * buyTrade.price) - buyTrade.fee - trade.fee;
+            buyTrade.pnl = pnl;
+            trade.pnl = pnl;
+
+            // Apply stop-loss and take-profit
+            const stopLossPercent = state.settings.stopLoss || 2;
+            const takeProfitPercent = state.settings.takeProfit || 5;
+
+            if (pnl < 0) {
+                const lossPercent = Math.abs(pnl) / (buyTrade.tokenAmount * buyTrade.price) * 100;
+                if (lossPercent >= stopLossPercent) {
+                    buyTrade.stoppedOut = true;
+                    trade.stopLoss = true;
+                }
+            } else {
+                const profitPercent = pnl / (buyTrade.tokenAmount * buyTrade.price) * 100;
+                if (profitPercent >= takeProfitPercent) {
+                    buyTrade.takeProfit = true;
+                    trade.takeProfit = true;
+                }
+            }
+
+            updateTrade(buyTrade);
+            updateTrade(trade);
+
+            log('info', `Trade settled: ${buyTrade.token} ${buyTrade.type} -> ${trade.type}, PnL: $${pnl.toFixed(2)}`);
+            showNotification('Success', `Trade settled with PnL: $${pnl.toFixed(2)}`);
+
+            // Update charts and stats
+            updatePnLChart();
+            updateStatistics();
         }
 
         // ============================================
-        // Uniswap Integration (Read-Only for PREPROD)
+        // Uniswap Integration (Read-Only)
         // ============================================
 
         async function getPoolInfo(token) {
@@ -2680,13 +2654,7 @@
                     return { liquidity: 0, feeTier: 3000 };
                 }
 
-                // For PREPROD, we'll use a simplified approach
-                // In a real implementation, you would:
-                // 1. Get the pool address from the Factory
-                // 2. Call the Pool contract to get liquidity
-                // 3. Determine the fee tier
-
-                // For now, return mock data based on token
+                // Mock data for PREPROD
                 const mockLiquidity = {
                     ETH: 100000000,
                     WBTC: 50000000,
@@ -2712,18 +2680,10 @@
 
         function calculatePriceImpact(token, tokenAmount, poolInfo) {
             // Simplified price impact calculation
-            // Price impact = (tokenAmount / liquidity) * 100
-            // This is a rough estimate; real calculation would use the Uniswap V3 formula
-
             const liquidity = poolInfo.liquidity || 1;
             const tokenValue = tokenAmount * (state.prices[token] || 1);
-
-            // Normalize liquidity to USD equivalent
-            // Assume liquidity is in token units, convert to USD
             const liquidityUSD = liquidity * (state.prices[token] || 1);
-
             const priceImpact = (tokenValue / liquidityUSD) * 100;
-
             return Math.min(priceImpact, 100); // Cap at 100%
         }
 
@@ -2813,12 +2773,6 @@
         }
 
         // ============================================
-        // Backtesting (Streamlined)
-        // ============================================
-        // Historical backtesting has been removed to focus on live price streaming and reliable execution.
-        // Use external tools for historical strategy validation.
-
-        // ============================================
         // Dashboard Updates
         // ============================================
 
@@ -2835,7 +2789,7 @@
             updateDashboard();
         }
 
-        function updatePriceUI() {
+        async function updatePriceUI() {
             const priceRows = document.getElementById('priceRows');
             const activeTokens = getActiveTokens();
 
@@ -2845,12 +2799,10 @@
             }
 
             let html = '';
-            activeTokens.forEach(token => {
+            for (const token of activeTokens) {
                 const price = state.prices[token] || 'N/A';
-                const prevPrice = state.priceHistory[token] && state.priceHistory[token].length > 1
-                    ? state.priceHistory[token][state.priceHistory[token].length - 2].price
-                    : null;
-
+                const history = state.priceHistory[token] || [];
+                const prevPrice = history.length > 1 ? history[history.length - 2].price : null;
                 const change = prevPrice ? ((price - prevPrice) / prevPrice * 100).toFixed(2) : 0;
                 const changeClass = change >= 0 ? 'price-up' : 'price-down';
                 const changeSymbol = change >= 0 ? '&#9650;' : '&#9660;';
@@ -2859,49 +2811,29 @@
                 const patternStatus = checkTokenPatterns(token);
 
                 // Get pool info for liquidity
-                const poolInfo = state.poolInfo?.[token];
+                const poolInfo = await getPoolInfo(token);
                 const liquidity = poolInfo ? '$' + (poolInfo.liquidity * price).toFixed(0) : 'N/A';
 
                 html += `
-                    <tr>
-                        <td><strong>${token}</strong></td>
-                        <td>$${price !== 'N/A' ? price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 }) : 'N/A'}</td>
-                        <td class="price-change ${changeClass}">${changeSymbol} ${Math.abs(change)}%</td>
-                        <td class="pool-info">${liquidity}</td>
-                        <td><span class="badge ${patternStatus.class}">${patternStatus.text}</span></td>
-                        <td>
-                            <button class="btn btn-primary btn-xs" onclick="executeManualTrade('${token}', 'buy')">Buy</button>
-                            <button class="btn btn-danger btn-xs" onclick="executeManualTrade('${token}', 'sell')">Sell</button>
-                        </td>
-                    </tr>
-                `;
-            });
+                <tr>
+                    <td><strong>${token}</strong></td>
+                    <td>$${price !== 'N/A' ? price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 }) : 'N/A'}</td>
+                    <td class="price-change ${changeClass}">${changeSymbol} ${Math.abs(change)}%</td>
+                    <td class="pool-info">${liquidity}</td>
+                    <td><span class="badge ${patternStatus.class}">${patternStatus.text}</span></td>
+                    <td>
+                        <button class="btn btn-primary btn-xs" onclick="executeManualTrade('${token}', 'buy')">Buy</button>
+                        <button class="btn btn-danger btn-xs" onclick="executeManualTrade('${token}', 'sell')">Sell</button>
+                    </td>
+                </tr>
+            `;
+            }
 
             priceRows.innerHTML = html;
 
             // Update last price update display
             if (state.lastPriceUpdate) {
                 document.getElementById('lastPriceUpdate').textContent = state.lastPriceUpdate.toLocaleTimeString();
-            }
-        }
-
-        function checkTokenPatterns(token) {
-            // Simplified pattern checking - returns status based on recent price movement
-            const history = state.priceHistory[token] || [];
-            if (history.length < 2) {
-                return { class: 'badge-secondary', text: 'No Data' };
-            }
-
-            const latest = history[history.length - 1];
-            const previous = history[history.length - 2];
-            const change = ((latest.price - previous.price) / previous.price * 100);
-
-            if (change > 1) {
-                return { class: 'badge-success', text: 'Bullish' };
-            } else if (change < -1) {
-                return { class: 'badge-danger', text: 'Bearish' };
-            } else {
-                return { class: 'badge-warning', text: 'Neutral' };
             }
         }
 
@@ -2925,18 +2857,18 @@
                 const unrealizedPnL = currentValue - (trade.tokenAmount * trade.price) - trade.fee;
 
                 html += `
-                    <tr>
-                        <td><strong>${trade.token}</strong></td>
-                        <td><span class="badge badge-${trade.type === 'buy' ? 'success' : 'danger'}">${trade.type.toUpperCase()}</span></td>
-                        <td>$${trade.price.toFixed(2)}</td>
-                        <td>${trade.tokenAmount.toFixed(6)}</td>
-                        <td>$${currentValue.toFixed(2)}</td>
-                        <td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">
-                            $${unrealizedPnL.toFixed(2)} (${((unrealizedPnL / (trade.tokenAmount * trade.price)) * 100).toFixed(2)}%)
-                        </td>
-                        <td><small>${trade.pattern || 'Manual'}</small></td>
-                    </tr>
-                `;
+                <tr>
+                    <td><strong>${trade.token}</strong></td>
+                    <td><span class="badge badge-${trade.type === 'buy' ? 'success' : 'danger'}">${trade.type.toUpperCase()}</span></td>
+                    <td>$${trade.price.toFixed(2)}</td>
+                    <td>${trade.tokenAmount.toFixed(6)}</td>
+                    <td>$${currentValue.toFixed(2)}</td>
+                    <td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">
+                        $${unrealizedPnL.toFixed(2)} (${((unrealizedPnL / (trade.tokenAmount * trade.price)) * 100).toFixed(2)}%)
+                    </td>
+                    <td><small>${trade.pattern || 'Manual'}</small></td>
+                </tr>
+            `;
             });
 
             html += '</tbody></table>';
@@ -2956,15 +2888,15 @@
             trades.forEach(trade => {
                 const pnlClass = trade.pnl >= 0 ? 'price-up' : trade.pnl < 0 ? 'price-down' : '';
                 html += `
-                    <tr>
-                        <td>${new Date(trade.timestamp).toLocaleTimeString()}</td>
-                        <td><strong>${trade.token}</strong></td>
-                        <td><span class="badge badge-${trade.type === 'buy' ? 'success' : 'danger'}">${trade.type.toUpperCase()}</span></td>
-                        <td>$${trade.price.toFixed(2)}</td>
-                        <td>${trade.tokenAmount.toFixed(6)}</td>
-                        <td class="${pnlClass}">$${trade.pnl.toFixed(2)}</td>
-                    </tr>
-                `;
+                <tr>
+                    <td>${new Date(trade.timestamp).toLocaleTimeString()}</td>
+                    <td><strong>${trade.token}</strong></td>
+                    <td><span class="badge badge-${trade.type === 'buy' ? 'success' : 'danger'}">${trade.type.toUpperCase()}</span></td>
+                    <td>$${trade.price.toFixed(2)}</td>
+                    <td>${trade.tokenAmount.toFixed(6)}</td>
+                    <td class="${pnlClass}">$${trade.pnl.toFixed(2)}</td>
+                </tr>
+            `;
             });
 
             recentTrades.innerHTML = html;
@@ -3007,8 +2939,9 @@
 
         function updatePnLChart() {
             const canvas = document.getElementById('pnlCanvas');
-            const ctx = canvas.getContext('2d');
+            if (!canvas) return;
 
+            const ctx = canvas.getContext('2d');
             canvas.width = canvas.parentElement.clientWidth;
             canvas.height = 300;
 
@@ -3137,7 +3070,7 @@
             // Profit factor
             const grossProfit = winningTrades.reduce((sum, t) => sum + t.pnl, 0);
             const grossLoss = Math.abs(losingTrades.reduce((sum, t) => sum + t.pnl, 0));
-            const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss).toFixed(2) : '0.00';
+            const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss).toFixed(2) : '∞';
             document.getElementById('profitFactor').textContent = profitFactor;
 
             // Session stats
@@ -3198,17 +3131,17 @@
             trades.forEach(trade => {
                 const pnlClass = trade.pnl >= 0 ? 'price-up' : trade.pnl < 0 ? 'price-down' : '';
                 html += `
-                    <tr>
-                        <td>${new Date(trade.timestamp).toLocaleString()}</td>
-                        <td><strong>${trade.token}</strong></td>
-                        <td><span class="badge badge-${trade.type === 'buy' ? 'success' : 'danger'}">${trade.type.toUpperCase()}</span></td>
-                        <td>$${trade.price.toFixed(2)}</td>
-                        <td>${trade.tokenAmount.toFixed(6)}</td>
-                        <td>$${trade.fee.toFixed(4)}</td>
-                        <td><span class="badge badge-${trade.status === 'closed' ? 'success' : 'warning'}">${trade.status}</span></td>
-                        <td class="${pnlClass}">$${trade.pnl.toFixed(2)}</td>
-                    </tr>
-                `;
+                <tr>
+                    <td>${new Date(trade.timestamp).toLocaleString()}</td>
+                    <td><strong>${trade.token || 'N/A'}</strong></td>
+                    <td><span class="badge badge-${trade.type === 'buy' ? 'success' : 'danger'}">${(trade.type || 'N/A').toUpperCase()}</span></td>
+                    <td>$${(trade.price || 0).toFixed(2)}</td>
+                    <td>${(trade.tokenAmount || 0).toFixed(6)}</td>
+                    <td>$${(trade.fee || 0).toFixed(4)}</td>
+                    <td><span class="badge badge-${trade.status === 'closed' ? 'success' : 'warning'}">${trade.status || 'N/A'}</span></td>
+                    <td class="${pnlClass}">$${(trade.pnl || 0).toFixed(2)}</td>
+                </tr>
+            `;
             });
 
             fullTradeHistory.innerHTML = html;
@@ -3432,8 +3365,9 @@
         }
 
         // ============================================
-        // Backup & Restore (Simplified)
+        // Backup & Restore
         // ============================================
+
         function startBackupTimer() {
             stopBackupTimer();
             const interval = (state.settings.backupInterval || 30) * 60 * 1000;
@@ -3554,8 +3488,9 @@
         }
 
         // ============================================
-        // Database Operations (Simplified to LocalStorage)
+        // Database Operations
         // ============================================
+
         async function saveToDB(storeName, data) {
             try {
                 localStorage.setItem(storeName, JSON.stringify(data));
@@ -3609,16 +3544,151 @@
         }
 
         // ============================================
-        // Encryption Utilities (Removed)
+        // Utility Functions
         // ============================================
-        // Client-side encryption has been removed to simplify data handling and avoid key management overhead.
-        // Data persistence is handled securely via browser LocalStorage with standard JSON serialization.
-        async function encryptData() { return null; }
-        async function decryptData() { return null; }
 
-        // ============================================
-        // UI Utilities
-        // ============================================
+        function getActiveTokens() {
+            return AVAILABLE_TOKENS.length > 0 ? AVAILABLE_TOKENS : Object.keys(TOKENS);
+        }
+
+        async function fetchAvailableTokens() {
+            try {
+                log('info', 'Fetching available tokens from CoinGecko...');
+                const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const data = await response.json();
+                AVAILABLE_TOKENS = data.map(c => c.symbol.toUpperCase());
+                TOKENS = {};
+
+                AVAILABLE_TOKENS.forEach(symbol => {
+                    const coinData = data.find(c => c.symbol.toUpperCase() === symbol);
+                    TOKENS[symbol] = {
+                        address: null,
+                        decimals: coinData?.decimals || 18,
+                        symbol: symbol,
+                        isNative: symbol === 'ETH',
+                        cgId: coinData?.id
+                    };
+                    BINANCE_SYMBOLS[symbol] = `${symbol}USDT`;
+                    if (coinData?.id) COINGECKO_IDS[symbol] = coinData.id;
+                });
+
+                log('info', `Loaded ${AVAILABLE_TOKENS.length} tokens.`);
+                updateTokenSelectors();
+            } catch (error) {
+                console.error('Error fetching tokens:', error);
+                log('warn', `Failed to fetch tokens dynamically: ${error.message}. Using fallback list.`);
+
+                // Fallback to a robust default set
+                AVAILABLE_TOKENS = ['ETH', 'WBTC', 'USDC', 'USDT', 'UNI', 'LINK', 'ARB', 'GMX'];
+                TOKENS = {
+                    ETH: { address: null, decimals: 18, symbol: 'ETH', isNative: true },
+                    WBTC: { address: '0x2f2a2543B76A416654947aaB75B4e35b52a17231', decimals: 8, symbol: 'WBTC' },
+                    USDC: { address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', decimals: 6, symbol: 'USDC' },
+                    USDT: { address: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', decimals: 6, symbol: 'USDT' },
+                    UNI: { address: '0xfa7F8980b0f1E64A2062791cc3b0871572f1F7f0', decimals: 18, symbol: 'UNI' },
+                    LINK: { address: '0xf97f4df75117a78c1A5a0DBb814Af92458539FB4', decimals: 18, symbol: 'LINK' },
+                    ARB: { address: '0x912CE59144196C11c48067255325c5414506085A', decimals: 18, symbol: 'ARB' },
+                    GMX: { address: '0xfc5A1A6EB076a2C7aD06eD22C5C769A78b3Fa3A1', decimals: 18, symbol: 'GMX' }
+                };
+
+                AVAILABLE_TOKENS.forEach(s => {
+                    BINANCE_SYMBOLS[s] = `${s}USDT`;
+                    COINGECKO_IDS[s] = s.toLowerCase();
+                });
+
+                updateTokenSelectors();
+            }
+        }
+
+        function updateTokenSelectors() {
+            const container = document.getElementById('tradeTokens');
+            if (!container) return;
+
+            container.innerHTML = '';
+            const tokens = Object.keys(TOKENS).length > 0 ? Object.keys(TOKENS) : ['ETH', 'WBTC', 'UNI', 'LINK'];
+
+            tokens.forEach(symbol => {
+                const btn = document.createElement('button');
+                btn.className = 'token-btn' + (symbol === 'ETH' ? ' active' : '');
+                btn.dataset.token = symbol;
+                btn.textContent = symbol;
+                btn.addEventListener('click', function () {
+                    this.classList.toggle('active');
+                });
+                container.appendChild(btn);
+            });
+        }
+
+        async function updateGasPrice() {
+            if (state.settings.isTestMode) {
+                const mockGas = 15.50;
+                document.getElementById('gasPrice').textContent = mockGas.toFixed(2);
+                document.getElementById('networkUtilization').style.width = (mockGas / 200 * 100) + '%';
+                log('info', `Test Mode: Mock gas price set to ${mockGas.toFixed(2)} gwei`);
+                return;
+            }
+
+            if (!window.ethereum) {
+                log('warn', 'Ethereum provider not available for gas price update');
+                return;
+            }
+
+            try {
+                const gasPrice = await window.ethereum.request({ method: 'eth_gasPrice' });
+                const gasPriceGwei = parseInt(gasPrice) / 1e9;
+
+                document.getElementById('gasPrice').textContent = gasPriceGwei.toFixed(2);
+
+                // Update network utilization (simplified)
+                const utilization = Math.min(100, gasPriceGwei / 200 * 100);
+                document.getElementById('networkUtilization').style.width = utilization + '%';
+
+                log('info', `Gas price updated: ${gasPriceGwei.toFixed(2)} gwei`);
+
+            } catch (error) {
+                console.error('Error getting gas price:', error);
+                log('error', `Failed to get gas price: ${error.message}`);
+            }
+        }
+
+        async function refreshPrices() {
+            showLoading('priceRefreshSpinner');
+            log('info', 'Manual price refresh requested');
+
+            try {
+                if (state.priceSources?.binance?.connected) {
+                    // Binance prices update via WebSocket, no action needed
+                }
+
+                if (state.priceSources?.coingecko?.connected || state.settings.fallbackPriceSource === 'coingecko') {
+                    const activeTokens = getActiveTokens();
+                    const validTokens = activeTokens.filter(t => COINGECKO_IDS[t]);
+                    await fetchCoinGeckoPrices(validTokens);
+                }
+
+                log('info', 'Prices refreshed');
+                showNotification('Success', 'Prices refreshed!');
+
+            } catch (error) {
+                console.error('Error refreshing prices:', error);
+                log('error', `Price refresh failed: ${error.message}`);
+                showNotification('Error', 'Failed to refresh prices');
+            } finally {
+                hideLoading('priceRefreshSpinner');
+            }
+        }
+
+        function switchPriceSource() {
+            const source = document.getElementById('priceSourceSelect').value;
+            state.settings.primaryPriceSource = source;
+            saveSettings();
+            if (state.isRunning) {
+                restartPriceFeeds();
+            }
+            updateConnectionStatus();
+        }
 
         function updateUI() {
             updateBotStatus();
@@ -3718,102 +3788,6 @@
             saveAllTrades();
             saveLogs();
         });
-
-        // ============================================
-        // Utility Functions
-        // ============================================
-
-        function refreshRecentTrades() {
-            updateRecentTrades();
-        }
-
-        function toggleAutoScroll() {
-            state.autoScroll = !state.autoScroll;
-        }
-
-        function updateTokenSelectors() {
-            const container = document.getElementById('tradeTokens');
-            if (!container) return;
-
-            container.innerHTML = '';
-            const activeTokens = getActiveTokens();
-            activeTokens.forEach(symbol => {
-                const btn = document.createElement('button');
-                btn.className = 'token-btn' + (symbol === 'ETH' ? ' active' : '');
-                btn.dataset.token = symbol;
-                btn.textContent = symbol;
-                btn.addEventListener('click', function () {
-                    this.classList.toggle('active');
-                });
-                container.appendChild(btn);
-            });
-        }
-
-        async function updateGasPrice() {
-            if (!window.ethereum) {
-                if (state.settings.isTestMode) {
-                    const mockGas = 15.50;
-                    document.getElementById('gasPrice').textContent = mockGas.toFixed(2);
-                    document.getElementById('networkUtilization').style.width = (mockGas / 200 * 100) + '%';
-                    log('info', `Test Mode: Mock gas price set to ${mockGas.toFixed(2)} gwei`);
-                }
-                return;
-            }
-
-            try {
-                const gasPrice = await window.ethereum.request({ method: 'eth_gasPrice' });
-                const gasPriceGwei = parseInt(gasPrice) / 1e9;
-
-                document.getElementById('gasPrice').textContent = gasPriceGwei.toFixed(2);
-
-                // Update network utilization (simplified)
-                const utilization = Math.min(100, gasPriceGwei / 200 * 100);
-                document.getElementById('networkUtilization').style.width = utilization + '%';
-
-                log('info', `Gas price updated: ${gasPriceGwei.toFixed(2)} gwei`);
-
-            } catch (error) {
-                console.error('Error getting gas price:', error);
-                log('error', `Failed to get gas price: ${error.message}`);
-            }
-        }
-
-        async function refreshPrices() {
-            showLoading('priceRefreshSpinner');
-            log('info', 'Manual price refresh requested');
-
-            try {
-                if (state.priceSources.binance?.connected) {
-                    // Binance prices update via WebSocket, no action needed
-                }
-
-                if (state.priceSources.coingecko?.connected || state.settings.fallbackPriceSource === 'coingecko') {
-                    const activeTokens = getActiveTokens();
-                    const validTokens = activeTokens.filter(t => COINGECKO_IDS[t]);
-                    await fetchCoinGeckoPrices(validTokens);
-                }
-
-                log('info', 'Prices refreshed');
-                showNotification('Success', 'Prices refreshed!');
-
-            } catch (error) {
-                console.error('Error refreshing prices:', error);
-                log('error', `Price refresh failed: ${error.message}`);
-                showNotification('Error', 'Failed to refresh prices');
-            } finally {
-                hideLoading('priceRefreshSpinner');
-            }
-        }
-
-        function switchPriceSource() {
-            const source = document.getElementById('priceSourceSelect').value;
-            state.settings.primaryPriceSource = source;
-            saveSettings();
-
-            if (state.isRunning) {
-                restartPriceFeeds();
-            }
-        }
     </script>
 </body>
 
