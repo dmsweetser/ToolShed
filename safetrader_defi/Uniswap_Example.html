@@ -1,0 +1,2395 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Uniswap V3 Live Activity</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #08090c;
+            --panel: #101218;
+            --panel2: #151820;
+            --border: #252936;
+            --text: #f5f7fa;
+            --muted: #8c93a3;
+            --green: #37d67a;
+            --red: #ff5c67;
+            --blue: #7c7cff;
+            --yellow: #f5c451
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            margin: 0;
+            min-height: 100%;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif
+        }
+
+        body {
+            padding: 24px
+        }
+
+        .app {
+            max-width: 1500px;
+            margin: auto
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-right: auto
+        }
+
+        .logo {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, #c7c7ff, #7777ff 45%, #4545bd);
+            box-shadow: 0 0 30px #7c7cff40
+        }
+
+        h1 {
+            font-size: 20px;
+            margin: 0
+        }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 2px
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            align-items: center
+        }
+
+        select,
+        input {
+            font: inherit;
+            background: var(--panel);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            outline: none
+        }
+
+        select:focus,
+        input:focus {
+            border-color: var(--blue)
+        }
+
+        .connection-button {
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: var(--text);
+            border-radius: 10px;
+            padding: 10px 16px;
+            cursor: pointer;
+            font-weight: 700;
+            min-width: 92px
+        }
+
+        .connection-button:hover {
+            background: var(--panel2)
+        }
+
+        .connection-button.running {
+            color: var(--red);
+            border-color: #ff5c6759
+        }
+
+        .connection-button.starting {
+            opacity: .65;
+            cursor: wait
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            color: var(--muted);
+            font-size: 12px;
+            white-space: nowrap
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--yellow)
+        }
+
+        .status-dot.connected {
+            background: var(--green);
+            box-shadow: 0 0 10px #37d67a80
+        }
+
+        .status-dot.error {
+            background: var(--red)
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            margin-bottom: 16px
+        }
+
+        .stat {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px
+        }
+
+        .stat-label {
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .08em
+        }
+
+        .stat-value {
+            margin-top: 5px;
+            font-size: 20px;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px
+        }
+
+        .toolbar input {
+            width: 280px
+        }
+
+        .toolbar .spacer {
+            flex: 1
+        }
+
+        .quote-badge {
+            color: var(--muted);
+            font-size: 11px;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            border-radius: 999px;
+            padding: 5px 9px
+        }
+
+        .live {
+            color: var(--green);
+            font-size: 12px;
+            font-weight: 600
+        }
+
+        .table-wrap {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+            background: var(--panel)
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse
+        }
+
+        thead {
+            background: #0d0f14
+        }
+
+        th {
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 600;
+            text-align: left;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            padding: 13px 14px;
+            border-bottom: 1px solid var(--border)
+        }
+
+        td {
+            padding: 12px 14px;
+            border-bottom: 1px solid #252936b3;
+            font-size: 13px
+        }
+
+        tbody tr:hover {
+            background: var(--panel2)
+        }
+
+        .rank {
+            color: var(--muted);
+            width: 45px
+        }
+
+        .token {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 190px
+        }
+
+        .token-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #1c2030;
+            font-size: 11px;
+            font-weight: 800
+        }
+
+        .token-symbol {
+            font-weight: 700
+        }
+
+        .token-address {
+            color: var(--muted);
+            font-size: 10px;
+            margin-top: 2px
+        }
+
+        .price,
+        .volume {
+            font-variant-numeric: tabular-nums;
+            font-weight: 600
+        }
+
+        .change-positive {
+            color: var(--green)
+        }
+
+        .change-negative {
+            color: var(--red)
+        }
+
+        .change-neutral,
+        .muted {
+            color: var(--muted)
+        }
+
+        .activity {
+            min-width: 100px
+        }
+
+        .activity-number {
+            font-weight: 700
+        }
+
+        .activity-label {
+            color: var(--muted);
+            font-size: 10px
+        }
+
+        .spark {
+            width: 140px;
+            height: 38px
+        }
+
+        .empty {
+            text-align: center;
+            padding: 70px 20px;
+            color: var(--muted)
+        }
+
+        .empty strong {
+            display: block;
+            color: var(--text);
+            margin-bottom: 7px
+        }
+
+        .footer {
+            color: var(--muted);
+            font-size: 11px;
+            margin-top: 12px;
+            line-height: 1.6
+        }
+
+        .error-banner {
+            display: none;
+            background: #ff5c6714;
+            border: 1px solid #ff5c6740;
+            color: #ff9da5;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            font-size: 12px
+        }
+
+        .error-banner.show {
+            display: block
+        }
+
+        @media(max-width:1100px) {
+            .stats {
+                grid-template-columns: repeat(3, 1fr)
+            }
+        }
+
+        @media(max-width:700px) {
+            body {
+                padding: 12px
+            }
+
+            header {
+                flex-wrap: wrap
+            }
+
+            .brand {
+                width: 100%
+            }
+
+            .controls {
+                width: 100%
+            }
+
+            .controls select {
+                flex: 1
+            }
+
+            .stats {
+                grid-template-columns: repeat(2, 1fr)
+            }
+
+            .toolbar {
+                flex-wrap: wrap
+            }
+
+            .toolbar input {
+                width: 100%
+            }
+
+            .table-wrap {
+                overflow-x: auto
+            }
+
+            table {
+                min-width: 900px
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+
+        <header>
+            <div class="brand">
+                <div class="logo"></div>
+
+                <div>
+                    <h1>Uniswap V3 Live Activity</h1>
+                    <div class="subtitle">
+                        Dynamic tokens discovered from live swaps
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <select id="chainSelect">
+                    <option value="ethereum">Ethereum</option>
+                    <option value="base">Base</option>
+                    <option value="arbitrum">Arbitrum</option>
+                    <option value="optimism">Optimism</option>
+                    <option value="polygon">Polygon</option>
+                </select>
+
+                <button id="startStopButton" class="connection-button">
+                    Start
+                </button>
+
+                <div class="status">
+                    <span id="statusDot" class="status-dot"></span>
+                    <span id="statusText">Stopped</span>
+                </div>
+            </div>
+        </header>
+
+        <div id="errorBanner" class="error-banner"></div>
+
+        <section class="stats">
+            <div class="stat">
+                <div class="stat-label">Chain</div>
+                <div class="stat-value" id="chainStat">Ethereum</div>
+            </div>
+
+            <div class="stat">
+                <div class="stat-label">Block</div>
+                <div class="stat-value" id="blocksStat">—</div>
+            </div>
+
+            <div class="stat">
+                <div class="stat-label">Pools Seen</div>
+                <div class="stat-value" id="poolsStat">0</div>
+            </div>
+
+            <div class="stat">
+                <div class="stat-label">Tokens Seen</div>
+                <div class="stat-value" id="tokensStat">0</div>
+            </div>
+
+            <div class="stat">
+                <div class="stat-label">Swaps / 15m</div>
+                <div class="stat-value" id="swapsStat">0</div>
+            </div>
+
+            <div class="stat">
+                <div class="stat-label">Blocks Behind</div>
+                <div class="stat-value" id="lagStat">0</div>
+            </div>
+        </section>
+
+        <div class="toolbar">
+            <input id="search" type="search" placeholder="Search token or address...">
+
+            <div class="spacer"></div>
+
+            <div id="quoteBadge" class="quote-badge">
+                USD
+            </div>
+
+            <div class="live">
+                ● LIVE
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Token</th>
+                        <th id="priceHeader">Price (USD)</th>
+                        <th>1m</th>
+                        <th>5m</th>
+                        <th>15m</th>
+                        <th>Activity</th>
+                        <th id="volumeHeader">Volume (USD)</th>
+                        <th>Chart</th>
+                    </tr>
+                </thead>
+
+                <tbody id="tokenTable">
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty">
+                                <strong>Press Start to begin</strong>
+                                Live Uniswap V3 swaps will populate the leaderboard automatically.
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            Ethereum prices are quoted in USD using stablecoin routes.
+            L2 prices are quoted relative to the chain's wrapped native asset
+            (WETH on Base, Arbitrum and Optimism; WPOL on Polygon).
+            Activity is accumulated from swaps observed after startup.
+            Chain changes perform a full connection reset, and stale requests
+            from the previous chain are ignored.
+        </div>
+    </div>
+
+    <script>
+        "use strict";
+
+        const CONFIG = {
+            MAX_TOKENS: 100,
+            WINDOW_MS: 15 * 60 * 1000,
+            HISTORY_MS: 15 * 60 * 1000,
+            MAX_HISTORY_POINTS: 180,
+            MAX_PRICE_PATH_DEPTH: 4,
+            RENDER_INTERVAL_MS: 1000,
+            RETRY_DELAY_MS: 3000,
+            HEAD_RETRY_MS: 700,
+            MAX_HEAD_RETRIES: 5,
+            LOG_CONCURRENCY: 4
+        };
+
+        /*
+         * Ethereum remains USD quoted.
+         *
+         * L2s are quoted against their wrapped native asset:
+         *
+         * Base      -> WETH
+         * Arbitrum  -> WETH
+         * Optimism  -> WETH
+         * Polygon   -> WPOL
+         *
+         * Polygon's native asset is now POL. The long-standing wrapped
+         * native token contract at 0x0d500... is tracked as WPOL.
+         */
+        const CHAINS = {
+            ethereum: {
+                name: "Ethereum",
+                chainId: 1,
+                ws: "wss://ethereum-rpc.publicnode.com",
+                factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+                wrappedNative: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                quoteMode: "usd",
+                quoteLabel: "USD",
+                stables: [
+                    "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                    "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+                    "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+                ]
+            },
+
+            base: {
+                name: "Base",
+                chainId: 8453,
+                ws: "wss://base-rpc.publicnode.com",
+                factory: "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
+                wrappedNative: "0x4200000000000000000000000000000000000006",
+                quoteMode: "native",
+                quoteLabel: "WETH",
+                stables: [
+                    "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                    "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42"
+                ]
+            },
+
+            arbitrum: {
+                name: "Arbitrum",
+                chainId: 42161,
+                ws: "wss://arbitrum-one-rpc.publicnode.com",
+                factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+                wrappedNative: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+                quoteMode: "native",
+                quoteLabel: "WETH",
+                stables: [
+                    "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+                    "0xFd086bC7CD5C481DCC9C85ebe478A1C0b69FCbb9"
+                ]
+            },
+
+            optimism: {
+                name: "Optimism",
+                chainId: 10,
+                ws: "wss://optimism-rpc.publicnode.com",
+                factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+                wrappedNative: "0x4200000000000000000000000000000000000006",
+                quoteMode: "native",
+                quoteLabel: "WETH",
+                stables: [
+                    "0x0b2C639c533813f4aAa9D7837CAf62653d097Ff85",
+                    "0x7F5c764cBc14f9669B88837ca1490cCa17c31607"
+                ]
+            },
+
+            polygon: {
+                name: "Polygon",
+                chainId: 137,
+                ws: "wss://polygon-bor-rpc.publicnode.com",
+                factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+
+                /*
+                 * Wrapped Polygon native token.
+                 *
+                 * Native Polygon asset: POL
+                 * Wrapped representation: WPOL
+                 */
+                wrappedNative: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+
+                quoteMode: "native",
+                quoteLabel: "WPOL",
+
+                stables: [
+                    "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+                    "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359"
+                ]
+            }
+        };
+
+        const ERC20_ABI = [
+            "function symbol() view returns (string)",
+            "function decimals() view returns (uint8)",
+            "function name() view returns (string)"
+        ];
+
+        const POOL_ABI = [
+            "function token0() view returns (address)",
+            "function token1() view returns (address)",
+            "function fee() view returns (uint24)",
+            "function factory() view returns (address)"
+        ];
+
+        const SWAP_INTERFACE = new ethers.Interface([
+            "event Swap(address indexed sender,address indexed recipient,int256 amount0,int256 amount1,uint160 sqrtPriceX96,uint128 liquidity,int24 tick)"
+        ]);
+
+        const SWAP_TOPIC =
+            SWAP_INTERFACE.getEvent("Swap").topicHash;
+
+        let currentChainKey = "ethereum";
+        let manuallyStopped = true;
+        let sessionSerial = 0;
+        let activeSession = null;
+        let searchText = "";
+
+        const els = {
+            chain: document.getElementById("chainSelect"),
+            button: document.getElementById("startStopButton"),
+            dot: document.getElementById("statusDot"),
+            status: document.getElementById("statusText"),
+            error: document.getElementById("errorBanner"),
+            table: document.getElementById("tokenTable"),
+            search: document.getElementById("search"),
+            chainStat: document.getElementById("chainStat"),
+            blocksStat: document.getElementById("blocksStat"),
+            poolsStat: document.getElementById("poolsStat"),
+            tokensStat: document.getElementById("tokensStat"),
+            swapsStat: document.getElementById("swapsStat"),
+            lagStat: document.getElementById("lagStat"),
+            quoteBadge: document.getElementById("quoteBadge"),
+            priceHeader: document.getElementById("priceHeader"),
+            volumeHeader: document.getElementById("volumeHeader")
+        };
+
+        const norm = a => String(a).toLowerCase();
+        const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+        const now = () => Date.now();
+
+        function short(a) {
+            return a
+                ? `${a.slice(0, 6)}...${a.slice(-4)}`
+                : "";
+        }
+
+        function esc(v) {
+            return String(v)
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
+
+        function current(s) {
+            return !!s &&
+                activeSession === s &&
+                s.id === sessionSerial &&
+                s.active &&
+                !manuallyStopped;
+        }
+
+        function setStatus(t, type = "connecting") {
+            els.dot.className = "status-dot";
+
+            if (type === "connected") {
+                els.dot.classList.add("connected");
+            }
+
+            if (type === "error") {
+                els.dot.classList.add("error");
+            }
+
+            els.status.textContent = t;
+        }
+
+        function setError(message) {
+            els.error.textContent = message || "";
+            els.error.classList.toggle("show", !!message);
+        }
+
+        function updateQuoteUI(chain) {
+            const label = chain?.quoteLabel || "USD";
+
+            els.quoteBadge.textContent =
+                chain?.quoteMode === "native"
+                    ? `Quoted in ${label}`
+                    : "Quoted in USD";
+
+            els.priceHeader.textContent =
+                `Price (${label})`;
+
+            els.volumeHeader.textContent =
+                `Volume (${label})`;
+        }
+
+        function updateButton() {
+            els.button.classList.remove("running", "starting");
+
+            if (manuallyStopped || !activeSession) {
+                els.button.textContent = "Start";
+                return;
+            }
+
+            if (!activeSession.connected) {
+                els.button.textContent = "Starting...";
+                els.button.classList.add("starting");
+                return;
+            }
+
+            els.button.textContent = "Stop";
+            els.button.classList.add("running");
+        }
+
+        function createSession(key) {
+            const chain = CHAINS[key];
+
+            return {
+                id: ++sessionSerial,
+                chainKey: key,
+                chain,
+
+                provider: null,
+                ws: null,
+
+                active: true,
+                connected: false,
+
+                blockCount: 0,
+                rpcHead: 0,
+                lastProcessedBlock: null,
+
+                pendingBlock: null,
+                processingBlocks: false,
+
+                reconnectTimer: null,
+
+                pools: new Map(),
+                tokens: new Map(),
+                pairPrices: new Map(),
+                metadataInFlight: new Map(),
+
+                /*
+                 * Actual swap events, rather than summing the two token
+                 * sides of every swap.
+                 */
+                swaps: []
+            };
+        }
+
+        function clearTimer(s) {
+            if (s?.reconnectTimer) {
+                clearTimeout(s.reconnectTimer);
+                s.reconnectTimer = null;
+            }
+        }
+
+        async function destroySession(s) {
+            if (!s) return;
+
+            s.active = false;
+
+            clearTimer(s);
+
+            try {
+                s.provider?.removeAllListeners();
+            } catch { }
+
+            try {
+                s.ws?.close();
+            } catch { }
+
+            try {
+                s.provider?.destroy();
+            } catch { }
+
+            s.provider = null;
+            s.ws = null;
+            s.connected = false;
+        }
+
+        function resetView() {
+            const chain = CHAINS[currentChainKey];
+
+            els.chainStat.textContent = chain.name;
+            els.blocksStat.textContent = "—";
+            els.poolsStat.textContent = "0";
+            els.tokensStat.textContent = "0";
+            els.swapsStat.textContent = "0";
+            els.lagStat.textContent = "0";
+
+            updateQuoteUI(chain);
+        }
+
+        async function stopApp(clear = true) {
+            manuallyStopped = true;
+
+            sessionSerial++;
+
+            const old = activeSession;
+            activeSession = null;
+
+            if (old) {
+                await destroySession(old);
+            }
+
+            setStatus("Stopped");
+            updateButton();
+
+            if (clear) {
+                resetView();
+                render();
+            }
+        }
+
+        async function startApp() {
+            manuallyStopped = false;
+
+            sessionSerial++;
+
+            const old = activeSession;
+            activeSession = null;
+
+            if (old) {
+                await destroySession(old);
+            }
+
+            setError("");
+
+            const s = createSession(currentChainKey);
+            activeSession = s;
+
+            updateQuoteUI(s.chain);
+
+            setStatus(`Connecting to ${s.chain.name}...`);
+            updateButton();
+
+            resetView();
+            render();
+
+            try {
+                const p = new ethers.WebSocketProvider(
+                    s.chain.ws,
+                    s.chain.chainId
+                );
+
+                if (!current(s)) {
+                    try {
+                        p.destroy();
+                    } catch { }
+
+                    return;
+                }
+
+                s.provider = p;
+                s.ws = p.websocket;
+
+                if (s.ws) {
+                    s.ws.addEventListener("open", () => {
+                        if (!current(s)) return;
+
+                        s.connected = true;
+
+                        setStatus("Connected", "connected");
+                        updateButton();
+                    });
+
+                    s.ws.addEventListener("close", () => {
+                        if (!current(s)) return;
+
+                        s.connected = false;
+
+                        setStatus(
+                            "Disconnected — reconnecting...",
+                            "error"
+                        );
+
+                        updateButton();
+
+                        scheduleReconnect(s);
+                    });
+
+                    s.ws.addEventListener("error", e => {
+                        if (!current(s)) return;
+
+                        console.warn("WebSocket error", e);
+
+                        s.connected = false;
+
+                        setStatus(
+                            "Connection error",
+                            "error"
+                        );
+
+                        updateButton();
+                    });
+                }
+
+                p.on("block", n => {
+                    if (current(s)) {
+                        queueBlock(s, Number(n));
+                    }
+                });
+
+                const head = await p.getBlockNumber();
+
+                if (!current(s)) return;
+
+                s.rpcHead = head;
+                s.blockCount = head;
+
+                /*
+                 * Load the quote token immediately for L2 chains.
+                 * This makes WETH/WPOL available even before it appears
+                 * in a swap discovered by the scanner.
+                 */
+                if (s.chain.quoteMode === "native") {
+                    await loadToken(
+                        s,
+                        s.chain.wrappedNative
+                    );
+                }
+
+                if (!current(s)) return;
+
+                s.connected = true;
+
+                setStatus("Connected", "connected");
+                updateButton();
+                updateStats(s);
+
+            } catch (e) {
+                if (!current(s)) return;
+
+                console.error("Connection failed", e);
+
+                s.connected = false;
+
+                setStatus(
+                    "Connection failed",
+                    "error"
+                );
+
+                setError(
+                    `Connection failed: ${e?.shortMessage ||
+                    e?.message ||
+                    e
+                    }`
+                );
+
+                updateButton();
+
+                scheduleReconnect(s);
+            }
+        }
+
+        function scheduleReconnect(s) {
+            if (!current(s) || s.reconnectTimer) {
+                return;
+            }
+
+            s.reconnectTimer = setTimeout(() => {
+                s.reconnectTimer = null;
+
+                if (current(s)) {
+                    startApp();
+                }
+            }, CONFIG.RETRY_DELAY_MS);
+        }
+
+        function queueBlock(s, n) {
+            if (!current(s)) return;
+
+            if (
+                s.lastProcessedBlock !== null &&
+                n <= s.lastProcessedBlock
+            ) {
+                return;
+            }
+
+            s.pendingBlock = Math.max(
+                s.pendingBlock ?? 0,
+                n
+            );
+
+            processPending(s);
+        }
+
+        async function processPending(s) {
+            if (s.processingBlocks || !current(s)) {
+                return;
+            }
+
+            s.processingBlocks = true;
+
+            try {
+                while (
+                    s.pendingBlock !== null &&
+                    current(s)
+                ) {
+                    const target = s.pendingBlock;
+
+                    s.pendingBlock = null;
+
+                    let head;
+
+                    try {
+                        head =
+                            await s.provider.getBlockNumber();
+                    } catch {
+                        s.pendingBlock = target;
+                        await sleep(
+                            CONFIG.HEAD_RETRY_MS
+                        );
+                        continue;
+                    }
+
+                    if (!current(s)) break;
+
+                    s.rpcHead = head;
+                    s.blockCount =
+                        Math.max(s.blockCount, head);
+
+                    if (target > head) {
+                        s.pendingBlock = target;
+                        await sleep(
+                            CONFIG.HEAD_RETRY_MS
+                        );
+                        continue;
+                    }
+
+                    if (
+                        s.lastProcessedBlock !== null &&
+                        target <= s.lastProcessedBlock
+                    ) {
+                        continue;
+                    }
+
+                    await processBlock(s, target);
+
+                    if (!current(s)) break;
+
+                    s.lastProcessedBlock = target;
+                }
+            } finally {
+                s.processingBlocks = false;
+                updateStats(s);
+            }
+        }
+
+        async function processBlock(s, n) {
+            if (!current(s)) return;
+
+            let logs = null;
+
+            for (
+                let i = 0;
+                i < CONFIG.MAX_HEAD_RETRIES;
+                i++
+            ) {
+                if (!current(s)) return;
+
+                try {
+                    const head =
+                        await s.provider.getBlockNumber();
+
+                    s.rpcHead = head;
+
+                    if (n > head) {
+                        await sleep(
+                            CONFIG.HEAD_RETRY_MS
+                        );
+                        continue;
+                    }
+
+                    logs = await s.provider.getLogs({
+                        fromBlock: n,
+                        toBlock: n,
+                        topics: [SWAP_TOPIC]
+                    });
+
+                    break;
+
+                } catch (e) {
+                    const m =
+                        String(e?.message || "");
+
+                    if (
+                        m.includes(
+                            "block range extends beyond current head block"
+                        ) ||
+                        m.includes("header not found") ||
+                        m.includes("unknown block")
+                    ) {
+                        await sleep(
+                            CONFIG.HEAD_RETRY_MS
+                        );
+                        continue;
+                    }
+
+                    console.warn(
+                        "Block log error",
+                        e
+                    );
+
+                    return;
+                }
+            }
+
+            if (
+                !logs ||
+                !current(s) ||
+                !logs.length
+            ) {
+                return;
+            }
+
+            let i = 0;
+
+            async function worker() {
+                while (
+                    i < logs.length &&
+                    current(s)
+                ) {
+                    const log = logs[i++];
+
+                    try {
+                        await processSwapLog(
+                            s,
+                            log
+                        );
+                    } catch (e) {
+                        console.debug(
+                            "Swap processing error",
+                            e
+                        );
+                    }
+                }
+            }
+
+            await Promise.all(
+                Array.from(
+                    {
+                        length: Math.min(
+                            CONFIG.LOG_CONCURRENCY,
+                            logs.length
+                        )
+                    },
+                    worker
+                )
+            );
+        }
+
+        async function loadToken(s, address) {
+            if (!current(s)) {
+                return null;
+            }
+
+            address = norm(address);
+
+            if (s.tokens.has(address)) {
+                return s.tokens.get(address);
+            }
+
+            const key = `token:${address}`;
+
+            if (s.metadataInFlight.has(key)) {
+                return s.metadataInFlight.get(key);
+            }
+
+            const promise = (async () => {
+                const t = {
+                    address,
+
+                    symbol: short(address),
+                    name: short(address),
+                    decimals: 18,
+
+                    swaps: [],
+
+                    volumeQuote: 0,
+                    priceQuote: null,
+
+                    history: [],
+
+                    lastSeen: 0
+                };
+
+                s.tokens.set(address, t);
+
+                try {
+                    const c =
+                        new ethers.Contract(
+                            address,
+                            ERC20_ABI,
+                            s.provider
+                        );
+
+                    const [
+                        symbol,
+                        decimals,
+                        name
+                    ] = await Promise.all([
+                        c.symbol(),
+                        c.decimals(),
+                        c.name()
+                    ]);
+
+                    if (!current(s)) {
+                        return null;
+                    }
+
+                    t.symbol = String(symbol);
+                    t.decimals = Number(decimals);
+                    t.name = String(name);
+
+                } catch (e) {
+                    console.debug(
+                        "Token metadata unavailable",
+                        address,
+                        e
+                    );
+                } finally {
+                    s.metadataInFlight.delete(key);
+                }
+
+                return current(s)
+                    ? t
+                    : null;
+            })();
+
+            s.metadataInFlight.set(
+                key,
+                promise
+            );
+
+            return promise;
+        }
+
+        async function loadPool(s, address) {
+            if (!current(s)) {
+                return null;
+            }
+
+            address = norm(address);
+
+            if (s.pools.has(address)) {
+                return s.pools.get(address);
+            }
+
+            const key = `pool:${address}`;
+
+            if (s.metadataInFlight.has(key)) {
+                return s.metadataInFlight.get(key);
+            }
+
+            const promise = (async () => {
+                const pool = {
+                    address,
+
+                    token0: null,
+                    token1: null,
+                    fee: null,
+
+                    token0Meta: null,
+                    token1Meta: null,
+
+                    initialized: false
+                };
+
+                s.pools.set(address, pool);
+
+                try {
+                    const c =
+                        new ethers.Contract(
+                            address,
+                            POOL_ABI,
+                            s.provider
+                        );
+
+                    const [
+                        t0,
+                        t1,
+                        fee,
+                        factory
+                    ] = await Promise.all([
+                        c.token0(),
+                        c.token1(),
+                        c.fee(),
+                        c.factory()
+                    ]);
+
+                    if (!current(s)) {
+                        return null;
+                    }
+
+                    if (
+                        norm(factory) !==
+                        norm(s.chain.factory)
+                    ) {
+                        s.pools.delete(address);
+                        return null;
+                    }
+
+                    pool.token0 = norm(t0);
+                    pool.token1 = norm(t1);
+                    pool.fee = Number(fee);
+
+                    [
+                        pool.token0Meta,
+                        pool.token1Meta
+                    ] = await Promise.all([
+                        loadToken(
+                            s,
+                            pool.token0
+                        ),
+                        loadToken(
+                            s,
+                            pool.token1
+                        )
+                    ]);
+
+                    if (
+                        !current(s) ||
+                        !pool.token0Meta ||
+                        !pool.token1Meta
+                    ) {
+                        return null;
+                    }
+
+                    pool.initialized = true;
+
+                    return pool;
+
+                } catch (e) {
+                    console.debug(
+                        "Pool metadata unavailable",
+                        address,
+                        e
+                    );
+
+                    s.pools.delete(address);
+
+                    return null;
+
+                } finally {
+                    s.metadataInFlight.delete(key);
+                }
+            })();
+
+            s.metadataInFlight.set(
+                key,
+                promise
+            );
+
+            return promise;
+        }
+
+        /*
+         * Store a price for both directions.
+         *
+         * If:
+         *
+         *   a = token0
+         *   b = token1
+         *   p = token1 per token0
+         *
+         * then:
+         *
+         *   a -> b = p
+         *   b -> a = 1 / p
+         */
+        function setPair(s, a, b, p) {
+            if (
+                !Number.isFinite(p) ||
+                p <= 0
+            ) {
+                return;
+            }
+
+            a = norm(a);
+            b = norm(b);
+
+            if (!s.pairPrices.has(a)) {
+                s.pairPrices.set(
+                    a,
+                    new Map()
+                );
+            }
+
+            if (!s.pairPrices.has(b)) {
+                s.pairPrices.set(
+                    b,
+                    new Map()
+                );
+            }
+
+            const timestamp = now();
+
+            s.pairPrices
+                .get(a)
+                .set(b, {
+                    price: p,
+                    updatedAt: timestamp
+                });
+
+            s.pairPrices
+                .get(b)
+                .set(a, {
+                    price: 1 / p,
+                    updatedAt: timestamp
+                });
+        }
+
+        function isStable(s, address) {
+            address = norm(address);
+
+            return s.chain.stables.some(
+                x => norm(x) === address
+            );
+        }
+
+        function isQuoteToken(s, address) {
+            return (
+                s.chain.quoteMode === "native" &&
+                norm(address) ===
+                norm(s.chain.wrappedNative)
+            );
+        }
+
+        /*
+         * Returns the token's value in the session's quote currency.
+         *
+         * Ethereum:
+         *   stablecoin = 1 USD
+         *
+         * L2:
+         *   wrapped native = 1 WETH/WPOL
+         */
+        function quotePrice(s, address) {
+            address = norm(address);
+
+            if (
+                s.chain.quoteMode === "usd" &&
+                isStable(s, address)
+            ) {
+                return 1;
+            }
+
+            if (
+                s.chain.quoteMode === "native" &&
+                isQuoteToken(s, address)
+            ) {
+                return 1;
+            }
+
+            const queue = [
+                {
+                    token: address,
+                    value: 1,
+                    depth: 0
+                }
+            ];
+
+            const seen = new Set([address]);
+
+            while (queue.length) {
+                const x = queue.shift();
+
+                if (
+                    x.depth >=
+                    CONFIG.MAX_PRICE_PATH_DEPTH
+                ) {
+                    continue;
+                }
+
+                const neighbors =
+                    s.pairPrices.get(x.token);
+
+                if (!neighbors) {
+                    continue;
+                }
+
+                for (
+                    const [neighbor, edge]
+                    of neighbors
+                ) {
+                    if (
+                        !edge ||
+                        !Number.isFinite(edge.price) ||
+                        edge.price <= 0
+                    ) {
+                        continue;
+                    }
+
+                    const value =
+                        x.value * edge.price;
+
+                    if (
+                        s.chain.quoteMode === "usd" &&
+                        isStable(s, neighbor)
+                    ) {
+                        return value;
+                    }
+
+                    if (
+                        s.chain.quoteMode === "native" &&
+                        isQuoteToken(s, neighbor)
+                    ) {
+                        return value;
+                    }
+
+                    if (!seen.has(neighbor)) {
+                        seen.add(neighbor);
+
+                        queue.push({
+                            token: neighbor,
+                            value,
+                            depth:
+                                x.depth + 1
+                        });
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /*
+         * Uniswap V3 sqrt price:
+         *
+         *   rawPrice = sqrtPriceX96^2 / 2^192
+         *
+         * This is token1/token0 in raw token units.
+         *
+         * Convert to human units:
+         *
+         *   token1/token0 =
+         *       rawPrice * 10^decimals0 / 10^decimals1
+         */
+        function poolPrice(
+            sqrtPriceX96,
+            decimals0,
+            decimals1
+        ) {
+            const sqrt =
+                Number(sqrtPriceX96);
+
+            if (
+                !Number.isFinite(sqrt) ||
+                sqrt <= 0
+            ) {
+                return null;
+            }
+
+            const normalized =
+                sqrt / Math.pow(2, 96);
+
+            const rawPrice =
+                normalized * normalized;
+
+            const decimalAdjustment =
+                Math.pow(
+                    10,
+                    decimals0 - decimals1
+                );
+
+            const price =
+                rawPrice *
+                decimalAdjustment;
+
+            return Number.isFinite(price) &&
+                price > 0
+                ? price
+                : null;
+        }
+
+        function addPoint(t, p) {
+            if (
+                !Number.isFinite(p) ||
+                p <= 0
+            ) {
+                return;
+            }
+
+            const ts = now();
+
+            t.history.push({
+                t: ts,
+                price: p
+            });
+
+            const cut =
+                ts - CONFIG.HISTORY_MS;
+
+            while (
+                t.history.length &&
+                t.history[0].t < cut
+            ) {
+                t.history.shift();
+            }
+
+            if (
+                t.history.length >
+                CONFIG.MAX_HISTORY_POINTS
+            ) {
+                t.history.splice(
+                    0,
+                    t.history.length -
+                    CONFIG.MAX_HISTORY_POINTS
+                );
+            }
+        }
+
+        function oldPrice(t, ms) {
+            const target =
+                now() - ms;
+
+            let result = null;
+
+            for (const p of t.history) {
+                if (p.t <= target) {
+                    result = p.price;
+                } else {
+                    break;
+                }
+            }
+
+            return result;
+        }
+
+        function pct(t, ms) {
+            if (t.priceQuote == null) {
+                return null;
+            }
+
+            const old = oldPrice(t, ms);
+
+            return old > 0
+                ? ((t.priceQuote - old) / old) * 100
+                : null;
+        }
+
+        async function processSwapLog(s, log) {
+            if (!current(s)) {
+                return;
+            }
+
+            const pool =
+                await loadPool(
+                    s,
+                    log.address
+                );
+
+            if (
+                !current(s) ||
+                !pool?.initialized
+            ) {
+                return;
+            }
+
+            let parsed;
+
+            try {
+                parsed =
+                    SWAP_INTERFACE.parseLog({
+                        topics: log.topics,
+                        data: log.data
+                    });
+            } catch {
+                return;
+            }
+
+            if (!parsed) {
+                return;
+            }
+
+            const amount0 =
+                parsed.args.amount0;
+
+            const amount1 =
+                parsed.args.amount1;
+
+            const sqrt =
+                parsed.args.sqrtPriceX96;
+
+            const pair =
+                poolPrice(
+                    sqrt,
+                    pool.token0Meta.decimals,
+                    pool.token1Meta.decimals
+                );
+
+            if (pair == null) {
+                return;
+            }
+
+            /*
+             * Learn this pool's exchange rate.
+             */
+            setPair(
+                s,
+                pool.token0,
+                pool.token1,
+                pair
+            );
+
+            const ts = now();
+
+            const cut =
+                ts - CONFIG.WINDOW_MS;
+
+            const t0 =
+                pool.token0Meta;
+
+            const t1 =
+                pool.token1Meta;
+
+            /*
+             * Track the actual swap once.
+             */
+            s.swaps.push(ts);
+
+            while (
+                s.swaps.length &&
+                s.swaps[0] < cut
+            ) {
+                s.swaps.shift();
+            }
+
+            /*
+             * Track token activity independently.
+             */
+            t0.swaps.push(ts);
+            t1.swaps.push(ts);
+
+            t0.lastSeen = ts;
+            t1.lastSeen = ts;
+
+            while (
+                t0.swaps.length &&
+                t0.swaps[0] < cut
+            ) {
+                t0.swaps.shift();
+            }
+
+            while (
+                t1.swaps.length &&
+                t1.swaps[0] < cut
+            ) {
+                t1.swaps.shift();
+            }
+
+            let n0 = 0;
+            let n1 = 0;
+
+            try {
+                n0 = Math.abs(
+                    Number(
+                        ethers.formatUnits(
+                            amount0,
+                            t0.decimals
+                        )
+                    )
+                );
+
+                n1 = Math.abs(
+                    Number(
+                        ethers.formatUnits(
+                            amount1,
+                            t1.decimals
+                        )
+                    )
+                );
+            } catch { }
+
+            /*
+             * Calculate both token prices in the
+             * configured quote currency.
+             *
+             * Ethereum:
+             *   USD
+             *
+             * L2:
+             *   WETH/WPOL
+             */
+            const p0 =
+                quotePrice(
+                    s,
+                    t0.address
+                );
+
+            const p1 =
+                quotePrice(
+                    s,
+                    t1.address
+                );
+
+            if (p0 != null) {
+                t0.priceQuote = p0;
+                addPoint(t0, p0);
+            }
+
+            if (p1 != null) {
+                t1.priceQuote = p1;
+                addPoint(t1, p1);
+            }
+
+            /*
+             * Estimate volume in the configured quote
+             * currency.
+             *
+             * If both sides have a quote price, averaging
+             * the two sides avoids counting the swap twice.
+             */
+            let volume = null;
+
+            if (
+                p0 != null &&
+                p1 != null
+            ) {
+                volume =
+                    (n0 * p0 +
+                        n1 * p1) / 2;
+            } else if (p0 != null) {
+                volume = n0 * p0;
+            } else if (p1 != null) {
+                volume = n1 * p1;
+            }
+
+            if (
+                volume != null &&
+                Number.isFinite(volume)
+            ) {
+                t0.volumeQuote += volume;
+                t1.volumeQuote += volume;
+            }
+        }
+
+        function activeTokens(s) {
+            if (!s) {
+                return [];
+            }
+
+            const cut =
+                now() - CONFIG.WINDOW_MS;
+
+            const list = [];
+
+            for (const t of s.tokens.values()) {
+                while (
+                    t.swaps.length &&
+                    t.swaps[0] < cut
+                ) {
+                    t.swaps.shift();
+                }
+
+                if (t.swaps.length) {
+                    list.push(t);
+                }
+            }
+
+            list.sort(
+                (a, b) =>
+                    b.swaps.length -
+                    a.swaps.length ||
+                    b.volumeQuote -
+                    a.volumeQuote ||
+                    b.lastSeen -
+                    a.lastSeen
+            );
+
+            return list.slice(
+                0,
+                CONFIG.MAX_TOKENS
+            );
+        }
+
+        function fp(v) {
+            if (
+                v == null ||
+                !Number.isFinite(v)
+            ) {
+                return "—";
+            }
+
+            if (Math.abs(v) >= 1000) {
+                return v.toLocaleString(
+                    "en-US",
+                    {
+                        maximumFractionDigits: 2
+                    }
+                );
+            }
+
+            if (Math.abs(v) >= 1) {
+                return v.toLocaleString(
+                    "en-US",
+                    {
+                        maximumFractionDigits: 6
+                    }
+                );
+            }
+
+            if (Math.abs(v) >= 0.01) {
+                return v.toFixed(5);
+            }
+
+            if (Math.abs(v) >= 0.0001) {
+                return v.toFixed(7);
+            }
+
+            return v.toExponential(4);
+        }
+
+        function compact(v) {
+            if (!Number.isFinite(v)) {
+                return "—";
+            }
+
+            const a = Math.abs(v);
+
+            if (a >= 1e12) {
+                return (
+                    (v / 1e12).toFixed(2) +
+                    "T"
+                );
+            }
+
+            if (a >= 1e9) {
+                return (
+                    (v / 1e9).toFixed(2) +
+                    "B"
+                );
+            }
+
+            if (a >= 1e6) {
+                return (
+                    (v / 1e6).toFixed(2) +
+                    "M"
+                );
+            }
+
+            if (a >= 1e3) {
+                return (
+                    (v / 1e3).toFixed(2) +
+                    "K"
+                );
+            }
+
+            if (a >= 1) {
+                return v.toFixed(2);
+            }
+
+            if (a >= 0.01) {
+                return v.toFixed(4);
+            }
+
+            return v.toFixed(6);
+        }
+
+        function fpc(v) {
+            return (
+                v == null ||
+                !Number.isFinite(v)
+            )
+                ? "—"
+                : (
+                    v > 0 ? "+" : ""
+                ) +
+                v.toFixed(2) +
+                "%";
+        }
+
+        function cls(v) {
+            return v > 0
+                ? "change-positive"
+                : v < 0
+                    ? "change-negative"
+                    : "change-neutral";
+        }
+
+        function spark(canvas, values) {
+            const ctx =
+                canvas.getContext("2d");
+
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.clearRect(
+                0,
+                0,
+                w,
+                h
+            );
+
+            const a =
+                values.filter(
+                    v =>
+                        Number.isFinite(v) &&
+                        v > 0
+                );
+
+            if (a.length < 2) {
+                return;
+            }
+
+            const mn =
+                Math.min(...a);
+
+            const mx =
+                Math.max(...a);
+
+            const range =
+                mx - mn ||
+                mx * 0.000001;
+
+            ctx.beginPath();
+
+            a.forEach((v, i) => {
+                const px =
+                    i /
+                    (a.length - 1) *
+                    w;
+
+                const py =
+                    h -
+                    ((v - mn) / range) *
+                    (h - 4) -
+                    2;
+
+                if (i) {
+                    ctx.lineTo(
+                        px,
+                        py
+                    );
+                } else {
+                    ctx.moveTo(
+                        px,
+                        py
+                    );
+                }
+            });
+
+            ctx.strokeStyle =
+                "#7c7cff";
+
+            ctx.lineWidth = 2;
+
+            ctx.stroke();
+        }
+
+        function render() {
+            const s =
+                activeSession;
+
+            if (!s) {
+                els.table.innerHTML = `
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty">
+                                <strong>
+                                    Press Start to begin
+                                </strong>
+                                Live Uniswap V3 swaps will populate
+                                the leaderboard automatically.
+                            </div>
+                        </td>
+                    </tr>
+                `;
+
+                return;
+            }
+
+            const list =
+                activeTokens(s).filter(t => {
+                    if (!searchText) {
+                        return true;
+                    }
+
+                    const q =
+                        searchText.toLowerCase();
+
+                    return (
+                        t.symbol
+                            .toLowerCase()
+                            .includes(q) ||
+                        t.name
+                            .toLowerCase()
+                            .includes(q) ||
+                        t.address.includes(q)
+                    );
+                });
+
+            if (!list.length) {
+                els.table.innerHTML = `
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty">
+                                <strong>
+                                    ${s.tokens.size
+                        ? "No matching active tokens"
+                        : "Waiting for Uniswap V3 swaps..."
+                    }
+                                </strong>
+                                ${s.tokens.size
+                        ? "Try another search."
+                        : "Tokens appear automatically as live swaps are observed."
+                    }
+                            </div>
+                        </td>
+                    </tr>
+                `;
+
+                return;
+            }
+
+            els.table.innerHTML =
+                list.map((t, i) => `
+                    <tr>
+                        <td class="rank">
+                            ${i + 1}
+                        </td>
+
+                        <td>
+                            <div class="token">
+                                <div class="token-icon">
+                                    ${esc(
+                    t.symbol
+                        .slice(0, 3)
+                        .toUpperCase()
+                )}
+                                </div>
+
+                                <div>
+                                    <div class="token-symbol">
+                                        ${esc(t.symbol)}
+                                    </div>
+
+                                    <div class="token-address">
+                                        ${esc(
+                    short(t.address)
+                )}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <td class="price">
+                            ${t.priceQuote != null
+                        ? fp(t.priceQuote)
+                        : '<span class="muted">No quote route</span>'
+                    }
+                        </td>
+
+                        <td class="${cls(
+                        pct(t, 60000)
+                    )}">
+                            ${fpc(
+                        pct(t, 60000)
+                    )}
+                        </td>
+
+                        <td class="${cls(
+                        pct(t, 300000)
+                    )}">
+                            ${fpc(
+                        pct(t, 300000)
+                    )}
+                        </td>
+
+                        <td class="${cls(
+                        pct(t, 900000)
+                    )}">
+                            ${fpc(
+                        pct(t, 900000)
+                    )}
+                        </td>
+
+                        <td class="activity">
+                            <div class="activity-number">
+                                ${t.swaps.length}
+                            </div>
+
+                            <div class="activity-label">
+                                swaps / 15m
+                            </div>
+                        </td>
+
+                        <td class="volume">
+                            ${t.volumeQuote > 0
+                        ? compact(
+                            t.volumeQuote
+                        )
+                        : "—"
+                    }
+                        </td>
+
+                        <td>
+                            <canvas
+                                class="spark"
+                                width="140"
+                                height="38"
+                                data-address="${esc(
+                        t.address
+                    )}"
+                            ></canvas>
+                        </td>
+                    </tr>
+                `).join("");
+
+            els.table
+                .querySelectorAll(
+                    "canvas.spark"
+                )
+                .forEach(canvas => {
+                    const t =
+                        s.tokens.get(
+                            canvas.dataset.address
+                        );
+
+                    if (t) {
+                        spark(
+                            canvas,
+                            t.history
+                                .map(
+                                    p => p.price
+                                )
+                                .slice(-80)
+                        );
+                    }
+                });
+        }
+
+        function updateStats(
+            s = activeSession
+        ) {
+            if (!s) {
+                resetView();
+                return;
+            }
+
+            els.chainStat.textContent =
+                s.chain.name;
+
+            els.blocksStat.textContent =
+                s.blockCount
+                    ? s.blockCount.toLocaleString()
+                    : "—";
+
+            els.poolsStat.textContent =
+                s.pools.size.toLocaleString();
+
+            els.tokensStat.textContent =
+                s.tokens.size.toLocaleString();
+
+            /*
+             * Actual swaps, rather than summing token-side
+             * activity and dividing by two.
+             */
+            const cut =
+                now() - CONFIG.WINDOW_MS;
+
+            while (
+                s.swaps.length &&
+                s.swaps[0] < cut
+            ) {
+                s.swaps.shift();
+            }
+
+            els.swapsStat.textContent =
+                s.swaps.length.toLocaleString();
+
+            /*
+             * Actual processing lag.
+             *
+             * rpcHead = newest known RPC block
+             * lastProcessedBlock = newest block whose logs
+             * have finished processing
+             */
+            const processed =
+                s.lastProcessedBlock ?? s.blockCount;
+
+            const lag =
+                Math.max(
+                    0,
+                    (s.rpcHead || 0) -
+                    (processed || 0)
+                );
+
+            els.lagStat.textContent =
+                lag.toLocaleString();
+
+            updateQuoteUI(s.chain);
+        }
+
+        els.button.onclick = () => {
+            if (
+                manuallyStopped ||
+                !activeSession
+            ) {
+                startApp();
+            } else {
+                stopApp(false);
+            }
+        };
+
+        els.chain.onchange = async e => {
+            currentChainKey =
+                e.target.value;
+
+            if (manuallyStopped) {
+                resetView();
+                render();
+            } else {
+                await startApp();
+            }
+        };
+
+        els.search.oninput = e => {
+            searchText =
+                e.target.value.trim();
+
+            render();
+        };
+
+        setInterval(() => {
+            updateStats();
+            render();
+        }, CONFIG.RENDER_INTERVAL_MS);
+
+        addEventListener(
+            "beforeunload",
+            () => {
+                try {
+                    activeSession
+                        ?.provider
+                        ?.destroy();
+                } catch { }
+            }
+        );
+
+        resetView();
+        updateButton();
+        render();
+    </script>
+</body>
+
+</html>
