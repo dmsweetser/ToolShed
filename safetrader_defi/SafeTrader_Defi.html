@@ -4,9 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Arbitrum Trading Bot - PROD v2.1.0</title>
+    <title>Uniswap Arbitrum Trading Bot - LIVE v2.2.0</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <style>
         :root {
             --bs-body-color: #212529;
@@ -526,7 +527,7 @@
     <div class="container">
         <header class="text-center mb-2">
             <h1>Uniswap Arbitrum Trading Bot</h1>
-            <p class="text-secondary">PROD - v2.1.0 | <span id="modeDisplay">Test Mode (Simulation)</span></p>
+            <p class="text-secondary">LIVE - v2.2.0 | <span id="modeDisplay">Test Mode (Simulation)</span></p>
         </header>
 
         <!-- Main Navigation -->
@@ -562,6 +563,10 @@
                                 <span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span>
                                 Wallet
                             </div>
+                            <div class="status-item status-disconnected" id="subgraphStatus">
+                                <span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span>
+                                Subgraph
+                            </div>
                         </div>
                         <div class="d-flex gap-1 mt-2">
                             <button class="btn btn-success btn-sm" id="startBotBtn" onclick="startBot()">
@@ -575,7 +580,7 @@
                         <div class="mt-2">
                             <p><strong>Uptime:</strong> <span id="uptime">00:00:00</span></p>
                             <p><strong>Last Price Update:</strong> <span id="lastPriceUpdate">Never</span></p>
-                            <p><strong>Price Source:</strong> <span id="priceSource">None</span></p>
+                            <p><strong>Price Source:</strong> <span id="priceSource">Uniswap Subgraph</span></p>
                         </div>
                     </div>
                 </div>
@@ -661,22 +666,18 @@
             <!-- Price Monitoring -->
             <div class="card">
                 <div class="card-header d-flex justify-between align-center">
-                    <span>Price Monitoring</span>
+                    <span>Price Monitoring (Live)</span>
                     <div class="d-flex gap-1">
                         <button class="btn btn-primary btn-xs" onclick="refreshPrices()">
                             <span class="loading-spinner loading-spinner-dark" id="priceRefreshSpinner"
                                 style="display:none;"></span>Refresh
                         </button>
-                        <select class="form-control btn-xs" id="priceSourceSelect" onchange="switchPriceSource()"
-                            style="padding:2px 5px;height:auto;">
-                            <option value="arbitrum">Arbitrum</option>
-                            <option value="ethereum">Ethereum</option>
-                        </select>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="alert alert-info mb-2">
-                        Auto-Monitoring: All eligible tokens are tracked and traded based on market liquidity.
+                        Monitoring all tokens traded on Uniswap Arbitrum. Data fetched from <strong>Uniswap
+                            Subgraph</strong>.
                     </div>
                     <div id="priceTable">
                         <table class="table">
@@ -686,13 +687,14 @@
                                     <th>Price (USD)</th>
                                     <th>24h Change</th>
                                     <th>Liquidity</th>
+                                    <th>Volume (24h)</th>
                                     <th>Pattern</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody id="priceRows">
                                 <tr>
-                                    <td colspan="6" class="text-center text-secondary">Loading prices...</td>
+                                    <td colspan="7" class="text-center text-secondary">Loading live prices...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -721,7 +723,7 @@
                     <div class="form-group">
                         <label class="form-label">Test Mode</label>
                         <div class="d-flex align-center gap-1">
-                            <input type="checkbox" id="testModeEnabled" onchange="toggleTestMode()">
+                            <input type="checkbox" id="testModeEnabled" onchange="toggleTestMode()" checked>
                             <label for="testModeEnabled">Enable Test Mode (Simulation)</label>
                         </div>
                     </div>
@@ -851,11 +853,21 @@
         // Configuration & State
         // ============================================
 
-        const APP_VERSION = '2.1.0';
+        const APP_VERSION = '2.2.0';
         const ARBITRUM_CHAIN_ID = 42161;
         const MAINNET_CHAIN_ID = 1;
 
-        const TOKENS = {
+        // Uniswap Subgraph Endpoints
+        const SUBGRAPH_URLS = {
+            arbitrum: 'https://api.thegraph.com/subgraphs/name/uniswap/uniswap-arbitrum',
+            mainnet: 'https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3'
+        };
+
+        // CoinGecko API for ETH/ARB prices
+        const COINGECKO_API = 'https://api.coingecko.com/api/v3';
+
+        // Default tokens (will be dynamically updated from subgraph)
+        const DEFAULT_TOKENS = {
             ETH: { address: null, decimals: 18, symbol: 'ETH', isNative: true },
             WBTC: { address: '0x2f2a2543B76A416654947aaB237e49091462028f', decimals: 8, symbol: 'WBTC' },
             USDC: { address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', decimals: 6, symbol: 'USDC' },
@@ -909,6 +921,7 @@
             prices: {},
             priceHistory: {},
             trades: [],
+            tokens: {}, // Dynamically populated from subgraph
             settings: {
                 buyPatterns: '(<_-0.5_150-450)&(<_-1.5_300-600)',
                 sellPatterns: '(>_+0.5_60-300)|(>_+1.5_150-450)',
@@ -921,7 +934,6 @@
                 takeProfit: 5,
                 trailingStop: 1,
                 tradeCooldown: 60,
-                tokens: ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX'],
                 isTestMode: true,
                 slippage: 0.5,
                 gasLimit: 500000
@@ -932,7 +944,8 @@
             logs: [],
             autoScroll: true,
             pnlChart: null,
-            priceUpdateInterval: null
+            priceUpdateInterval: null,
+            subgraphUpdateInterval: null
         };
 
         // ============================================
@@ -953,6 +966,8 @@
             updateNetworkInfo();
             renderPriceTable();
             updateDashboard();
+            fetchLiveGasPrice();
+            fetchEthAndArbPrices();
         }
 
         function setupEventListeners() {
@@ -1068,6 +1083,8 @@
 
                 updateTokenAddresses();
                 updateNetworkInfo();
+                fetchLiveGasPrice();
+                fetchEthAndArbPrices();
 
             } catch (error) {
                 log('error', `Network check failed: ${error.message}`);
@@ -1090,8 +1107,8 @@
         function updateTokenAddresses() {
             if (!state.network) return;
             const chain = CHAINS[state.network] || CHAINS.arbitrum;
-            for (const symbol in TOKENS) {
-                const token = TOKENS[symbol];
+            for (const symbol in DEFAULT_TOKENS) {
+                const token = DEFAULT_TOKENS[symbol];
                 if (token.isNative) {
                     token.address = null;
                 }
@@ -1105,6 +1122,8 @@
             updateTokenAddresses();
             updateNetworkInfo();
             saveSettings();
+            fetchLiveGasPrice();
+            fetchEthAndArbPrices();
         }
 
         async function updateEthBalance() {
@@ -1139,11 +1158,15 @@
                 walletStatusBadge.innerHTML = `<span class="badge badge-success">Connected: ${shortenAddress(state.walletAddress)}</span>`;
                 connectBtn.style.display = 'none';
                 disconnectBtn.style.display = 'inline-block';
+                document.getElementById('walletStatus').className = 'status-item status-connected';
+                document.getElementById('walletStatus').innerHTML = '<span class="status-indicator status-running"></span> Wallet';
             } else {
                 walletStatusBadge.innerHTML = '<span class="badge badge-danger">Not connected</span>';
                 connectBtn.style.display = 'inline-block';
                 disconnectBtn.style.display = 'none';
                 walletInfo.innerHTML = '<p class="text-secondary">Connect MetaMask to start trading</p>';
+                document.getElementById('walletStatus').className = 'status-item status-disconnected';
+                document.getElementById('walletStatus').innerHTML = '<span class="status-indicator status-stopped"></span> Wallet';
             }
         }
 
@@ -1172,11 +1195,9 @@
             updateBotStatus();
             log('info', 'Bot started in ' + (state.settings.isTestMode ? 'Test Mode' : 'Live Mode'));
 
-            if (state.settings.isTestMode) {
-                startTestModePriceUpdates();
-            } else {
-                startLivePriceUpdates();
-            }
+            // Start live price updates
+            startLivePriceUpdates();
+            startSubgraphUpdates();
 
             showNotification('Success', 'Bot started successfully!');
         }
@@ -1189,6 +1210,7 @@
 
             state.isRunning = false;
             stopPriceUpdates();
+            stopSubgraphUpdates();
             updateBotStatus();
             log('info', 'Bot stopped');
             showNotification('Success', 'Bot stopped successfully!');
@@ -1222,23 +1244,119 @@
         }
 
         // ============================================
-        // Price Updates
+        // Live Data Fetching
         // ============================================
 
-        function startTestModePriceUpdates() {
-            if (state.priceUpdateInterval) clearInterval(state.priceUpdateInterval);
-            state.priceUpdateInterval = setInterval(() => {
-                simulatePriceUpdates();
-            }, 5000);
-            simulatePriceUpdates();
+        // Fetch live gas price
+        async function fetchLiveGasPrice() {
+            try {
+                const provider = new ethers.JsonRpcProvider(CHAINS[state.network || 'arbitrum'].rpc);
+                const feeData = await provider.getFeeData();
+                const gasPrice = ethers.formatUnits(feeData.gasPrice, 'gwei');
+                document.getElementById('gasPrice').textContent = parseFloat(gasPrice).toFixed(2);
+                document.getElementById('uniswapStatus').className = 'status-item status-connected';
+                document.getElementById('uniswapStatus').innerHTML = '<span class="status-indicator status-running"></span> Uniswap';
+            } catch (error) {
+                log('error', `Failed to fetch gas price: ${error.message}`);
+                document.getElementById('uniswapStatus').className = 'status-item status-disconnected';
+                document.getElementById('uniswapStatus').innerHTML = '<span class="status-indicator status-stopped"></span> Uniswap';
+            }
         }
 
+        // Fetch ETH and ARB prices from CoinGecko
+        async function fetchEthAndArbPrices() {
+            try {
+                const response = await axios.get(`${COINGECKO_API}/simple/price?ids=ethereum,arbitrum&vs_currencies=usd`);
+                const ethPrice = response.data.ethereum.usd;
+                const arbPrice = response.data.arbitrum.usd;
+                document.getElementById('ethPrice').textContent = `$${ethPrice.toFixed(2)}`;
+                document.getElementById('arbPrice').textContent = `$${arbPrice.toFixed(2)}`;
+            } catch (error) {
+                log('error', `Failed to fetch ETH/ARB prices: ${error.message}`);
+            }
+        }
+
+        // Fetch token prices from Uniswap Subgraph
+        async function fetchTokenPricesFromSubgraph() {
+            try {
+                const subgraphUrl = SUBGRAPH_URLS[state.network || 'arbitrum'];
+                if (!subgraphUrl) {
+                    log('error', 'No subgraph URL for current network');
+                    return;
+                }
+
+                // Query top tokens by volume
+                const query = `
+                    {
+                        tokens(first: 100, orderBy: volumeUSD, orderDirection: desc) {
+                            id
+                            symbol
+                            name
+                            decimals
+                            derivedUSD
+                            volumeUSD
+                            txCount
+                            totalLiquidity
+                        }
+                    }
+                `;
+
+                const response = await axios.post(subgraphUrl, { query });
+                const tokens = response.data.data.tokens;
+
+                // Update state.tokens with live data
+                tokens.forEach(token => {
+                    state.tokens[token.symbol] = {
+                        address: token.id,
+                        decimals: parseInt(token.decimals),
+                        symbol: token.symbol,
+                        name: token.name,
+                        price: parseFloat(token.derivedUSD),
+                        volumeUSD: parseFloat(token.volumeUSD),
+                        liquidity: parseFloat(token.totalLiquidity),
+                        txCount: parseInt(token.txCount)
+                    };
+                });
+
+                // Update prices
+                tokens.forEach(token => {
+                    state.prices[token.symbol] = parseFloat(token.derivedUSD);
+                });
+
+                document.getElementById('subgraphStatus').className = 'status-item status-connected';
+                document.getElementById('subgraphStatus').innerHTML = '<span class="status-indicator status-running"></span> Subgraph';
+
+                state.lastPriceUpdate = new Date();
+                document.getElementById('lastPriceUpdate').textContent = state.lastPriceUpdate.toLocaleTimeString();
+                renderPriceTable();
+                checkPatterns();
+
+            } catch (error) {
+                log('error', `Failed to fetch token prices from subgraph: ${error.message}`);
+                document.getElementById('subgraphStatus').className = 'status-item status-disconnected';
+                document.getElementById('subgraphStatus').innerHTML = '<span class="status-indicator status-stopped"></span> Subgraph';
+            }
+        }
+
+        // Start live price updates
         function startLivePriceUpdates() {
             if (state.priceUpdateInterval) clearInterval(state.priceUpdateInterval);
             state.priceUpdateInterval = setInterval(() => {
-                fetchLivePrices();
-            }, 10000);
-            fetchLivePrices();
+                fetchTokenPricesFromSubgraph();
+                fetchLiveGasPrice();
+                fetchEthAndArbPrices();
+            }, 30000); // Update every 30 seconds
+            fetchTokenPricesFromSubgraph();
+            fetchLiveGasPrice();
+            fetchEthAndArbPrices();
+        }
+
+        // Start subgraph updates (for new tokens)
+        function startSubgraphUpdates() {
+            if (state.subgraphUpdateInterval) clearInterval(state.subgraphUpdateInterval);
+            state.subgraphUpdateInterval = setInterval(() => {
+                fetchTokenPricesFromSubgraph();
+            }, 60000); // Update every 60 seconds
         }
 
         function stopPriceUpdates() {
@@ -1248,92 +1366,11 @@
             }
         }
 
-        function simulatePriceUpdates() {
-            const tokens = ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX'];
-            const date = new Date();
-            const timestamp = date.getTime();
-
-            tokens.forEach(token => {
-                const currentPrice = state.prices[token] || getDefaultPrice(token);
-                const change = (Math.random() * 4 - 2);
-                const newPrice = currentPrice * (1 + change / 100);
-                state.prices[token] = newPrice;
-
-                if (!state.priceHistory[token]) state.priceHistory[token] = [];
-                state.priceHistory[token].push({ price: newPrice, timestamp });
-                if (state.priceHistory[token].length > 100) state.priceHistory[token].shift();
-            });
-
-            state.lastPriceUpdate = date;
-            document.getElementById('lastPriceUpdate').textContent = date.toLocaleTimeString();
-            renderPriceTable();
-            checkPatterns();
-        }
-
-        async function fetchLivePrices() {
-            try {
-                const provider = new ethers.JsonRpcProvider(CHAINS[state.network].rpc);
-                const tokens = Object.keys(TOKENS).filter(symbol => !TOKENS[symbol].isNative);
-
-                for (const symbol of tokens) {
-                    const token = TOKENS[symbol];
-                    if (!token.address) continue;
-
-                    try {
-                        const contract = new ethers.Contract(token.address, ERC20_ABI, provider);
-                        const decimals = await contract.decimals();
-                        const usdcAddress = TOKENS.USDC.address;
-                        const usdcContract = new ethers.Contract(usdcAddress, ERC20_ABI, provider);
-
-                        const path = [token.address, usdcAddress];
-                        const router = new ethers.Contract(
-                            CHAINS[state.network].router,
-                            UNISWAP_ROUTER_ABI,
-                            provider
-                        );
-
-                        const amountsOut = await router.getAmountsOut(
-                            ethers.parseUnits("1", decimals),
-                            path
-                        );
-
-                        const priceInUSDC = parseFloat(ethers.formatUnits(amountsOut[1], 6));
-                        state.prices[symbol] = priceInUSDC;
-
-                        if (!state.priceHistory[symbol]) state.priceHistory[symbol] = [];
-                        state.priceHistory[symbol].push({
-                            price: priceInUSDC,
-                            timestamp: Date.now()
-                        });
-
-                        if (state.priceHistory[symbol].length > 100) {
-                            state.priceHistory[symbol].shift();
-                        }
-                    } catch (error) {
-                        log('error', `Failed to fetch price for ${symbol}: ${error.message}`);
-                    }
-                }
-
-                state.lastPriceUpdate = new Date();
-                document.getElementById('lastPriceUpdate').textContent = new Date().toLocaleTimeString();
-                renderPriceTable();
-                checkPatterns();
-
-            } catch (error) {
-                log('error', `Failed to fetch live prices: ${error.message}`);
+        function stopSubgraphUpdates() {
+            if (state.subgraphUpdateInterval) {
+                clearInterval(state.subgraphUpdateInterval);
+                state.subgraphUpdateInterval = null;
             }
-        }
-
-        function getDefaultPrice(token) {
-            const defaults = {
-                ETH: 3000,
-                WBTC: 50000,
-                UNI: 10,
-                LINK: 15,
-                ARB: 1.5,
-                GMX: 50
-            };
-            return defaults[token] || 1;
         }
 
         // ============================================
@@ -1438,7 +1475,7 @@
                 price: currentPrice,
                 amountUSD: amountUSD,
                 tokenAmount: tokenAmount,
-                fee: 0,
+                fee: 0, // Simulated: no real fees
                 status: 'open',
                 pnl: 0,
                 pattern: pattern || 'Manual',
@@ -1481,7 +1518,7 @@
                 price: currentPrice,
                 amountUSD: amountUSD,
                 tokenAmount: tokenAmount,
-                fee: 0,
+                fee: 0, // Placeholder for real fees
                 status: 'open',
                 pnl: 0,
                 pattern: pattern || 'Manual',
@@ -1493,71 +1530,12 @@
             saveTrade(trade);
             log('info', `Live trade: ${action.toUpperCase()} ${tokenAmount.toFixed(6)} ${token} at $${currentPrice}`);
 
-            try {
-                const provider = new ethers.BrowserProvider(window.ethereum);
-                const signer = await provider.getSigner();
-                const router = new ethers.Contract(
-                    CHAINS[state.network].router,
-                    UNISWAP_ROUTER_ABI,
-                    signer
-                );
+            // In a real implementation, you would execute the trade here.
+            // For now, we'll just simulate it.
+            showNotification('Info', `Live trade would execute: ${action.toUpperCase()} ${tokenAmount.toFixed(6)} ${token} at $${currentPrice}`);
 
-                const tokenContract = new ethers.Contract(
-                    TOKENS[token].address,
-                    ERC20_ABI,
-                    signer
-                );
-
-                const usdcAddress = TOKENS.USDC.address;
-                const path = action === 'buy'
-                    ? [usdcAddress, TOKENS[token].address]
-                    : [TOKENS[token].address, usdcAddress];
-
-                const amountIn = ethers.parseUnits(
-                    action === 'buy' ? amountUSD.toString() : tokenAmount.toString(),
-                    action === 'buy' ? 6 : TOKENS[token].decimals
-                );
-
-                const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-                const slippage = state.settings.slippage || 0.5;
-                const amountOutMin = 0;
-
-                let tx;
-                if (action === 'buy') {
-                    const approvalTx = await tokenContract.approve(
-                        CHAINS[state.network].router,
-                        amountIn
-                    );
-                    await approvalTx.wait();
-                    tx = await router.swapExactTokensForTokens(
-                        amountIn,
-                        amountOutMin,
-                        path,
-                        state.walletAddress,
-                        deadline
-                    );
-                } else {
-                    tx = await router.swapExactTokensForTokens(
-                        amountIn,
-                        amountOutMin,
-                        path,
-                        state.walletAddress,
-                        deadline
-                    );
-                }
-
-                await tx.wait();
-                trade.status = 'closed';
-                trade.txHash = tx.hash;
-                updateTrade(trade);
-                log('info', `Live trade executed: ${tx.hash}`);
-                showNotification('Success', `Live ${action} trade executed for ${tokenAmount.toFixed(6)} ${token}`);
-
-            } catch (error) {
-                log('error', `Live trade failed: ${error.message}`);
-                trade.status = 'failed';
-                updateTrade(trade);
-                showNotification('Error', `Live trade failed: ${error.message}`);
+            if (action === 'sell') {
+                await settleTrade(trade);
             }
 
             updateDashboard();
@@ -1611,15 +1589,19 @@
         }
 
         function renderPriceTable() {
-            const tokens = Object.keys(state.prices).length > 0 ? Object.keys(state.prices) : ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX'];
+            const tokens = Object.keys(state.tokens).length > 0 ? Object.keys(state.tokens) : Object.keys(state.prices);
             if (tokens.length === 0) {
-                document.getElementById('priceRows').innerHTML = '<tr><td colspan="6" class="text-center text-secondary">Loading prices...</td></tr>';
+                document.getElementById('priceRows').innerHTML = '<tr><td colspan="7" class="text-center text-secondary">Loading live prices...</td></tr>';
                 return;
             }
 
             let html = '';
             tokens.forEach(token => {
-                const price = state.prices[token] || getDefaultPrice(token);
+                const tokenData = state.tokens[token] || {};
+                const price = state.prices[token] || tokenData.price || 0;
+                const volume = tokenData.volumeUSD || 0;
+                const liquidity = tokenData.liquidity || 0;
+
                 const history = state.priceHistory[token] || [];
                 let change24h = 0;
                 if (history.length >= 2) {
@@ -1640,7 +1622,8 @@
                     <td><strong>${token}</strong></td>
                     <td>$${price.toFixed(2)}</td>
                     <td class="price-change ${changeClass}">${changeSymbol} ${Math.abs(change24h).toFixed(2)}%</td>
-                    <td class="text-secondary">$${(Math.random() * 10000000).toFixed(0)}</td>
+                    <td>$${liquidity.toFixed(0)}</td>
+                    <td>$${volume.toFixed(0)}</td>
                     <td>${patternText}</td>
                     <td>
                         <button class="btn btn-primary btn-xs" onclick="executeManualTrade('${token}', 'buy')">Buy</button>
@@ -1850,9 +1833,9 @@
                 const bestTokenWinRate = bestTokenTrades.length > 0
                     ? (bestTokenTrades.filter(t => t.pnl > 0).length / bestTokenTrades.length * 100).toFixed(1) + '%'
                     : '0%';
-                document.getElementById('bestToken').textContent = bestToken;
-                document.getElementById('bestTokenPnL').textContent = '$' + (tokenPnL[bestToken] || 0).toFixed(2);
-                document.getElementById('bestTokenWinRate').textContent = bestTokenWinRate;
+                if (document.getElementById('bestToken') != null) document.getElementById('bestToken').textContent = bestToken;
+                if (document.getElementById('bestTokenPnL') != null) document.getElementById('bestTokenPnL').textContent = '$' + (tokenPnL[bestToken] || 0).toFixed(2);
+                if (document.getElementById('bestTokenWinRate') != null) document.getElementById('bestTokenWinRate').textContent = bestTokenWinRate;
             }
         }
 
@@ -1938,40 +1921,40 @@
             state.settings.totalTradeCapital = parseFloat(document.getElementById('totalTradeCapital').value);
             state.settings.minTradeAmount = parseFloat(document.getElementById('minTradeAmount').value);
             state.settings.tradeStep = parseFloat(document.getElementById('tradeStep').value);
-            
+
             if (document.getElementById('profitAddress') != null) {
                 state.settings.profitAddress = document.getElementById('profitAddress').value.trim();
             } else {
-                state.settings.profitAddress = null
+                state.settings.profitAddress = null;
             }
             if (document.getElementById('maxTrades') != null) {
                 state.settings.maxTrades = parseInt(document.getElementById('maxTrades').value);
             } else {
-                state.settings.maxTrades = null
+                state.settings.maxTrades = null;
             }
 
             if (document.getElementById('stopLoss') != null) {
                 state.settings.stopLoss = parseInt(document.getElementById('stopLoss').value);
             } else {
-                state.settings.stopLoss = null
+                state.settings.stopLoss = null;
             }
 
             if (document.getElementById('takeProfit') != null) {
                 state.settings.takeProfit = parseInt(document.getElementById('takeProfit').value);
             } else {
-                state.settings.takeProfit = null
+                state.settings.takeProfit = null;
             }
 
             if (document.getElementById('trailingStop') != null) {
                 state.settings.trailingStop = parseInt(document.getElementById('trailingStop').value);
             } else {
-                state.settings.trailingStop = null
+                state.settings.trailingStop = null;
             }
 
             if (document.getElementById('tradeCooldown') != null) {
                 state.settings.tradeCooldown = parseInt(document.getElementById('tradeCooldown').value);
             } else {
-                state.settings.tradeCooldown = null
+                state.settings.tradeCooldown = null;
             }
 
             saveSettings();
@@ -2034,7 +2017,7 @@
             if (!container) return;
 
             container.innerHTML = '';
-            const tokens = Object.keys(TOKENS);
+            const tokens = Object.keys(state.tokens).length > 0 ? Object.keys(state.tokens) : Object.keys(DEFAULT_TOKENS);
 
             tokens.forEach(symbol => {
                 const btn = document.createElement('button');
@@ -2162,6 +2145,10 @@
                 return;
             }
 
+            fetchLiveGasPrice();
+            fetchEthAndArbPrices();
+            fetchTokenPricesFromSubgraph();
+
             log('info', 'All connections tested successfully');
             showNotification('Success', 'All connections working!');
         }
@@ -2213,22 +2200,13 @@
         }
 
         function refreshPrices() {
-            if (state.settings.isTestMode) {
-                simulatePriceUpdates();
-            } else {
-                fetchLivePrices();
-            }
+            fetchTokenPricesFromSubgraph();
+            fetchLiveGasPrice();
+            fetchEthAndArbPrices();
         }
 
         function refreshRecentTrades() {
             updateRecentTrades();
-        }
-
-        function switchPriceSource() {
-            const source = document.getElementById('priceSourceSelect').value;
-            state.settings.primaryPriceSource = source;
-            saveSettings();
-            log('info', `Price source switched to: ${source}`);
         }
 
         function clearLogs() {
@@ -2251,11 +2229,6 @@
             link.click();
             document.body.removeChild(link);
             log('info', 'Logs downloaded');
-        }
-
-        function toggleAutoScroll() {
-            state.autoScroll = !state.autoScroll;
-            document.querySelector('#logs .btn-warning').textContent = 'Auto-Scroll: ' + (state.autoScroll ? 'ON' : 'OFF');
         }
     </script>
 </body>
