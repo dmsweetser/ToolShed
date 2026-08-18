@@ -1,0 +1,2266 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Uniswap Trading Bot - Final</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+            color: #212529;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: #212529;
+            margin-top: 0;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .logs {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: scroll;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            line-height: 1.4;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .status-connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-running {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .status-stopped {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .status-test {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .positive {
+            color: #28a745;
+        }
+
+        .negative {
+            color: #dc3545;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            margin: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            background: #0056b3;
+        }
+
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+
+        button.danger {
+            background: #dc3545;
+        }
+
+        button.danger:hover {
+            background: #c82333;
+        }
+
+        button.success {
+            background: #28a745;
+        }
+
+        button.success:hover {
+            background: #218838;
+        }
+
+        input,
+        select {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .price-display {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .price-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 3px solid #007bff;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .form-row {
+            margin-bottom: 10px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .badge-secondary {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Uniswap Trading Bot</h1>
+    <p><strong>Version:</strong> 3.0.0 | <strong>Mode:</strong> <span id="modeDisplay">Test Mode</span></p>
+
+    <div class="grid">
+        <div class="card">
+            <h2>Mode Selection</h2>
+            <div class="form-row">
+                <label class="form-label">
+                    <input type="checkbox" id="testMode" onchange="toggleMode()" checked />
+                    <strong>Test Mode</strong> (Simulated trading with fake wallet)
+                </label>
+            </div>
+            <p id="modeStatus" class="status status-test">Running in Test Mode</p>
+            <p>Use this to test strategies without real money.</p>
+        </div>
+
+        <div class="card">
+            <div class="section-header">
+                <h2>Wallet & Network</h2>
+            </div>
+            <div id="walletSection">
+                <div class="form-row">
+                    <button onclick="connectWallet()" id="connectBtn">Connect MetaMask</button>
+                    <button onclick="disconnectWallet()" id="disconnectBtn" style="display: none;">Disconnect</button>
+                </div>
+            </div>
+            <div class="form-row">
+                <p><strong>Status:</strong> <span id="walletStatus"
+                        class="status status-disconnected">Disconnected</span></p>
+                <p><strong>Network:</strong> <span id="network">None</span></p>
+                <p><strong>Address:</strong> <span id="walletAddress">None</span></p>
+                <p><strong>Balance:</strong> <span id="balance">0 ETH</span></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-header">
+            <h2>Trading Settings</h2>
+        </div>
+        <div class="grid">
+            <div>
+                <div class="form-row">
+                    <label class="form-label">Profit Address:</label>
+                    <input type="text" id="profitAddress" placeholder="0x..." value="" />
+                    <small>Wallet address where profits will be sent (Live Mode only)</small>
+                </div>
+            </div>
+            <div>
+                <div class="form-row">
+                    <label class="form-label">Buy Patterns:</label>
+                    <input type="text" id="buyPatterns" value="(<_-0.5_150-450)&(<_-1.5_300-600)" />
+                    <small>Example: (<_-0.5_150-450)&(<_-1.5_300-600)< /small>
+                </div>
+            </div>
+            <div>
+                <div class="form-row">
+                    <label class="form-label">Sell Patterns:</label>
+                    <input type="text" id="sellPatterns" value="(>_+0.5_60-300)|(>_+1.5_150-450)" />
+                    <small>Example: (>_+0.5_60-300)|(>_+1.5_150-450)</small>
+                </div>
+            </div>
+            <div>
+                <div class="form-row">
+                    <label class="form-label">Trade Amount (Primary Token):</label>
+                    <input type="number" id="tradeAmount" value="0.1" min="0.0001" step="0.0001" />
+                    <small>Amount in primary token (ETH/WETH) per trade</small>
+                </div>
+            </div>
+            <div>
+                <div class="form-row">
+                    <label class="form-label">Price Source:</label>
+                    <select id="priceSource" onchange="switchPriceSource()">
+                        <option value="arbitrum">Arbitrum</option>
+                        <option value="ethereum">Ethereum</option>
+                        <option value="base">Base</option>
+                        <option value="optimism">Optimism</option>
+                        <option value="polygon">Polygon</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="form-row">
+            <button onclick="saveSettings()" class="success">Save Settings</button>
+            <button onclick="loadDefaultPatterns()" class="secondary">Load Default Patterns</button>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <div class="section-header">
+                <h2>Bot Controls</h2>
+            </div>
+            <div class="form-row">
+                <button onclick="startBot()" id="startBtn">Start Bot</button>
+                <button onclick="stopBot()" id="stopBtn" disabled>Stop Bot</button>
+                <button onclick="testConnection()" class="secondary">Test Connection</button>
+            </div>
+            <div class="form-row">
+                <p><strong>Status:</strong> <span id="botStatus" class="status status-stopped">Stopped</span></p>
+                <p><strong>Uptime:</strong> <span id="uptime">00:00:00</span></p>
+                <p><strong>Last Price Update:</strong> <span id="lastPriceUpdate">Never</span></p>
+                <p><strong>Active Tokens:</strong> <span id="activeTokensCount">0</span></p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="section-header">
+                <h2>Portfolio Status</h2>
+            </div>
+            <div class="form-row">
+                <p><strong>Primary Token:</strong> <span id="primaryToken">ETH</span></p>
+                <p><strong>Portfolio Value:</strong> <span id="portfolioValue">0.0000</span> <span
+                        id="primaryTokenSymbol">ETH</span></p>
+                <p><strong>Starting Balance:</strong> <span id="startingBalance">10.0000</span> <span
+                        id="primaryTokenSymbol2">ETH</span></p>
+                <p><strong>PnL:</strong> <span id="portfolioPnL" class="positive">+0.0000</span> <span
+                        id="primaryTokenSymbol3">ETH</span></p>
+            </div>
+            <div class="form-row">
+                <p><strong>Trades Executed:</strong> <span id="tradesExecuted">0</span></p>
+                <p><strong>Open Positions:</strong> <span id="openPositions">0</span></p>
+                <p><strong>Win Rate:</strong> <span id="winRate">0%</span></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-header">
+            <h2>Price Monitoring</h2>
+            <button onclick="refreshPrices()" class="success">Refresh</button>
+        </div>
+        <div id="priceDisplay" class="price-display">
+            <p>No prices yet. Starting the bot will begin monitoring.</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-header">
+            <h2>Open Positions</h2>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Token</th>
+                    <th>Entry Price</th>
+                    <th>Current Price</th>
+                    <th>Amount</th>
+                    <th>Value</th>
+                    <th>Unrealized PnL</th>
+                    <th>Pattern</th>
+                </tr>
+            </thead>
+            <tbody id="openPositionsTable">
+                <tr>
+                    <td colspan="7" class="text-center">No open positions</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <div class="section-header">
+            <h2>Trade History</h2>
+            <button onclick="clearTradeHistory()" class="danger">Clear History</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Token</th>
+                    <th>Action</th>
+                    <th>Entry Price</th>
+                    <th>Exit Price</th>
+                    <th>Amount</th>
+                    <th>PnL</th>
+                    <th>Pattern</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="tradeHistoryTable">
+                <tr>
+                    <td colspan="9" class="text-center">No trades yet</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <div class="section-header">
+            <h2>Logs</h2>
+            <button onclick="clearLogs()">Clear Logs</button>
+        </div>
+        <div id="logs" class="logs"></div>
+    </div>
+
+    <script>
+        // ============================================
+        // Configuration
+        // ============================================
+
+        const CHAINS = {
+            ethereum: {
+                chainId: 1,
+                name: "Ethereum",
+                ws: "wss://ethereum-rpc.publicnode.com",
+                factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+                router: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+                wrappedNative: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                primaryToken: "ETH",
+                primaryTokenSymbol: "ETH",
+                stables: [
+                    "0xA0b86991c6218b36c1d19D4a2e9eb0ce3606eb48", // USDC
+                    "0xdAC17F958D2ee523a2206206994597C13D831ec7"  // USDT
+                ]
+            },
+            arbitrum: {
+                chainId: 42161,
+                name: "Arbitrum",
+                ws: "wss://arbitrum-one-rpc.publicnode.com",
+                factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+                router: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+                wrappedNative: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+                primaryToken: "WETH",
+                primaryTokenSymbol: "ETH",
+                stables: [
+                    "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", // USDC
+                    "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"  // USDT
+                ]
+            },
+            base: {
+                chainId: 8453,
+                name: "Base",
+                ws: "wss://base-rpc.publicnode.com",
+                factory: "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
+                router: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+                wrappedNative: "0x4200000000000000000000000000000000000006",
+                primaryToken: "WETH",
+                primaryTokenSymbol: "ETH",
+                stables: [
+                    "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
+                    "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42"  // USDT
+                ]
+            },
+            optimism: {
+                chainId: 10,
+                name: "Optimism",
+                ws: "wss://optimism-rpc.publicnode.com",
+                factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+                router: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+                wrappedNative: "0x4200000000000000000000000000000000000006",
+                primaryToken: "WETH",
+                primaryTokenSymbol: "ETH",
+                stables: [
+                    "0x0b2C639c533813f4aAa9D7837CAf62653d097Ff85", // USDC
+                    "0x7F5c764cBc14f9669B88837ca1490cCa17c31607"   // USDT
+                ]
+            },
+            polygon: {
+                chainId: 137,
+                name: "Polygon",
+                ws: "wss://polygon-bor-rpc.publicnode.com",
+                factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+                router: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+                wrappedNative: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+                primaryToken: "WETH",
+                primaryTokenSymbol: "ETH",
+                stables: [
+                    "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", // USDC
+                    "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359"   // USDT
+                ]
+            }
+        };
+
+        const ERC20_ABI = [
+            "function symbol() view returns (string)",
+            "function decimals() view returns (uint8)",
+            "function approve(address spender, uint256 amount) external returns (bool)",
+            "function allowance(address owner, address spender) external view returns (uint256)",
+            "function balanceOf(address owner) external view returns (uint256)",
+            "function transfer(address to, uint256 amount) external returns (bool)"
+        ];
+
+        const SWAP_ROUTER_ABI = [
+            "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
+            "function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)",
+            "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
+            "function swapETHForExactTokens(uint amountOut, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)",
+            "function getAmountsOut(uint amountIn, address[] memory path) external view returns (uint[] memory amounts)",
+            "function getAmountsIn(uint amountOut, address[] memory path) external view returns (uint[] memory amounts)",
+            "function WETH() external view returns (address)"
+        ];
+
+        const POOL_ABI = [
+            "function token0() view returns (address)",
+            "function token1() view returns (address)",
+            "function fee() view returns (uint24)",
+            "function factory() view returns (address)"
+        ];
+
+        const SWAP_INTERFACE = new ethers.Interface([
+            "event Swap(address indexed sender,address indexed recipient,int256 amount0,int256 amount1,uint160 sqrtPriceX96,uint128 liquidity,int24 tick)"
+        ]);
+        const SWAP_TOPIC = SWAP_INTERFACE.getEvent("Swap").topicHash;
+
+        const CONFIG = {
+            WINDOW_MS: 15 * 60 * 1000,       // 15 minutes for price history
+            MAX_HISTORY_POINTS: 100,        // Max price history points per token
+            RETRY_DELAY_MS: 5000,           // Reconnect delay
+            HEAD_RETRY_MS: 1000,            // Block header retry delay
+            MAX_HEAD_RETRIES: 3,            // Max retries for block headers
+            LOG_CONCURRENCY: 4,              // Concurrent log processing
+            SLIPPAGE: 0.5,                  // 0.5% slippage
+            GAS_LIMIT: 500000,              // Default gas limit
+            TRADE_COOLDOWN: 60,              // 60 seconds between trades on same token
+            PRIMARY_TOKEN_DECIMALS: 18     // ETH/WETH decimals
+        };
+
+        // ============================================
+        // Application State
+        // ============================================
+
+        let state = {
+            // Mode and connection
+            isRunning: false,
+            isConnected: false,
+            isTestMode: true,
+            walletAddress: null,
+            network: "arbitrum",
+            provider: null,
+            signer: null,
+
+            // Price data
+            prices: {},                     // Current prices (token symbol -> price in primary token)
+            priceHistory: {},               // Price history (token symbol -> [{price, timestamp}])
+            tokenMetadata: {},              // Token metadata (address -> {symbol, decimals, name})
+            poolInfo: {},                   // Pool info (pool address -> {token0, token1, fee})
+
+            // Portfolio (Test Mode)
+            portfolio: {
+                primaryToken: "ETH",         // Primary token symbol
+                startingBalance: 10,        // Starting balance in primary token
+                cash: 10,                    // Available primary token
+                holdings: {},               // Token holdings (symbol -> amount in token)
+                openTrades: {},              // Open trades (tradeId -> trade)
+                tradeHistory: [],            // All trades (including closed)
+                tradesExecuted: 0,
+                wins: 0,
+                losses: 0,
+                totalValue: 10,              // Total portfolio value in primary token
+                pnl: 0                       // Profit/loss in primary token
+            },
+
+            // Settings
+            settings: {
+                profitAddress: "",
+                buyPatterns: "(<_-0.5_150-450)&(<_-1.5_300-600)",
+                sellPatterns: "(>_+0.5_60-300)|(>_+1.5_150-450)",
+                tradeAmount: 0.1,            // Trade amount in primary token
+                priceSource: "arbitrum",
+                slippage: 0.5,
+                gasLimit: 500000
+            },
+
+            // Timing
+            startTime: null,
+            uptimeInterval: null,
+            lastTradeTime: 0,
+
+            // Uniswap session
+            activeSession: null,
+            manuallyStopped: true,
+            sessionSerial: 0,
+            currentChainKey: "arbitrum"
+        };
+
+        // ============================================
+        // Utility Functions
+        // ============================================
+
+        function norm(a) { return a ? String(a).toLowerCase() : ""; }
+        function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+        function now() { return Date.now(); }
+        function short(a) { return a ? `${a.slice(0, 6)}...${a.slice(-4)}` : ""; }
+        function esc(v) { return String(v).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;"); }
+
+        // Format number with fixed decimals
+        function formatNumber(num, decimals = 4) {
+            if (num === null || num === undefined || isNaN(num)) return "0.0000";
+            return num.toFixed(decimals);
+        }
+
+        // Format token amount based on decimals
+        function formatTokenAmount(amount, decimals = 18) {
+            return ethers.formatUnits(amount, decimals);
+        }
+
+        // Parse token amount to wei
+        function parseTokenAmount(amount, decimals = 18) {
+            return ethers.parseUnits(amount.toString(), decimals);
+        }
+
+        // ============================================
+        // Logging
+        // ============================================
+
+        function log(message, isError = false) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logsDiv = document.getElementById("logs");
+            const entry = document.createElement("div");
+            entry.className = isError ? "negative" : "";
+            entry.innerHTML = `<span>[${timestamp}]</span> ${message}`;
+            logsDiv.appendChild(entry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(isError ? `ERROR: ${message}` : message);
+        }
+
+        function clearLogs() {
+            document.getElementById("logs").innerHTML = "";
+            log("Logs cleared");
+        }
+
+        // ============================================
+        // Mode Toggle
+        // ============================================
+
+        function toggleMode() {
+            state.isTestMode = document.getElementById("testMode").checked;
+            const modeDisplay = document.getElementById("modeDisplay");
+            const modeStatus = document.getElementById("modeStatus");
+
+            modeDisplay.textContent = state.isTestMode ? "Test Mode" : "Live Mode";
+            modeStatus.textContent = state.isTestMode ?
+                "Running in Test Mode (Simulated)" :
+                "Running in Live Mode (Real Trades)";
+            modeStatus.className = state.isTestMode ? "status status-test" : "status status-running";
+
+            // Update wallet section visibility
+            const walletSection = document.getElementById("walletSection");
+            if (state.isTestMode) {
+                walletSection.style.display = "none";
+                document.getElementById("walletStatus").textContent = "Test Mode (Fake Wallet)";
+                document.getElementById("walletStatus").className = "status status-test";
+                document.getElementById("walletAddress").textContent = "0xTestWallet";
+                document.getElementById("balance").textContent = "10.0000 ETH";
+            } else {
+                walletSection.style.display = "block";
+                if (!state.isConnected) {
+                    document.getElementById("walletStatus").textContent = "Disconnected";
+                    document.getElementById("walletStatus").className = "status status-disconnected";
+                    document.getElementById("walletAddress").textContent = "None";
+                    document.getElementById("balance").textContent = "0 ETH";
+                }
+            }
+
+            log(`Switched to ${state.isTestMode ? "Test" : "Live"} Mode`);
+        }
+
+        // ============================================
+        // Wallet Connection
+        // ============================================
+
+        async function connectWallet() {
+            if (state.isTestMode) {
+                log("Cannot connect wallet in Test Mode");
+                return;
+            }
+
+            if (!window.ethereum) {
+                log("ERROR: MetaMask not installed.", true);
+                return;
+            }
+
+            try {
+                showLoading("connectBtn");
+                const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+                state.walletAddress = accounts[0];
+                state.isConnected = true;
+                state.provider = new ethers.BrowserProvider(window.ethereum);
+                state.signer = await state.provider.getSigner();
+
+                document.getElementById("walletStatus").textContent = "Connected";
+                document.getElementById("walletStatus").className = "status status-connected";
+                document.getElementById("walletAddress").textContent = `${state.walletAddress.slice(0, 6)}...${state.walletAddress.slice(-4)}`;
+                document.getElementById("connectBtn").style.display = "none";
+                document.getElementById("disconnectBtn").style.display = "inline-block";
+
+                await checkNetwork();
+                await updateBalance();
+                log(`Wallet connected: ${state.walletAddress}`);
+            } catch (error) {
+                log(`ERROR: Failed to connect wallet: ${error.message}`, true);
+            } finally {
+                hideLoading("connectBtn");
+            }
+        }
+
+        function disconnectWallet() {
+            state.walletAddress = null;
+            state.isConnected = false;
+            state.signer = null;
+            state.provider = null;
+
+            document.getElementById("walletStatus").textContent = "Disconnected";
+            document.getElementById("walletStatus").className = "status status-disconnected";
+            document.getElementById("walletAddress").textContent = "None";
+            document.getElementById("balance").textContent = "0 ETH";
+            document.getElementById("connectBtn").style.display = "inline-block";
+            document.getElementById("disconnectBtn").style.display = "none";
+
+            log("Wallet disconnected");
+        }
+
+        async function checkNetwork() {
+            if (!state.isConnected || state.isTestMode) return;
+
+            try {
+                const chainId = await window.ethereum.request({ method: "eth_chainId" });
+                const chainIdNum = parseInt(chainId);
+
+                for (const [key, chain] of Object.entries(CHAINS)) {
+                    if (chainIdNum === chain.chainId) {
+                        state.network = key;
+                        document.getElementById("network").textContent = chain.name;
+                        log(`Network: ${chain.name}`);
+                        return;
+                    }
+                }
+
+                log("ERROR: Unsupported network. Please switch to Ethereum, Arbitrum, Base, Optimism, or Polygon.", true);
+            } catch (error) {
+                log(`ERROR: Failed to check network: ${error.message}`, true);
+            }
+        }
+
+        async function updateBalance() {
+            if (!state.isConnected || state.isTestMode) return;
+
+            try {
+                const balance = await state.provider.getBalance(state.walletAddress);
+                const ethBalance = ethers.formatEther(balance);
+                document.getElementById("balance").textContent = `${parseFloat(ethBalance).toFixed(4)} ETH`;
+            } catch (error) {
+                log(`ERROR: Failed to get balance: ${error.message}`, true);
+            }
+        }
+
+        async function testConnection() {
+            if (state.isTestMode) {
+                log("Test Mode: Connection test skipped (simulated)");
+                return;
+            }
+
+            if (!window.ethereum) {
+                log("ERROR: MetaMask not installed.", true);
+                return;
+            }
+
+            try {
+                showLoading("testConnectionBtn");
+                const accounts = await window.ethereum.request({ method: "eth_accounts" });
+                if (accounts.length === 0) {
+                    log("ERROR: MetaMask not connected", true);
+                    return;
+                }
+
+                const chainId = await window.ethereum.request({ method: "eth_chainId" });
+                const chainIdNum = parseInt(chainId);
+
+                let chainFound = false;
+                for (const [key, chain] of Object.entries(CHAINS)) {
+                    if (chainIdNum === chain.chainId) {
+                        chainFound = true;
+                        break;
+                    }
+                }
+
+                if (!chainFound) {
+                    log("ERROR: Unsupported network. Please switch to Ethereum, Arbitrum, Base, Optimism, or Polygon.", true);
+                    return;
+                }
+
+                log("Connection test passed: Wallet and network are properly configured");
+            } catch (error) {
+                log(`ERROR: Connection test failed: ${error.message}`, true);
+            } finally {
+                hideLoading("testConnectionBtn");
+            }
+        }
+
+        // ============================================
+        // Bot Control
+        // ============================================
+
+        async function startBot() {
+            if (!state.isTestMode && !state.isConnected) {
+                log("ERROR: Connect wallet first in Live Mode.", true);
+                return;
+            }
+
+            if (state.isRunning) {
+                log("Bot is already running.");
+                return;
+            }
+
+            // Load settings
+            saveSettings();
+
+            state.isRunning = true;
+            state.startTime = new Date();
+            state.lastTradeTime = 0;
+
+            document.getElementById("botStatus").textContent = "Running";
+            document.getElementById("botStatus").className = "status status-running";
+            document.getElementById("startBtn").disabled = true;
+            document.getElementById("stopBtn").disabled = false;
+
+            log("Bot started. Monitoring prices...");
+
+            // Start uptime counter
+            updateUptime();
+            state.uptimeInterval = setInterval(updateUptime, 1000);
+
+            // Initialize portfolio for Test Mode
+            if (state.isTestMode) {
+                state.portfolio.tradesExecuted = 0;
+                state.portfolio.wins = 0;
+                state.portfolio.losses = 0;
+                state.portfolio.openTrades = {};
+                state.portfolio.tradeHistory = [];
+                state.portfolio.cash = state.portfolio.startingBalance;
+                state.portfolio.holdings = {};
+                updatePortfolioDisplay();
+                updateTradeHistoryDisplay();
+                updateOpenPositionsDisplay();
+            }
+
+            // Start price monitoring
+            if (state.isTestMode) {
+                // In Test Mode, use simulated price updates
+                setInterval(simulatePriceUpdates, 3000);
+            } else {
+                // In Live Mode, connect to WebSocket
+                await startPriceMonitoring();
+            }
+        }
+
+        function stopBot() {
+            state.isRunning = false;
+
+            document.getElementById("botStatus").textContent = "Stopped";
+            document.getElementById("botStatus").className = "status status-stopped";
+            document.getElementById("startBtn").disabled = false;
+            document.getElementById("stopBtn").disabled = true;
+
+            if (state.uptimeInterval) {
+                clearInterval(state.uptimeInterval);
+                state.uptimeInterval = null;
+            }
+
+            if (!state.isTestMode && state.activeSession) {
+                stopPriceMonitoring();
+            }
+
+            log("Bot stopped.");
+        }
+
+        function updateUptime() {
+            if (!state.startTime) {
+                document.getElementById("uptime").textContent = "00:00:00";
+                return;
+            }
+
+            const now = new Date();
+            const diff = now - state.startTime;
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            document.getElementById("uptime").textContent =
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // ============================================
+        // Price Monitoring
+        // ============================================
+
+        async function startPriceMonitoring() {
+            if (state.isTestMode) return;
+
+            const chainKey = state.settings.priceSource || state.network;
+            const chain = CHAINS[chainKey];
+            if (!chain) {
+                log(`ERROR: Invalid price source: ${chainKey}`, true);
+                return;
+            }
+
+            state.manuallyStopped = false;
+            state.currentChainKey = chainKey;
+            await startUniswapSession(chainKey);
+        }
+
+        function stopPriceMonitoring() {
+            if (state.isTestMode) return;
+            state.manuallyStopped = true;
+            if (state.activeSession) {
+                stopUniswapSession();
+            }
+        }
+
+        function refreshPrices() {
+            if (state.isTestMode) {
+                simulatePriceUpdates();
+            } else if (state.activeSession?.connected) {
+                log("Prices are being updated via WebSocket");
+            } else {
+                log("Not connected to price feed");
+            }
+        }
+
+        function switchPriceSource() {
+            const source = document.getElementById("priceSource").value;
+            state.settings.priceSource = source;
+            if (state.isRunning && !state.isTestMode) {
+                stopPriceMonitoring();
+                startPriceMonitoring();
+            }
+            log(`Price source switched to: ${source}`);
+        }
+
+        // ============================================
+        // Uniswap Session Management
+        // ============================================
+
+        let currentChainKey = "arbitrum";
+        let sessionSerial = 0;
+        let activeSession = null;
+
+        function createSession(key) {
+            const chain = CHAINS[key];
+            return {
+                id: ++sessionSerial,
+                chainKey: key,
+                chain,
+                provider: null,
+                ws: null,
+                active: true,
+                connected: false,
+                tokens: new Map(),       // address -> token metadata
+                pools: new Map(),        // address -> pool info
+                pairPrices: new Map(),   // tokenAddress -> Map<otherTokenAddress, {price, updatedAt}>
+                metadataInFlight: new Map(),
+                swaps: [],
+                lastProcessedBlock: null,
+                pendingBlock: null,
+                processingBlocks: false,
+                reconnectTimer: null
+            };
+        }
+
+        async function startUniswapSession(key) {
+            currentChainKey = key;
+            state.manuallyStopped = false;
+            sessionSerial++;
+            const old = activeSession;
+            activeSession = null;
+            if (old) await destroySession(old);
+
+            const s = createSession(key);
+            activeSession = s;
+
+            try {
+                const chain = CHAINS[key];
+                const p = new ethers.WebSocketProvider(chain.ws, chain.chainId);
+                if (!current(s)) { try { p.destroy(); } catch { } return; }
+                s.provider = p;
+                s.ws = p.websocket;
+
+                if (s.ws) {
+                    s.ws.addEventListener("open", () => {
+                        if (!current(s)) return;
+                        s.connected = true;
+                        log(`WebSocket connected to ${chain.name}`);
+                        document.getElementById("walletStatus").textContent = `Connected to ${chain.name}`;
+                        document.getElementById("walletStatus").className = "status status-connected";
+                    });
+
+                    s.ws.addEventListener("close", () => {
+                        if (!current(s)) return;
+                        s.connected = false;
+                        log(`WebSocket disconnected from ${chain.name}, reconnecting...`);
+                        document.getElementById("walletStatus").textContent = `Disconnected from ${chain.name}`;
+                        document.getElementById("walletStatus").className = "status status-disconnected";
+                        scheduleReconnect(s);
+                    });
+
+                    s.ws.addEventListener("error", e => {
+                        if (!current(s)) return;
+                        log(`WebSocket error: ${e.message}`, true);
+                        s.connected = false;
+                    });
+                }
+
+                p.on("block", n => {
+                    if (current(s)) queueBlock(s, Number(n));
+                });
+
+                const head = await p.getBlockNumber();
+                if (!current(s)) return;
+                s.rpcHead = head;
+                s.blockCount = head;
+                s.connected = true;
+                log(`Connected to ${chain.name} at block ${head}`);
+                document.getElementById("lastPriceUpdate").textContent = new Date().toLocaleTimeString();
+
+                // Load primary token
+                await loadToken(s, chain.wrappedNative);
+
+                processPending(s);
+
+            } catch (e) {
+                if (!current(s)) return;
+                log(`Connection failed: ${e.message}`, true);
+                scheduleReconnect(s);
+            }
+        }
+
+        function current(s) {
+            return !!s && activeSession === s && s.id === sessionSerial && s.active && !state.manuallyStopped;
+        }
+
+        function scheduleReconnect(s) {
+            if (!current(s) || s.reconnectTimer) return;
+            s.reconnectTimer = setTimeout(() => {
+                s.reconnectTimer = null;
+                if (current(s)) startUniswapSession(s.chainKey);
+            }, CONFIG.RETRY_DELAY_MS);
+        }
+
+        async function stopUniswapSession() {
+            state.manuallyStopped = true;
+            sessionSerial++;
+            const old = activeSession;
+            activeSession = null;
+            if (old) await destroySession(old);
+        }
+
+        async function destroySession(s) {
+            if (!s) return;
+            s.active = false;
+            if (s.reconnectTimer) {
+                clearTimeout(s.reconnectTimer);
+                s.reconnectTimer = null;
+            }
+            try { s.provider?.removeAllListeners(); } catch { }
+            try { s.ws?.close(); } catch { }
+            try { s.provider?.destroy(); } catch { }
+            s.provider = null;
+            s.ws = null;
+            s.connected = false;
+        }
+
+        function queueBlock(s, n) {
+            if (!current(s)) return;
+            if (s.lastProcessedBlock !== null && n <= s.lastProcessedBlock) return;
+            s.pendingBlock = Math.max(s.pendingBlock ?? 0, n);
+            processPending(s);
+        }
+
+        async function processPending(s) {
+            if (s.processingBlocks || !current(s)) return;
+            s.processingBlocks = true;
+            try {
+                while (s.pendingBlock !== null && current(s)) {
+                    const target = s.pendingBlock;
+                    s.pendingBlock = null;
+                    let head;
+                    try {
+                        head = await s.provider.getBlockNumber();
+                    } catch {
+                        s.pendingBlock = target;
+                        await sleep(CONFIG.HEAD_RETRY_MS);
+                        continue;
+                    }
+                    if (!current(s)) break;
+                    s.rpcHead = head;
+                    s.blockCount = Math.max(s.blockCount, head);
+                    if (target > head) {
+                        s.pendingBlock = target;
+                        await sleep(CONFIG.HEAD_RETRY_MS);
+                        continue;
+                    }
+                    if (s.lastProcessedBlock !== null && target <= s.lastProcessedBlock) continue;
+                    await processBlock(s, target);
+                    if (!current(s)) break;
+                    s.lastProcessedBlock = target;
+                }
+            } finally {
+                s.processingBlocks = false;
+            }
+        }
+
+        async function processBlock(s, n) {
+            if (!current(s)) return;
+
+            let logs = null;
+            for (let i = 0; i < CONFIG.MAX_HEAD_RETRIES; i++) {
+                if (!current(s)) return;
+                try {
+                    const head = await s.provider.getBlockNumber();
+                    s.rpcHead = head;
+                    if (n > head) { await sleep(CONFIG.HEAD_RETRY_MS); continue; }
+                    logs = await s.provider.getLogs({ fromBlock: n, toBlock: n, topics: [SWAP_TOPIC] });
+                    break;
+                } catch (e) {
+                    await sleep(CONFIG.HEAD_RETRY_MS);
+                    continue;
+                }
+            }
+
+            if (!logs || !current(s) || !logs.length) return;
+
+            let i = 0;
+            async function worker() {
+                while (i < logs.length && current(s)) {
+                    const log = logs[i++];
+                    try { await processSwapLog(s, log); } catch (e) { }
+                }
+            }
+            await Promise.all(Array.from({ length: Math.min(CONFIG.LOG_CONCURRENCY, logs.length) }, worker));
+        }
+
+        async function processSwapLog(s, log) {
+            if (!current(s)) return;
+
+            const pool = await loadPool(s, log.address);
+            if (!current(s) || !pool?.initialized) return;
+
+            let parsed;
+            try { parsed = SWAP_INTERFACE.parseLog({ topics: log.topics, data: log.data }); } catch { return; }
+            if (!parsed) return;
+
+            const amount0 = parsed.args.amount0;
+            const amount1 = parsed.args.amount1;
+            const sqrt = parsed.args.sqrtPriceX96;
+            const price = poolPrice(sqrt, pool.token0Meta.decimals, pool.token1Meta.decimals);
+            if (price == null) return;
+
+            setPair(s, pool.token0, pool.token1, price);
+            updateTokenPrices(s, pool.token0, pool.token0Meta);
+            updateTokenPrices(s, pool.token1, pool.token1Meta);
+
+            state.lastPriceUpdate = new Date();
+            document.getElementById("lastPriceUpdate").textContent = state.lastPriceUpdate.toLocaleTimeString();
+
+            // Update active tokens count
+            updateActiveTokensCount();
+
+            // Update UI with new prices
+            updatePriceDisplay();
+
+            // Check for pattern matches
+            checkPatterns();
+        }
+
+        function poolPrice(sqrtPriceX96, decimals0, decimals1) {
+            const sqrt = Number(sqrtPriceX96);
+            if (!Number.isFinite(sqrt) || sqrt <= 0) return null;
+            const normalized = sqrt / Math.pow(2, 96);
+            const rawPrice = normalized * normalized;
+            const decimalAdjustment = Math.pow(10, decimals0 - decimals1);
+            const price = rawPrice * decimalAdjustment;
+            return Number.isFinite(price) && price > 0 ? price : null;
+        }
+
+        async function loadPool(s, address) {
+            if (!current(s)) return null;
+            address = norm(address);
+            if (s.pools.has(address)) return s.pools.get(address);
+            const key = `pool:${address}`;
+            if (s.metadataInFlight.has(key)) return s.metadataInFlight.get(key);
+
+            const promise = (async () => {
+                const pool = {
+                    address,
+                    token0: null,
+                    token1: null,
+                    fee: null,
+                    token0Meta: null,
+                    token1Meta: null,
+                    initialized: false
+                };
+                s.pools.set(address, pool);
+                try {
+                    const c = new ethers.Contract(address, POOL_ABI, s.provider);
+                    const [t0, t1, fee, factory] = await Promise.all([
+                        c.token0(),
+                        c.token1(),
+                        c.fee(),
+                        c.factory()
+                    ]);
+                    if (!current(s)) return null;
+                    if (norm(factory) !== norm(s.chain.factory)) {
+                        s.pools.delete(address);
+                        return null;
+                    }
+                    pool.token0 = norm(t0);
+                    pool.token1 = norm(t1);
+                    pool.fee = Number(fee);
+                    [pool.token0Meta, pool.token1Meta] = await Promise.all([
+                        loadToken(s, pool.token0),
+                        loadToken(s, pool.token1)
+                    ]);
+                    if (!current(s) || !pool.token0Meta || !pool.token1Meta) return null;
+                    pool.initialized = true;
+                    return pool;
+                } catch (e) {
+                    s.pools.delete(address);
+                    return null;
+                } finally {
+                    s.metadataInFlight.delete(key);
+                }
+            })();
+            s.metadataInFlight.set(key, promise);
+            return promise;
+        }
+
+        async function loadToken(s, address) {
+            if (!current(s)) return null;
+            address = norm(address);
+            if (s.tokens.has(address)) return s.tokens.get(address);
+            const key = `token:${address}`;
+            if (s.metadataInFlight.has(key)) return s.metadataInFlight.get(key);
+
+            const promise = (async () => {
+                const t = {
+                    address,
+                    symbol: short(address),
+                    name: short(address),
+                    decimals: 18,
+                    price: null,
+                    priceHistory: []
+                };
+                s.tokens.set(address, t);
+                try {
+                    const c = new ethers.Contract(address, ERC20_ABI, s.provider);
+                    const [symbol, decimals, name] = await Promise.all([
+                        c.symbol().catch(() => "?"),
+                        c.decimals().catch(() => 18),
+                        c.name().catch(() => "Unknown")
+                    ]);
+                    if (!current(s)) return null;
+                    t.symbol = String(symbol);
+                    t.decimals = Number(decimals);
+                    t.name = String(name);
+
+                    // Store token metadata in state
+                    state.tokenMetadata[address] = {
+                        symbol: t.symbol,
+                        name: t.name,
+                        decimals: t.decimals,
+                        address: address
+                    };
+                } catch (e) { }
+                finally { s.metadataInFlight.delete(key); }
+                return current(s) ? t : null;
+            })();
+            s.metadataInFlight.set(key, promise);
+            return promise;
+        }
+
+        function setPair(s, a, b, p) {
+            if (!Number.isFinite(p) || p <= 0) return;
+            a = norm(a); b = norm(b);
+            if (!s.pairPrices.has(a)) s.pairPrices.set(a, new Map());
+            if (!s.pairPrices.has(b)) s.pairPrices.set(b, new Map());
+            const timestamp = Date.now();
+            s.pairPrices.get(a).set(b, { price: p, updatedAt: timestamp });
+            s.pairPrices.get(b).set(a, { price: 1 / p, updatedAt: timestamp });
+        }
+
+        function updateTokenPrices(s, tokenAddress, tokenMeta) {
+            if (!tokenMeta) return;
+
+            const chain = s.chain;
+            const primaryTokenAddress = norm(chain.wrappedNative);
+
+            // Find price relative to primary token
+            const primaryPrice = findPrimaryTokenPrice(s, tokenAddress, primaryTokenAddress);
+            if (primaryPrice !== null) {
+                tokenMeta.price = primaryPrice;
+
+                // Update state prices (using symbol)
+                const symbol = tokenMeta.symbol;
+                state.prices[symbol] = primaryPrice;
+
+                // Update price history
+                if (!state.priceHistory[symbol]) {
+                    state.priceHistory[symbol] = [];
+                }
+                state.priceHistory[symbol].push({
+                    price: primaryPrice,
+                    timestamp: Date.now()
+                });
+                if (state.priceHistory[symbol].length > CONFIG.MAX_HISTORY_POINTS) {
+                    state.priceHistory[symbol].shift();
+                }
+            }
+        }
+
+        function findPrimaryTokenPrice(s, tokenAddress, primaryTokenAddress) {
+            tokenAddress = norm(tokenAddress);
+            primaryTokenAddress = norm(primaryTokenAddress);
+
+            // If this is the primary token, price is 1
+            if (tokenAddress === primaryTokenAddress) {
+                return 1.0;
+            }
+
+            // Check direct pair with primary token
+            if (s.pairPrices.has(tokenAddress)) {
+                const pairs = s.pairPrices.get(tokenAddress);
+                if (pairs.has(primaryTokenAddress)) {
+                    return pairs.get(primaryTokenAddress).price;
+                }
+            }
+
+            // Check if primary token has pair with this token
+            if (s.pairPrices.has(primaryTokenAddress)) {
+                const primaryPairs = s.pairPrices.get(primaryTokenAddress);
+                if (primaryPairs.has(tokenAddress)) {
+                    return primaryPairs.get(tokenAddress).price;
+                }
+            }
+
+            // Try to find path through other tokens (BFS)
+            const visited = new Set();
+            const queue = [{ token: tokenAddress, price: 1.0, depth: 0 }];
+
+            while (queue.length > 0) {
+                const current = queue.shift();
+                if (current.depth > CONFIG.MAX_PRICE_PATH_DEPTH) continue;
+
+                if (norm(current.token) === primaryTokenAddress) {
+                    return current.price;
+                }
+
+                if (visited.has(current.token)) continue;
+                visited.add(current.token);
+
+                if (s.pairPrices.has(current.token)) {
+                    for (const [otherToken, data] of s.pairPrices.get(current.token)) {
+                        if (!visited.has(otherToken)) {
+                            queue.push({
+                                token: otherToken,
+                                price: current.price * data.price,
+                                depth: current.depth + 1
+                            });
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        function updateActiveTokensCount() {
+            if (!activeSession) {
+                document.getElementById("activeTokensCount").textContent = "0";
+                return;
+            }
+
+            const s = activeSession;
+            let count = 0;
+            for (const token of s.tokens.values()) {
+                if (token.price !== null && token.symbol !== s.chain.primaryToken) {
+                    count++;
+                }
+            }
+            document.getElementById("activeTokensCount").textContent = count;
+        }
+
+        function updatePriceDisplay() {
+            const priceDisplay = document.getElementById("priceDisplay");
+            const s = activeSession;
+
+            if (!s || Object.keys(state.prices).length === 0) {
+                priceDisplay.innerHTML = "<p>No prices yet. Starting the bot will begin monitoring.</p>";
+                return;
+            }
+
+            // Get all tokens with prices
+            const tokens = [];
+            for (const [symbol, price] of Object.entries(state.prices)) {
+                if (symbol !== s.chain.primaryTokenSymbol) {
+                    tokens.push({ symbol, price });
+                }
+            }
+
+            // Sort by symbol
+            tokens.sort((a, b) => a.symbol.localeCompare(b.symbol));
+
+            if (tokens.length === 0) {
+                priceDisplay.innerHTML = "<p>No token prices available yet.</p>";
+                return;
+            }
+
+            let html = `
+                <div class='price-item'>
+                    <strong>Token</strong>
+                    <strong>Price (${s.chain.primaryTokenSymbol})</strong>
+                    <strong>Change</strong>
+                </div>
+            `;
+
+            for (const { symbol, price } of tokens) {
+                const history = state.priceHistory[symbol] || [];
+                let change = 0;
+                let changeClass = "";
+
+                if (history.length >= 2) {
+                    const oldPrice = history[0].price;
+                    change = ((price - oldPrice) / oldPrice) * 100;
+                    changeClass = change > 0 ? "positive" : change < 0 ? "negative" : "";
+                }
+
+                html += `
+                    <div class='price-item'>
+                        <span>${symbol}</span>
+                        <span>${formatNumber(price, 6)}</span>
+                        <span class='${changeClass}'>${change > 0 ? "+" : ""}${formatNumber(change, 2)}%</span>
+                    </div>
+                `;
+            }
+
+            priceDisplay.innerHTML = html;
+        }
+
+        // ============================================
+        // Simulated Price Updates (Test Mode)
+        // ============================================
+
+        function simulatePriceUpdates() {
+            if (!state.isRunning || !state.isTestMode) return;
+
+            const chainKey = state.settings.priceSource || "arbitrum";
+            const chain = CHAINS[chainKey];
+            const primaryToken = chain.primaryTokenSymbol;
+
+            // Get all tokens we're tracking (from previous simulations or default list)
+            const tokens = Object.keys(state.prices).length > 0 ?
+                Object.keys(state.prices) :
+                ["WBTC", "UNI", "LINK", "ARB"];
+
+            const date = new Date();
+            const timestamp = date.getTime();
+
+            // Always include primary token with price 1
+            state.prices[primaryToken] = 1.0;
+            if (!state.priceHistory[primaryToken]) {
+                state.priceHistory[primaryToken] = [];
+            }
+            state.priceHistory[primaryToken].push({ price: 1.0, timestamp });
+            if (state.priceHistory[primaryToken].length > CONFIG.MAX_HISTORY_POINTS) {
+                state.priceHistory[primaryToken].shift();
+            }
+
+            // Update other tokens
+            tokens.forEach(token => {
+                if (token === primaryToken) return;
+
+                const currentPrice = state.prices[token] || (Math.random() * 0.1 + 0.5);
+                const changePercent = (Math.random() * 6 - 3) / 100; // Random change between -3% and +3%
+                const newPrice = currentPrice * (1 + changePercent);
+
+                state.prices[token] = newPrice;
+
+                if (!state.priceHistory[token]) {
+                    state.priceHistory[token] = [];
+                }
+                state.priceHistory[token].push({ price: newPrice, timestamp });
+                if (state.priceHistory[token].length > CONFIG.MAX_HISTORY_POINTS) {
+                    state.priceHistory[token].shift();
+                }
+            });
+
+            state.lastPriceUpdate = date;
+            document.getElementById("lastPriceUpdate").textContent = date.toLocaleTimeString();
+            updatePriceDisplay();
+            updateActiveTokensCount();
+            checkPatterns();
+        }
+
+        // ============================================
+        // Pattern Detection
+        // ============================================
+
+        function checkPatterns() {
+            if (!state.isRunning) return;
+
+            const chainKey = state.settings.priceSource || state.network;
+            const chain = CHAINS[chainKey];
+            const primaryToken = chain.primaryTokenSymbol;
+
+            const buyPatterns = parsePatterns(state.settings.buyPatterns);
+            const sellPatterns = parsePatterns(state.settings.sellPatterns);
+
+            // Get all tokens with price history
+            const tokens = Object.keys(state.priceHistory).filter(
+                token => token !== primaryToken && state.priceHistory[token].length >= 2
+            );
+
+            for (const token of tokens) {
+                const history = state.priceHistory[token];
+                if (!history || history.length < 2) continue;
+
+                // Check buy patterns
+                for (const pattern of buyPatterns) {
+                    if (matchesPattern(token, pattern, "buy")) {
+                        log(`BUY SIGNAL: ${token} - Pattern matched: ${pattern.raw}`);
+                        executeTrade(token, "buy", pattern.raw);
+                        break;
+                    }
+                }
+
+                // Check sell patterns
+                for (const pattern of sellPatterns) {
+                    if (matchesPattern(token, pattern, "sell")) {
+                        log(`SELL SIGNAL: ${token} - Pattern matched: ${pattern.raw}`);
+                        executeTrade(token, "sell", pattern.raw);
+                        break;
+                    }
+                }
+            }
+        }
+
+        function parsePatterns(patternString) {
+            const patterns = [];
+            if (!patternString || patternString.trim() === "") return patterns;
+
+            // Remove all whitespace for easier parsing
+            const cleaned = patternString.replace(/\s+/g, "");
+
+            // Split by top-level OR (|)
+            let depth = 0;
+            let start = 0;
+            const orGroups = [];
+
+            for (let i = 0; i < cleaned.length; i++) {
+                if (cleaned[i] === "(") depth++;
+                else if (cleaned[i] === ")") depth--;
+                else if (cleaned[i] === "|" && depth === 0) {
+                    orGroups.push(cleaned.slice(start, i));
+                    start = i + 1;
+                }
+            }
+            orGroups.push(cleaned.slice(start));
+
+            for (const orGroup of orGroups) {
+                // Split by top-level AND (&)
+                depth = 0;
+                start = 0;
+                const andGroups = [];
+
+                for (let i = 0; i < orGroup.length; i++) {
+                    if (orGroup[i] === "(") depth++;
+                    else if (orGroup[i] === ")") depth--;
+                    else if (orGroup[i] === "&" && depth === 0) {
+                        andGroups.push(orGroup.slice(start, i));
+                        start = i + 1;
+                    }
+                }
+                andGroups.push(orGroup.slice(start));
+
+                // Each andGroup is a condition that must be true
+                for (const andGroup of andGroups) {
+                    // Parse individual pattern
+                    const pattern = parseSinglePattern(andGroup);
+                    if (pattern) {
+                        pattern.raw = andGroup;
+                        pattern.isAndGroup = andGroups.length > 1;
+                        patterns.push(pattern);
+                    }
+                }
+            }
+
+            return patterns;
+        }
+
+        function parseSinglePattern(patternStr) {
+            // Pattern format: <_-0.5_150-450 or >_+0.5_60-300
+            const match = patternStr.match(/([<>]=?)([\+\-]?\d+\.?\d*)_(\d+)-(\d+)/);
+            if (!match) return null;
+
+            return {
+                operator: match[1],
+                value: parseFloat(match[2]),
+                minSec: parseInt(match[3]),
+                maxSec: parseInt(match[4])
+            };
+        }
+
+        function matchesPattern(token, pattern, actionType) {
+            const history = state.priceHistory[token];
+            if (!history || history.length < 2) return false;
+
+            const current = history[history.length - 1];
+            const currentPrice = current.price;
+            const currentTime = current.timestamp;
+
+            // We need to find a price in the past that matches the time window
+            const minTime = currentTime - pattern.maxSec * 1000;
+            const maxTime = currentTime - pattern.minSec * 1000;
+
+            // Find the oldest price within the time window
+            let oldPrice = null;
+            for (let i = history.length - 2; i >= 0; i--) {
+                if (history[i].timestamp >= minTime && history[i].timestamp <= maxTime) {
+                    oldPrice = history[i].price;
+                    break;
+                }
+            }
+
+            if (oldPrice === null) return false;
+
+            const changePercent = ((currentPrice - oldPrice) / oldPrice) * 100;
+
+            if (actionType === "buy") {
+                // For buy patterns, we want price to drop
+                if (pattern.operator === "<" || pattern.operator === "<=") {
+                    return changePercent <= -Math.abs(pattern.value);
+                }
+            } else if (actionType === "sell") {
+                // For sell patterns, we want price to rise
+                if (pattern.operator === ">" || pattern.operator === ">=") {
+                    return changePercent >= Math.abs(pattern.value);
+                }
+            }
+
+            return false;
+        }
+
+        // ============================================
+        // Trade Execution
+        // ============================================
+
+        async function executeTrade(token, action, pattern) {
+            if (!state.isRunning) {
+                log(`Cannot execute trade: bot is not running`);
+                return;
+            }
+
+            // Check cooldown for this token
+            if (state.lastTradeTime && now() - state.lastTradeTime < CONFIG.TRADE_COOLDOWN * 1000) {
+                log(`Trade cooldown active. Waiting...`);
+                return;
+            }
+
+            const currentPrice = state.prices[token];
+            if (currentPrice === undefined || currentPrice === null) {
+                log(`ERROR: No price available for ${token}`, true);
+                return;
+            }
+
+            const chainKey = state.settings.priceSource || state.network;
+            const chain = CHAINS[chainKey];
+            const primaryToken = chain.primaryTokenSymbol;
+            const tradeAmount = state.settings.tradeAmount; // in primary token
+
+            // Calculate token amount based on current price
+            const tokenAmount = tradeAmount / currentPrice;
+
+            if (state.isTestMode) {
+                await executeSimulatedTrade(token, action, pattern, currentPrice, tokenAmount, tradeAmount);
+            } else {
+                await executeRealTrade(token, action, pattern, currentPrice, tokenAmount, tradeAmount);
+            }
+        }
+
+        async function executeSimulatedTrade(token, action, pattern, price, tokenAmount, amountPrimary) {
+            const chainKey = state.settings.priceSource || state.network;
+            const chain = CHAINS[chainKey];
+            const primaryToken = chain.primaryTokenSymbol;
+
+            // Check if we can execute this trade
+            if (action === "buy") {
+                // Need enough primary token
+                if (state.portfolio.cash < amountPrimary) {
+                    log(`ERROR: Not enough ${primaryToken} for buy trade. Need ${formatNumber(amountPrimary, 6)}, have ${formatNumber(state.portfolio.cash, 6)}`, true);
+                    return;
+                }
+            } else { // sell
+                // Need enough tokens
+                const holdings = state.portfolio.holdings[token] || 0;
+                if (holdings < tokenAmount) {
+                    log(`ERROR: Not enough ${token} to sell. Need ${formatNumber(tokenAmount, 6)}, have ${formatNumber(holdings, 6)}`, true);
+                    return;
+                }
+            }
+
+            // Create trade object
+            const tradeId = `trade_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const timestamp = new Date().toISOString();
+
+            const trade = {
+                id: tradeId,
+                timestamp: timestamp,
+                token: token,
+                action: action,
+                entryPrice: price,
+                amountPrimary: amountPrimary,
+                tokenAmount: tokenAmount,
+                pattern: pattern,
+                status: "open",
+                exitPrice: null,
+                pnl: 0,
+                primaryToken: primaryToken
+            };
+
+            // Add to open trades
+            state.portfolio.openTrades[tradeId] = trade;
+
+            // Update portfolio
+            if (action === "buy") {
+                state.portfolio.cash -= amountPrimary;
+                state.portfolio.holdings[token] = (state.portfolio.holdings[token] || 0) + tokenAmount;
+                log(`[TEST] BUY: ${formatNumber(tokenAmount, 6)} ${token} at ${formatNumber(price, 6)} ${primaryToken} (Cost: ${formatNumber(amountPrimary, 6)} ${primaryToken})`);
+            } else { // sell
+                // Find matching buy trade
+                const openBuyTrades = Object.values(state.portfolio.openTrades).filter(
+                    t => t.token === token && t.action === "buy" && t.status === "open"
+                );
+
+                if (openBuyTrades.length > 0) {
+                    // Close the oldest open buy trade
+                    const buyTrade = openBuyTrades[0];
+                    buyTrade.status = "closed";
+                    buyTrade.exitPrice = price;
+                    buyTrade.pnl = (tokenAmount * price) - (buyTrade.tokenAmount * buyTrade.entryPrice);
+
+                    // Update the sell trade
+                    trade.pnl = buyTrade.pnl;
+                    trade.status = "closed";
+
+                    // Update portfolio
+                    state.portfolio.cash += (tokenAmount * price);
+                    state.portfolio.holdings[token] -= tokenAmount;
+
+                    // Update win/loss count
+                    if (trade.pnl > 0) {
+                        state.portfolio.wins++;
+                    } else if (trade.pnl < 0) {
+                        state.portfolio.losses++;
+                    }
+
+                    log(`[TEST] SELL: ${formatNumber(tokenAmount, 6)} ${token} at ${formatNumber(price, 6)} ${primaryToken} (PnL: ${trade.pnl > 0 ? "+" : ""}${formatNumber(trade.pnl, 6)} ${primaryToken})`);
+                } else {
+                    // No matching buy trade, just sell
+                    state.portfolio.cash += (tokenAmount * price);
+                    state.portfolio.holdings[token] -= tokenAmount;
+                    trade.status = "closed";
+                    trade.pnl = 0;
+                    log(`[TEST] SELL: ${formatNumber(tokenAmount, 6)} ${token} at ${formatNumber(price, 6)} ${primaryToken} (No matching buy)`);
+                }
+            }
+
+            // Add to trade history
+            state.portfolio.tradeHistory.push(trade);
+            state.portfolio.tradesExecuted++;
+            state.lastTradeTime = now();
+
+            // Update portfolio value
+            updatePortfolioValue();
+
+            // Update displays
+            updatePortfolioDisplay();
+            updateTradeHistoryDisplay();
+            updateOpenPositionsDisplay();
+        }
+
+        async function executeRealTrade(token, action, pattern, price, tokenAmount, amountPrimary) {
+            if (!state.isConnected || !state.signer) {
+                log("ERROR: Wallet not connected", true);
+                return;
+            }
+
+            try {
+                const chainKey = state.network;
+                const chain = CHAINS[chainKey];
+                if (!chain) {
+                    log("ERROR: Network not configured", true);
+                    return;
+                }
+
+                const primaryToken = chain.primaryTokenSymbol;
+                const primaryTokenAddress = chain.wrappedNative;
+
+                // Get token address
+                const tokenAddress = getTokenAddress(token, chainKey);
+                if (!tokenAddress) {
+                    log(`ERROR: Token ${token} not found on ${chain.name}`, true);
+                    return;
+                }
+
+                // Get router contract
+                const router = new ethers.Contract(chain.router, SWAP_ROUTER_ABI, state.signer);
+
+                // Determine path and method based on action
+                let tx;
+                const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
+                const slippage = state.settings.slippage || CONFIG.SLIPPAGE;
+
+                if (action === "buy") {
+                    // For buying tokens with primary token (ETH/WETH)
+                    if (token === primaryToken) {
+                        log("ERROR: Cannot buy primary token with itself", true);
+                        return;
+                    }
+
+                    // Convert primary token amount to wei
+                    const amountIn = ethers.parseEther(amountPrimary.toFixed(CONFIG.PRIMARY_TOKEN_DECIMALS));
+
+                    // Calculate minimum output with slippage
+                    const amountOutMin = calculateAmountOutMin(amountIn, tokenAddress, slippage, router);
+
+                    // Path: Primary Token -> Token
+                    const path = [primaryTokenAddress, tokenAddress];
+
+                    // Execute swap
+                    tx = await router.swapExactETHForTokens(
+                        amountOutMin,
+                        path,
+                        state.walletAddress,
+                        deadline,
+                        { value: amountIn, gasLimit: state.settings.gasLimit }
+                    );
+
+                    log(`[LIVE] Submitted BUY transaction for ${formatNumber(tokenAmount, 6)} ${token} at ${formatNumber(price, 6)} ${primaryToken}`);
+                    log(`Transaction Hash: ${tx.hash}`);
+
+                    // Wait for confirmation
+                    const receipt = await tx.wait();
+                    if (receipt.status === 1) {
+                        log(`[LIVE] BUY transaction confirmed!`);
+
+                        // In a real implementation, you would:
+                        // 1. Get the actual amount of tokens received from the receipt
+                        // 2. Update your portfolio
+                        // 3. Track the trade
+
+                        state.lastTradeTime = now();
+                    } else {
+                        log(`ERROR: BUY transaction failed`, true);
+                    }
+
+                } else { // sell
+                    // For selling tokens for primary token
+                    if (token === primaryToken) {
+                        log("ERROR: Cannot sell primary token directly", true);
+                        return;
+                    }
+
+                    // Convert token amount to wei
+                    const decimals = getTokenDecimals(token, chainKey) || 18;
+                    const amountIn = ethers.parseUnits(tokenAmount.toFixed(decimals), decimals);
+
+                    // Approve router to spend tokens
+                    await approveTokenSpend(tokenAddress, amountIn, chain.router);
+
+                    // Calculate minimum output with slippage
+                    const amountOutMin = calculateAmountOutMin(amountIn, primaryTokenAddress, slippage, router);
+
+                    // Path: Token -> Primary Token
+                    const path = [tokenAddress, primaryTokenAddress];
+
+                    // Execute swap
+                    tx = await router.swapExactTokensForETH(
+                        amountIn,
+                        amountOutMin,
+                        path,
+                        state.walletAddress,
+                        deadline,
+                        { gasLimit: state.settings.gasLimit }
+                    );
+
+                    log(`[LIVE] Submitted SELL transaction for ${formatNumber(tokenAmount, 6)} ${token} at ${formatNumber(price, 6)} ${primaryToken}`);
+                    log(`Transaction Hash: ${tx.hash}`);
+
+                    // Wait for confirmation
+                    const receipt = await tx.wait();
+                    if (receipt.status === 1) {
+                        log(`[LIVE] SELL transaction confirmed!`);
+
+                        // Transfer profits to profit address if configured
+                        if (state.settings.profitAddress) {
+                            await transferProfits();
+                        }
+
+                        state.lastTradeTime = now();
+                    } else {
+                        log(`ERROR: SELL transaction failed`, true);
+                    }
+                }
+
+            } catch (error) {
+                log(`ERROR: Failed to execute ${action} trade: ${error.message}`, true);
+            }
+        }
+
+        async function approveTokenSpend(tokenAddress, amount, spender) {
+            try {
+                const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, state.signer);
+                const allowance = await tokenContract.allowance(state.walletAddress, spender);
+
+                if (allowance < amount) {
+                    const approveTx = await tokenContract.approve(spender, amount);
+                    log(`Approving ${spender} to spend tokens...`);
+                    await approveTx.wait();
+                    log(`Approval confirmed`);
+                }
+            } catch (error) {
+                log(`ERROR: Failed to approve token spend: ${error.message}`, true);
+                throw error;
+            }
+        }
+
+        async function calculateAmountOutMin(amountIn, tokenOut, slippage, router) {
+            try {
+                // Get the expected amount out
+                const amounts = await router.getAmountsOut(amountIn, [tokenOut]);
+                const amountOut = amounts[amounts.length - 1];
+
+                // Apply slippage (reduce by slippage percentage)
+                const slippageMultiplier = 1 - (slippage / 100);
+                const amountOutMin = amountOut * BigInt(Math.floor(slippageMultiplier * 10000)) / BigInt(10000);
+
+                return amountOutMin;
+            } catch (error) {
+                log(`ERROR: Failed to calculate amount out min: ${error.message}`, true);
+                // Fallback: use 95% of expected amount
+                return amountIn * BigInt(95) / BigInt(100);
+            }
+        }
+
+        async function transferProfits() {
+            if (!state.settings.profitAddress || !state.isConnected) return;
+
+            try {
+                const chain = CHAINS[state.network];
+                const primaryTokenAddress = chain.wrappedNative;
+
+                // Get ETH balance
+                const ethBalance = await state.provider.getBalance(state.walletAddress);
+                if (ethBalance > 0) {
+                    const tx = await state.signer.sendTransaction({
+                        to: state.settings.profitAddress,
+                        value: ethBalance,
+                        gasLimit: 21000
+                    });
+                    log(`Transferring profits to ${state.settings.profitAddress}`);
+                    await tx.wait();
+                    log(`Profits transferred successfully!`);
+                }
+            } catch (error) {
+                log(`ERROR: Failed to transfer profits: ${error.message}`, true);
+            }
+        }
+
+        function getTokenAddress(token, chainKey) {
+            // In a real implementation, you would have a comprehensive mapping
+            // For this demo, we'll use a simplified mapping
+            const tokenAddresses = {
+                ETH: CHAINS[chainKey]?.wrappedNative || null,
+                WBTC: {
+                    ethereum: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+                    arbitrum: "0x2f2a2543B76A4166549F7aaB27749ff736aB217e",
+                    base: "0x68f18894810528844A82f35486D9324352172347",
+                    optimism: "0x68f18894810528844A82f35486D9324352172347",
+                    polygon: "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6"
+                },
+                USDC: CHAINS[chainKey]?.usdc || null,
+                USDT: CHAINS[chainKey]?.usdt || null,
+                UNI: {
+                    ethereum: "0x1f9840a85d5aF5bf1D1762F925BDADDd4201F984",
+                    arbitrum: "0xFa7F8980b0f1E64A2062791B5379534872102D6e",
+                    base: "0x4ED4E8620f72E938b93990F3c71c427530F5851D",
+                    optimism: "0x6fd9d7AD17242c41f7131d257212c54A0e816691",
+                    polygon: "0x53E0bca7E34c98224132D8730eC399D6d5744F5"
+                },
+                LINK: {
+                    ethereum: "0x514910771AF9Ca656af840dff83E8264EcF986CA",
+                    arbitrum: "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4",
+                    base: "0x21982e54253C7788010822E3839297F446229fD4",
+                    optimism: "0x350a791Bfc2C21F9Ed5d10980Dad2e2638ff2B96",
+                    polygon: "0x53E0bca7E34c98224132D8730eC399D6d5744F5"
+                },
+                ARB: {
+                    ethereum: null,
+                    arbitrum: "0x912CE59144196C9574063d85BC7b7405F2D0323A",
+                    base: null,
+                    optimism: null,
+                    polygon: null
+                }
+            };
+
+            return tokenAddresses[token]?.[chainKey] || tokenAddresses[token] || null;
+        }
+
+        function getTokenDecimals(token, chainKey) {
+            const tokenDecimals = {
+                ETH: 18,
+                WBTC: 8,
+                USDC: 6,
+                USDT: 6,
+                UNI: 18,
+                LINK: 18,
+                ARB: 18
+            };
+            return tokenDecimals[token] || 18;
+        }
+
+        // ============================================
+        // Portfolio Management (Test Mode)
+        // ============================================
+
+        function updatePortfolioValue() {
+            const chainKey = state.settings.priceSource || state.network;
+            const chain = CHAINS[chainKey];
+            const primaryToken = chain.primaryTokenSymbol;
+
+            let totalValue = state.portfolio.cash;
+
+            // Add value of all holdings
+            for (const [token, amount] of Object.entries(state.portfolio.holdings)) {
+                const price = state.prices[token] || 0;
+                totalValue += amount * price;
+            }
+
+            state.portfolio.totalValue = totalValue;
+            state.portfolio.pnl = totalValue - state.portfolio.startingBalance;
+        }
+
+        function updatePortfolioDisplay() {
+            const chainKey = state.settings.priceSource || state.network;
+            const chain = CHAINS[chainKey];
+            const primaryToken = chain.primaryTokenSymbol;
+
+            document.getElementById("primaryToken").textContent = primaryToken;
+            document.getElementById("primaryTokenSymbol").textContent = primaryToken;
+            document.getElementById("primaryTokenSymbol2").textContent = primaryToken;
+            document.getElementById("primaryTokenSymbol3").textContent = primaryToken;
+
+            document.getElementById("startingBalance").textContent = formatNumber(state.portfolio.startingBalance, 6) + " " + primaryToken;
+            document.getElementById("portfolioValue").textContent = formatNumber(state.portfolio.totalValue, 6) + " " + primaryToken;
+
+            const pnlElement = document.getElementById("portfolioPnL");
+            pnlElement.textContent = (state.portfolio.pnl >= 0 ? "+" : "") + formatNumber(state.portfolio.pnl, 6) + " " + primaryToken;
+            pnlElement.className = state.portfolio.pnl >= 0 ? "positive" : "negative";
+
+            document.getElementById("tradesExecuted").textContent = state.portfolio.tradesExecuted;
+
+            const totalTrades = state.portfolio.wins + state.portfolio.losses;
+            const winRate = totalTrades > 0 ?
+                ((state.portfolio.wins / totalTrades) * 100).toFixed(1) + "%" :
+                "0%";
+            document.getElementById("winRate").textContent = winRate;
+
+            document.getElementById("openPositions").textContent = Object.keys(state.portfolio.openTrades).length;
+        }
+
+        function updateTradeHistoryDisplay() {
+            const tradeHistoryTable = document.getElementById("tradeHistoryTable");
+            const chainKey = state.settings.priceSource || state.network;
+            const chain = CHAINS[chainKey];
+            const primaryToken = chain.primaryTokenSymbol;
+
+            if (state.portfolio.tradeHistory.length === 0) {
+                tradeHistoryTable.innerHTML = "<tr><td colspan='9' class='text-center'>No trades yet</td></tr>";
+                return;
+            }
+
+            // Show the last 20 trades
+            const trades = state.portfolio.tradeHistory.slice(-20).reverse();
+
+            let html = "";
+            trades.forEach(trade => {
+                const pnlClass = trade.pnl > 0 ? "positive" : trade.pnl < 0 ? "negative" : "";
+                const pnl = trade.pnl !== undefined ? `${trade.pnl >= 0 ? "+" : ""}${formatNumber(trade.pnl, 6)} ${primaryToken}` : "-";
+
+                html += `
+                    <tr>
+                        <td>${new Date(trade.timestamp).toLocaleTimeString()}</td>
+                        <td>${trade.token}</td>
+                        <td>${trade.action.toUpperCase()}</td>
+                        <td>${formatNumber(trade.entryPrice, 6)}</td>
+                        <td>${trade.exitPrice ? formatNumber(trade.exitPrice, 6) : "-"}</td>
+                        <td>${formatNumber(trade.tokenAmount, 6)}</td>
+                        <td class="${pnlClass}">${pnl}</td>
+                        <td>${trade.pattern}</td>
+                        <td>
+                            <span class="badge badge-${trade.status === "closed" ? "success" : "warning"}">
+                                ${trade.status}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tradeHistoryTable.innerHTML = html;
+        }
+
+        function updateOpenPositionsDisplay() {
+            const openPositionsTable = document.getElementById("openPositionsTable");
+            const chainKey = state.settings.priceSource || state.network;
+            const chain = CHAINS[chainKey];
+            const primaryToken = chain.primaryTokenSymbol;
+
+            const openTrades = Object.values(state.portfolio.openTrades).filter(t => t.status === "open");
+
+            if (openTrades.length === 0) {
+                openPositionsTable.innerHTML = "<tr><td colspan='7' class='text-center'>No open positions</td></tr>";
+                return;
+            }
+
+            let html = "";
+            openTrades.forEach(trade => {
+                const currentPrice = state.prices[trade.token] || trade.entryPrice;
+                const currentValue = trade.tokenAmount * currentPrice;
+                const unrealizedPnL = currentValue - (trade.tokenAmount * trade.entryPrice);
+                const pnlClass = unrealizedPnL >= 0 ? "positive" : "negative";
+                const pnlPercent = ((unrealizedPnL / (trade.tokenAmount * trade.entryPrice)) * 100).toFixed(2);
+
+                html += `
+                    <tr>
+                        <td>${trade.token}</td>
+                        <td>${formatNumber(trade.entryPrice, 6)}</td>
+                        <td>${formatNumber(currentPrice, 6)}</td>
+                        <td>${formatNumber(trade.tokenAmount, 6)}</td>
+                        <td>${formatNumber(currentValue, 6)} ${primaryToken}</td>
+                        <td class="${pnlClass}">
+                            ${unrealizedPnL >= 0 ? "+" : ""}${formatNumber(unrealizedPnL, 6)} ${primaryToken} (${unrealizedPnL >= 0 ? "+" : ""}${pnlPercent}%)
+                        </td>
+                        <td>${trade.pattern}</td>
+                    </tr>
+                `;
+            });
+
+            openPositionsTable.innerHTML = html;
+        }
+
+        function clearTradeHistory() {
+            if (!confirm("Are you sure you want to clear all trade history?")) return;
+
+            state.portfolio.tradeHistory = [];
+            state.portfolio.openTrades = {};
+            state.portfolio.wins = 0;
+            state.portfolio.losses = 0;
+            state.portfolio.tradesExecuted = 0;
+
+            updatePortfolioDisplay();
+            updateTradeHistoryDisplay();
+            updateOpenPositionsDisplay();
+
+            log("Trade history cleared");
+        }
+
+        // ============================================
+        // Settings
+        // ============================================
+
+        function saveSettings() {
+            state.settings.profitAddress = document.getElementById("profitAddress").value.trim();
+            state.settings.buyPatterns = document.getElementById("buyPatterns").value;
+            state.settings.sellPatterns = document.getElementById("sellPatterns").value;
+            state.settings.tradeAmount = parseFloat(document.getElementById("tradeAmount").value);
+            state.settings.priceSource = document.getElementById("priceSource").value;
+            state.settings.slippage = parseFloat(document.getElementById("slippage")?.value || CONFIG.SLIPPAGE);
+            state.settings.gasLimit = parseInt(document.getElementById("gasLimit")?.value || CONFIG.GAS_LIMIT);
+
+            // Update portfolio starting balance if in Test Mode
+            if (state.isTestMode) {
+                const startingBalance = parseFloat(document.getElementById("startingBalanceInput")?.value || 10);
+                if (!isNaN(startingBalance)) {
+                    state.portfolio.startingBalance = startingBalance;
+                    state.portfolio.cash = startingBalance;
+                    updatePortfolioValue();
+                    updatePortfolioDisplay();
+                }
+            }
+
+            log("Settings saved.");
+        }
+
+        function loadDefaultPatterns() {
+            document.getElementById("buyPatterns").value = "(<_-0.5_150-450)&(<_-1.5_300-600)";
+            document.getElementById("sellPatterns").value = "(>_+0.5_60-300)|(>_+1.5_150-450)";
+            saveSettings();
+            log("Default patterns loaded");
+        }
+
+        // ============================================
+        // UI Helpers
+        // ============================================
+
+        function showLoading(buttonId) {
+            const button = document.getElementById(buttonId);
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = `<span class="loading-spinner"></span> ${button.textContent}`;
+            }
+        }
+
+        function hideLoading(buttonId) {
+            const button = document.getElementById(buttonId);
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = button.textContent.replace(/<span.*?<\/span>/, "").trim();
+            }
+        }
+
+        // ============================================
+        // Initialize
+        // ============================================
+
+        document.addEventListener("DOMContentLoaded", () => {
+            log("Uniswap Trading Bot initialized. Ready to start.");
+
+            // Initialize mode
+            toggleMode();
+
+            // Load settings from UI
+            saveSettings();
+        });
+    </script>
+</body>
+
+</html>
