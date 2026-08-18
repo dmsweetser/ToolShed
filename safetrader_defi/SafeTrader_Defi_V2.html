@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Uniswap Trading Bot - Final</title>
+    <title>Uniswap Trading Bot</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
     <style>
         body {
@@ -128,6 +128,14 @@
             background: #218838;
         }
 
+        button.secondary {
+            background: #6c757d;
+        }
+
+        button.secondary:hover {
+            background: #5a6268;
+        }
+
         input,
         select {
             padding: 8px;
@@ -224,12 +232,33 @@
             background: #e2e3e5;
             color: #383d41;
         }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .text-center {
+            text-align: center;
+        }
     </style>
 </head>
 
 <body>
     <h1>Uniswap Trading Bot</h1>
-    <p><strong>Version:</strong> 3.0.0 | <strong>Mode:</strong> <span id="modeDisplay">Test Mode</span></p>
+    <p><strong>Version:</strong> 3.1.0 | <strong>Mode:</strong> <span id="modeDisplay">Test Mode</span></p>
 
     <div class="grid">
         <div class="card">
@@ -307,6 +336,13 @@
                         <option value="optimism">Optimism</option>
                         <option value="polygon">Polygon</option>
                     </select>
+                </div>
+            </div>
+            <div>
+                <div class="form-row">
+                    <label class="form-label">Starting Balance (Test Mode):</label>
+                    <input type="number" id="startingBalanceInput" value="10" min="0.0001" step="0.0001" />
+                    <small>Starting balance in primary token for Test Mode</small>
                 </div>
             </div>
         </div>
@@ -543,7 +579,74 @@
             SLIPPAGE: 0.5,                  // 0.5% slippage
             GAS_LIMIT: 500000,              // Default gas limit
             TRADE_COOLDOWN: 60,              // 60 seconds between trades on same token
-            PRIMARY_TOKEN_DECIMALS: 18     // ETH/WETH decimals
+            PRIMARY_TOKEN_DECIMALS: 18,    // ETH/WETH decimals
+            MAX_PRICE_PATH_DEPTH: 4        // Max depth for price path finding
+        };
+
+        // ============================================
+        // Token Address Mapping
+        // ============================================
+
+        const TOKEN_ADDRESSES = {
+            ETH: {
+                ethereum: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                arbitrum: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+                base: "0x4200000000000000000000000000000000000006",
+                optimism: "0x4200000000000000000000000000000000000006",
+                polygon: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"
+            },
+            WBTC: {
+                ethereum: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+                arbitrum: "0x2f2a2543B76A4166549F7aaB27749ff736aB217e",
+                base: "0x68f18894810528844A82f35486D9324352172347",
+                optimism: "0x68f18894810528844A82f35486D9324352172347",
+                polygon: "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6"
+            },
+            USDC: {
+                ethereum: "0xA0b86991c6218b36c1d19D4a2e9eb0ce3606eb48",
+                arbitrum: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+                base: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                optimism: "0x0b2C639c533813f4aAa9D7837CAf62653d097Ff85",
+                polygon: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+            },
+            USDT: {
+                ethereum: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+                arbitrum: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+                base: "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",
+                optimism: "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
+                polygon: "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359"
+            },
+            UNI: {
+                ethereum: "0x1f9840a85d5aF5bf1D1762F925BDADDd4201F984",
+                arbitrum: "0xFa7F8980b0f1E64A2062791B5379534872102D6e",
+                base: "0x4ED4E8620f72E938b93990F3c71c427530F5851D",
+                optimism: "0x6fd9d7AD17242c41f7131d257212c54A0e816691",
+                polygon: "0x53E0bca7E34c98224132D8730eC399D6d5744F5"
+            },
+            LINK: {
+                ethereum: "0x514910771AF9Ca656af840dff83E8264EcF986CA",
+                arbitrum: "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4",
+                base: "0x21982e54253C7788010822E3839297F446229fD4",
+                optimism: "0x350a791Bfc2C21F9Ed5d10980Dad2e2638ff2B96",
+                polygon: "0x53E0bca7E34c98224132D8730eC399D6d5744F5"
+            },
+            ARB: {
+                ethereum: null,
+                arbitrum: "0x912CE59144196C9574063d85BC7b7405F2D0323A",
+                base: null,
+                optimism: null,
+                polygon: null
+            }
+        };
+
+        const TOKEN_DECIMALS = {
+            ETH: 18,
+            WBTC: 8,
+            USDC: 6,
+            USDT: 6,
+            UNI: 18,
+            LINK: 18,
+            ARB: 18
         };
 
         // ============================================
@@ -561,24 +664,24 @@
             signer: null,
 
             // Price data
-            prices: {},                     // Current prices (token symbol -> price in primary token)
-            priceHistory: {},               // Price history (token symbol -> [{price, timestamp}])
-            tokenMetadata: {},              // Token metadata (address -> {symbol, decimals, name})
-            poolInfo: {},                   // Pool info (pool address -> {token0, token1, fee})
+            prices: {},
+            priceHistory: {},
+            tokenMetadata: {},
+            poolInfo: {},
 
             // Portfolio (Test Mode)
             portfolio: {
-                primaryToken: "ETH",         // Primary token symbol
-                startingBalance: 10,        // Starting balance in primary token
-                cash: 10,                    // Available primary token
-                holdings: {},               // Token holdings (symbol -> amount in token)
-                openTrades: {},              // Open trades (tradeId -> trade)
-                tradeHistory: [],            // All trades (including closed)
+                primaryToken: "ETH",
+                startingBalance: 10,
+                cash: 10,
+                holdings: {},
+                openTrades: {},
+                tradeHistory: [],
                 tradesExecuted: 0,
                 wins: 0,
                 losses: 0,
-                totalValue: 10,              // Total portfolio value in primary token
-                pnl: 0                       // Profit/loss in primary token
+                totalValue: 10,
+                pnl: 0
             },
 
             // Settings
@@ -586,7 +689,7 @@
                 profitAddress: "",
                 buyPatterns: "(<_-0.5_150-450)&(<_-1.5_300-600)",
                 sellPatterns: "(>_+0.5_60-300)|(>_+1.5_150-450)",
-                tradeAmount: 0.1,            // Trade amount in primary token
+                tradeAmount: 0.1,
                 priceSource: "arbitrum",
                 slippage: 0.5,
                 gasLimit: 500000
@@ -639,7 +742,7 @@
             const logsDiv = document.getElementById("logs");
             const entry = document.createElement("div");
             entry.className = isError ? "negative" : "";
-            entry.innerHTML = `<span>[${timestamp}]</span> ${message}`;
+            entry.innerHTML = `<span>[${timestamp}]</span> ${esc(message)}`;
             logsDiv.appendChild(entry);
             logsDiv.scrollTop = logsDiv.scrollHeight;
             console.log(isError ? `ERROR: ${message}` : message);
@@ -975,9 +1078,9 @@
                 ws: null,
                 active: true,
                 connected: false,
-                tokens: new Map(),       // address -> token metadata
-                pools: new Map(),        // address -> pool info
-                pairPrices: new Map(),   // tokenAddress -> Map<otherTokenAddress, {price, updatedAt}>
+                tokens: new Map(),
+                pools: new Map(),
+                pairPrices: new Map(),
                 metadataInFlight: new Map(),
                 swaps: [],
                 lastProcessedBlock: null,
@@ -1850,7 +1953,7 @@
                     const amountIn = ethers.parseEther(amountPrimary.toFixed(CONFIG.PRIMARY_TOKEN_DECIMALS));
 
                     // Calculate minimum output with slippage
-                    const amountOutMin = calculateAmountOutMin(amountIn, tokenAddress, slippage, router);
+                    const amountOutMin = await calculateAmountOutMin(amountIn, [primaryTokenAddress, tokenAddress], slippage, router);
 
                     // Path: Primary Token -> Token
                     const path = [primaryTokenAddress, tokenAddress];
@@ -1897,7 +2000,7 @@
                     await approveTokenSpend(tokenAddress, amountIn, chain.router);
 
                     // Calculate minimum output with slippage
-                    const amountOutMin = calculateAmountOutMin(amountIn, primaryTokenAddress, slippage, router);
+                    const amountOutMin = await calculateAmountOutMin(amountIn, [tokenAddress, primaryTokenAddress], slippage, router);
 
                     // Path: Token -> Primary Token
                     const path = [tokenAddress, primaryTokenAddress];
@@ -1953,10 +2056,10 @@
             }
         }
 
-        async function calculateAmountOutMin(amountIn, tokenOut, slippage, router) {
+        async function calculateAmountOutMin(amountIn, path, slippage, router) {
             try {
                 // Get the expected amount out
-                const amounts = await router.getAmountsOut(amountIn, [tokenOut]);
+                const amounts = await router.getAmountsOut(amountIn, path);
                 const amountOut = amounts[amounts.length - 1];
 
                 // Apply slippage (reduce by slippage percentage)
@@ -1996,56 +2099,11 @@
         }
 
         function getTokenAddress(token, chainKey) {
-            // In a real implementation, you would have a comprehensive mapping
-            // For this demo, we'll use a simplified mapping
-            const tokenAddresses = {
-                ETH: CHAINS[chainKey]?.wrappedNative || null,
-                WBTC: {
-                    ethereum: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
-                    arbitrum: "0x2f2a2543B76A4166549F7aaB27749ff736aB217e",
-                    base: "0x68f18894810528844A82f35486D9324352172347",
-                    optimism: "0x68f18894810528844A82f35486D9324352172347",
-                    polygon: "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6"
-                },
-                USDC: CHAINS[chainKey]?.usdc || null,
-                USDT: CHAINS[chainKey]?.usdt || null,
-                UNI: {
-                    ethereum: "0x1f9840a85d5aF5bf1D1762F925BDADDd4201F984",
-                    arbitrum: "0xFa7F8980b0f1E64A2062791B5379534872102D6e",
-                    base: "0x4ED4E8620f72E938b93990F3c71c427530F5851D",
-                    optimism: "0x6fd9d7AD17242c41f7131d257212c54A0e816691",
-                    polygon: "0x53E0bca7E34c98224132D8730eC399D6d5744F5"
-                },
-                LINK: {
-                    ethereum: "0x514910771AF9Ca656af840dff83E8264EcF986CA",
-                    arbitrum: "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4",
-                    base: "0x21982e54253C7788010822E3839297F446229fD4",
-                    optimism: "0x350a791Bfc2C21F9Ed5d10980Dad2e2638ff2B96",
-                    polygon: "0x53E0bca7E34c98224132D8730eC399D6d5744F5"
-                },
-                ARB: {
-                    ethereum: null,
-                    arbitrum: "0x912CE59144196C9574063d85BC7b7405F2D0323A",
-                    base: null,
-                    optimism: null,
-                    polygon: null
-                }
-            };
-
-            return tokenAddresses[token]?.[chainKey] || tokenAddresses[token] || null;
+            return TOKEN_ADDRESSES[token]?.[chainKey] || null;
         }
 
         function getTokenDecimals(token, chainKey) {
-            const tokenDecimals = {
-                ETH: 18,
-                WBTC: 8,
-                USDC: 6,
-                USDT: 6,
-                UNI: 18,
-                LINK: 18,
-                ARB: 18
-            };
-            return tokenDecimals[token] || 18;
+            return TOKEN_DECIMALS[token] || 18;
         }
 
         // ============================================
@@ -2203,12 +2261,10 @@
             state.settings.sellPatterns = document.getElementById("sellPatterns").value;
             state.settings.tradeAmount = parseFloat(document.getElementById("tradeAmount").value);
             state.settings.priceSource = document.getElementById("priceSource").value;
-            state.settings.slippage = parseFloat(document.getElementById("slippage")?.value || CONFIG.SLIPPAGE);
-            state.settings.gasLimit = parseInt(document.getElementById("gasLimit")?.value || CONFIG.GAS_LIMIT);
 
             // Update portfolio starting balance if in Test Mode
             if (state.isTestMode) {
-                const startingBalance = parseFloat(document.getElementById("startingBalanceInput")?.value || 10);
+                const startingBalance = parseFloat(document.getElementById("startingBalanceInput").value || 10);
                 if (!isNaN(startingBalance)) {
                     state.portfolio.startingBalance = startingBalance;
                     state.portfolio.cash = startingBalance;
