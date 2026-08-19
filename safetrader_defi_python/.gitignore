@@ -1,0 +1,5 @@
+backups
+venv
+state.json
+trades.json
+trading_bot.log
