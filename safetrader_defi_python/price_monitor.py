@@ -1,19 +1,12 @@
 #!/usr/bin/env python3
 """
-Uniswap V3 Live Activity Monitor
-A Python implementation of the HTML/JS blockchain monitoring example.
-Focuses on real-time monitoring of Uniswap V3 swaps, token discovery, and price tracking.
-
-Core Features:
-- WebSocket monitoring of Uniswap V3 swaps
-- Dynamic token discovery
-- Price tracking from on-chain data
-- Live activity display
-- Separate WebSocket connections for subscriptions and RPC calls
+Uniswap V3 Live Activity Monitor (Subscription-Only)
+- Uses only WebSocket subscriptions (no RPC calls).
+- Outputs token states to a JSON file periodically.
+- Designed to work with main.py TradingBot.
 """
 
 import json
-import sys
 import time
 import logging
 import asyncio
@@ -40,6 +33,7 @@ class ChainConfig:
     quote_label: str
     stables: List[str]
 
+
 @dataclass
 class TokenState:
     """Runtime state for a token."""
@@ -52,6 +46,7 @@ class TokenState:
     price_quote: Optional[float] = None
     history: List[Dict[str, Any]] = field(default_factory=list)
     last_seen: float = 0.0
+
 
 @dataclass
 class BotState:
@@ -72,6 +67,7 @@ class BotState:
     last_processed_block: Optional[int] = None
     rpc_head: int = 0
 
+
 # =============================================================================
 # CONSTANTS
 # =============================================================================
@@ -79,7 +75,7 @@ class BotState:
 UNISWAP_V3_FACTORY = "0x1F98431c8aD98523631AE4a59f267346ea31F984"
 UNISWAP_V3_SWAP_TOPIC = "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67"
 
-# Known token configurations (for initial symbol hints)
+# Known token configurations
 KNOWN_TOKENS: Dict[str, Dict[str, Any]] = {
     # Ethereum
     "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2": {"symbol": "WETH", "name": "Wrapped ETH", "decimals": 18},
@@ -182,7 +178,7 @@ CHAINS: Dict[str, ChainConfig] = {
 
 CONFIG = {
     "MAX_TOKENS": 100,
-    "WINDOW_MS": 15 * 60 * 1000,  # 15 minutes
+    "WINDOW_MS": 15 * 60 * 1000,
     "HISTORY_MS": 15 * 60 * 1000,
     "MAX_HISTORY_POINTS": 180,
     "MAX_PRICE_PATH_DEPTH": 4,
@@ -191,7 +187,9 @@ CONFIG = {
     "MAX_HEAD_RETRIES": 5,
     "LOG_CONCURRENCY": 4,
     "RENDER_INTERVAL_MS": 1000,
+    "TOKEN_STATE_FILE": "token_states.json",
 }
+
 
 # =============================================================================
 # UTILITY FUNCTIONS
@@ -201,9 +199,11 @@ def norm(a: str) -> str:
     """Normalize address to lowercase string."""
     return str(a).lower()
 
+
 def generate_symbol(address: str) -> str:
     """Generate a symbol from an address (for unknown tokens)."""
     return f"TKN_{address[:4].upper()}"
+
 
 def short(a: str) -> str:
     """Shorten address for display."""
@@ -211,35 +211,27 @@ def short(a: str) -> str:
         return ""
     return f"{a[:6]}...{a[-4:]}"
 
+
 def setup_logging(debug_mode: str = "none") -> logging.Logger:
     """Configure logging based on debug mode."""
     log_levels = {"none": logging.INFO, "basic": logging.INFO, "verbose": logging.DEBUG}
     level = log_levels.get(debug_mode, logging.INFO)
-
     logger = logging.getLogger("uniswap_monitor")
     logger.setLevel(level)
-
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
-
     formatter = logging.Formatter(
         "%(asctime)s - %(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S"
     )
-
     file_handler = logging.FileHandler("uniswap_monitor.log")
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
-
-    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
-
     return logger
 
-# =============================================================================
-# STATE MANAGEMENT
-# =============================================================================
 
 def load_config(config_path: str = "config.json") -> Dict[str, Any]:
     """Load configuration from JSON file."""
@@ -252,10 +244,12 @@ def load_config(config_path: str = "config.json") -> Dict[str, Any]:
     with open(config_path, "r") as f:
         return json.load(f)
 
+
 def save_config(config: Dict[str, Any], config_path: str = "config.json") -> None:
     """Save configuration to JSON file."""
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
+
 
 def load_state(state_path: str = "state.json") -> BotState:
     """Load bot state from JSON file."""
@@ -281,10 +275,31 @@ def load_state(state_path: str = "state.json") -> BotState:
             )
     return BotState()
 
+
 def save_state(state: BotState, state_path: str = "state.json") -> None:
     """Save bot state to JSON file."""
     with open(state_path, "w") as f:
         json.dump(asdict(state), f, indent=2)
+
+
+def save_token_states(tokens: Dict[str, TokenState], filepath: str = "token_states.json") -> None:
+    """Save all token states to a JSON file."""
+    token_data = {}
+    for addr, token in tokens.items():
+        token_data[addr] = {
+            "symbol": token.symbol,
+            "name": token.name,
+            "decimals": token.decimals,
+            "address": token.address,
+            "price_quote": token.price_quote,
+            "volume_quote": token.volume_quote,
+            "last_seen": token.last_seen,
+            "swaps_count": len(token.swaps),
+            "history": token.history,
+        }
+    with open(filepath, "w") as f:
+        json.dump(token_data, f, indent=2)
+
 
 # =============================================================================
 # CORE MONITOR CLASS
@@ -292,8 +307,8 @@ def save_state(state: BotState, state_path: str = "state.json") -> None:
 
 class UniswapMonitor:
     """
-    Core class: Manages WebSocket connection to monitor Uniswap V3 swaps.
-    Uses separate connections for subscriptions and RPC calls.
+    Manages WebSocket connection to monitor Uniswap V3 swaps.
+    Uses only subscriptions (no RPC calls).
     """
 
     def __init__(self, chain_key: str, config: Dict[str, Any], state: BotState, logger: logging.Logger):
@@ -308,9 +323,8 @@ class UniswapMonitor:
         self.connected = False
         self.session_serial = 0
 
-        # WebSocket connections
-        self.subscription_ws = None  # For newHeads subscription
-        self.rpc_ws = None           # For eth_getLogs RPC calls
+        # Single WebSocket connection
+        self.ws = None
 
         # Data structures
         self.pools: Dict[str, Dict[str, Any]] = {}
@@ -319,9 +333,7 @@ class UniswapMonitor:
         self.metadata_in_flight: Dict[str, Any] = {}
         self.swaps: List[float] = []
 
-        # Block processing
-        self.pending_block: Optional[int] = None
-        self.processing_blocks = False
+        # Block tracking
         self.last_processed_block: Optional[int] = None
 
     def _normalize_topic_address(self, topic: str) -> str:
@@ -343,41 +355,19 @@ class UniswapMonitor:
         self.state.network = self.chain_key
 
         try:
-            # Connect for subscriptions (newHeads)
-            self.subscription_ws = await websockets.connect(
+            # Single WebSocket connection
+            self.ws = await websockets.connect(
                 self.chain.ws,
                 ping_interval=20,
                 ping_timeout=10,
                 close_timeout=1
             )
-            self.logger.info(f"Connected to {self.chain.name} (subscriptions)")
+            self.logger.info(f"Connected to {self.chain.name}")
 
-            # Connect for RPC calls (eth_getLogs)
-            self.rpc_ws = await websockets.connect(
-                self.chain.ws,
-                ping_interval=20,
-                ping_timeout=10,
-                close_timeout=1
-            )
-            self.logger.info(f"Connected to {self.chain.name} (RPC)")
+            # Subscribe to newHeads and logs
+            await self._subscribe_to_events()
 
-            # Subscribe to new blocks
-            await self._subscribe_to_blocks()
-
-            # Get current head
-            head = await self._get_block_number()
-            if current_serial != self.session_serial:
-                return
-
-            self.state.rpc_head = head
-            self.state.block_count = head
-            self.logger.info(f"Current block: {head}")
-
-            # Load the quote token immediately for L2 chains
-            if self.chain.quote_mode == "native":
-                await self._load_token(self.chain.wrapped_native)
-
-            # Start listening for subscription messages
+            # Start listening for messages
             await self._listen_for_messages(current_serial)
 
         except websockets.exceptions.ConnectionClosed as e:
@@ -401,15 +391,12 @@ class UniswapMonitor:
         self.state.is_running = False
         self.session_serial += 1
         self.connected = False
-
-        for ws in [self.subscription_ws, self.rpc_ws]:
-            if ws:
-                try:
-                    await ws.close()
-                except Exception:
-                    pass
-        self.subscription_ws = None
-        self.rpc_ws = None
+        if self.ws:
+            try:
+                await self.ws.close()
+            except Exception:
+                pass
+        self.ws = None
         self.logger.info(f"Disconnected from {self.chain.name}")
 
     async def _schedule_reconnect(self, current_serial: int) -> None:
@@ -422,56 +409,61 @@ class UniswapMonitor:
         if self.active and current_serial == self.session_serial:
             await self.start()
 
-    async def _subscribe_to_blocks(self) -> None:
-        """Subscribe to new block headers."""
-        request = {
+    async def _subscribe_to_events(self) -> None:
+        """Subscribe to newHeads and Uniswap V3 Swap logs."""
+        # Subscribe to newHeads
+        new_heads_request = {
             "jsonrpc": "2.0",
             "id": 1,
             "method": "eth_subscribe",
             "params": ["newHeads"]
         }
-        try:
-            await self.subscription_ws.send(json.dumps(request))
-            self.logger.info("Subscribed to new block headers")
-        except Exception as e:
-            self.logger.error(f"Error subscribing to blocks: {e}")
+        await self.ws.send(json.dumps(new_heads_request))
+        self.logger.info("Subscribed to new block headers")
 
-    async def _get_block_number(self) -> int:
-        """Get the current block number (using RPC connection)."""
-        request = {
+        # Subscribe to Uniswap V3 Swap logs
+        logs_request = {
             "jsonrpc": "2.0",
             "id": 2,
-            "method": "eth_blockNumber",
-            "params": []
+            "method": "eth_subscribe",
+            "params": [
+                "logs",
+                {
+                    "topics": [UNISWAP_V3_SWAP_TOPIC]
+                }
+            ]
         }
-        try:
-            await self.rpc_ws.send(json.dumps(request))
-            response = await self.rpc_ws.recv()
-            data = json.loads(response)
-            if "error" in data:
-                self.logger.error(f"RPC error getting block number: {data['error']}")
-                return 0
-            return int(data["result"], 16)
-        except Exception as e:
-            self.logger.error(f"Failed to get block number: {e}")
-            return 0
+        await self.ws.send(json.dumps(logs_request))
+        self.logger.info("Subscribed to Uniswap V3 Swap logs")
 
     async def _listen_for_messages(self, current_serial: int) -> None:
-        """Listen for subscription messages (newHeads) only."""
+        """Listen for subscription messages (newHeads and logs)."""
         try:
-            async for message in self.subscription_ws:
+            async for message in self.ws:
                 if not self.active or current_serial != self.session_serial:
                     break
 
                 try:
                     data = json.loads(message)
 
-                    # Handle block notifications (from subscription)
-                    if "params" in data and "result" in data["params"]:
-                        block = data["params"]["result"]
-                        if isinstance(block, dict) and "number" in block:
-                            block_number = int(block["number"], 16)
-                            await self._queue_block(block_number)
+                    # Skip subscription confirmations
+                    if "id" in data:
+                        continue
+
+                    # Handle notifications
+                    if "params" in data and "result" in data.get("params", {}):
+                        result = data["params"]["result"]
+                        if isinstance(result, dict):
+                            if "number" in result:  # Block notification
+                                block_number = int(result["number"], 16)
+                                self.state.block_count = block_number
+                                self.state.rpc_head = block_number
+                                self.last_processed_block = block_number
+                                self.logger.info(f"New block: {block_number}")
+                            elif "topics" in result:  # Log notification (swap)
+                                await self._process_swap_log(result)
+                            else:
+                                self.logger.debug(f"Unknown result type: {result}")
 
                 except json.JSONDecodeError:
                     self.logger.debug("Received non-JSON message")
@@ -480,118 +472,14 @@ class UniswapMonitor:
 
         except websockets.exceptions.ConnectionClosed:
             if current_serial == self.session_serial:
-                self.logger.error("Subscription WebSocket connection closed")
+                self.logger.error("WebSocket connection closed")
                 self.connected = False
                 await self._schedule_reconnect(current_serial)
         except Exception as e:
             if current_serial == self.session_serial:
-                self.logger.error(f"Subscription WebSocket error: {e}")
+                self.logger.error(f"WebSocket error: {e}")
                 self.connected = False
                 await self._schedule_reconnect(current_serial)
-
-    async def _queue_block(self, block_number: int) -> None:
-        """Queue a block for processing."""
-        if not self.active:
-            return
-
-        if self.last_processed_block is not None and block_number <= self.last_processed_block:
-            return
-
-        self.pending_block = max(self.pending_block or 0, block_number)
-        await self._process_pending()
-
-    async def _process_pending(self) -> None:
-        """Process pending blocks."""
-        if self.processing_blocks or not self.active:
-            return
-
-        self.processing_blocks = True
-
-        try:
-            while self.pending_block is not None and self.active:
-                target = self.pending_block
-                self.pending_block = None
-
-                # Get current head
-                try:
-                    head = await self._get_block_number()
-                except Exception:
-                    self.pending_block = target
-                    await asyncio.sleep(CONFIG["HEAD_RETRY_MS"] / 1000)
-                    continue
-
-                self.state.rpc_head = head
-                self.state.block_count = max(self.state.block_count, head)
-
-                if target > head:
-                    self.pending_block = target
-                    await asyncio.sleep(CONFIG["HEAD_RETRY_MS"] / 1000)
-                    continue
-
-                if self.last_processed_block is not None and target <= self.last_processed_block:
-                    continue
-
-                await self._process_block(target)
-
-                if not self.active:
-                    break
-
-                self.last_processed_block = target
-                self.state.last_processed_block = target
-
-        finally:
-            self.processing_blocks = False
-
-    async def _process_block(self, block_number: int) -> None:
-        """Process a single block and its swap events."""
-        if not self.active:
-            return
-
-        self.logger.debug(f"Processing block {block_number}")
-
-        try:
-            logs = await self._fetch_swap_logs(block_number)
-            if logs:
-                self.logger.info(f"Found {len(logs)} swap events in block {block_number}")
-                self.state.swaps_count += len(logs)
-
-                # Process logs concurrently
-                tasks = []
-                for log in logs:
-                    tasks.append(self._process_swap_log(log))
-
-                await asyncio.gather(*tasks)
-
-        except Exception as e:
-            self.logger.error(f"Error processing block {block_number}: {e}")
-
-    async def _fetch_swap_logs(self, block_number: int) -> List[Dict[str, Any]]:
-        """Fetch Uniswap V3 Swap logs for a block (using RPC connection)."""
-        request = {
-            "jsonrpc": "2.0",
-            "id": 3,
-            "method": "eth_getLogs",
-            "params": [{
-                "fromBlock": hex(block_number),
-                "toBlock": hex(block_number),
-                "topics": [UNISWAP_V3_SWAP_TOPIC]  # Topic without 0x prefix
-            }]
-        }
-        try:
-            await self.rpc_ws.send(json.dumps(request))
-            response = await self.rpc_ws.recv()
-            data = json.loads(response)
-            if "error" in data:
-                self.logger.error(f"RPC error fetching logs: {data.get('error', {})}")
-                return []
-            logs = data.get("result", [])
-            if not isinstance(logs, list):
-                self.logger.error(f"Unexpected logs format: {type(logs)}")
-                return []
-            return logs
-        except Exception as e:
-            self.logger.error(f"Failed to fetch swap logs: {e}")
-            return []
 
     async def _process_swap_log(self, log: Dict[str, Any]) -> None:
         """Process a single Uniswap V3 Swap event log."""
@@ -602,48 +490,38 @@ class UniswapMonitor:
             self.logger.error(f"Invalid log format: {type(log)}")
             return
 
-        # Extract token addresses from topics
         topics = log.get("topics", [])
         if len(topics) < 3:
             self.logger.debug(f"Skipping log with insufficient topics: {topics}")
             return
 
-        # Extract addresses from topics (32-byte values, take last 20 bytes)
         token0_addr = self._normalize_topic_address(topics[1])
         token1_addr = self._normalize_topic_address(topics[2])
 
-        # Load the tokens
         token0 = await self._load_token(token0_addr)
         token1 = await self._load_token(token1_addr)
         if not token0 or not token1:
             return
 
-        # Extract swap data from log
         try:
             data_hex = log.get("data", "0x")
             if data_hex == "0x":
                 return
-            data_hex = data_hex[2:]  # Remove 0x prefix
+            data_hex = data_hex[2:]
 
-            if len(data_hex) < 192:  # Need at least 192 chars for first 3 params
+            if len(data_hex) < 192:
                 return
 
-            # Extract amount0 (first 64 chars)
             amount0 = int(data_hex[:64], 16)
-            # Extract amount1 (next 64 chars)
             amount1 = int(data_hex[64:128], 16)
-            # Extract sqrtPriceX96 (next 64 chars)
             sqrt_price_x96 = int(data_hex[128:192], 16)
 
-            # Calculate price
             price = self._pool_price(sqrt_price_x96, token0.decimals, token1.decimals)
             if price is None:
                 return
 
-            # Set the pair price
             self._set_pair(token0.address, token1.address, price)
 
-            # Update token activity
             timestamp = time.time() * 1000
             self.swaps.append(timestamp)
             token0.swaps.append(timestamp)
@@ -651,7 +529,6 @@ class UniswapMonitor:
             token0.last_seen = timestamp
             token1.last_seen = timestamp
 
-            # Calculate amounts in token units
             try:
                 n0 = abs(float(amount0) / (10 ** token0.decimals))
                 n1 = abs(float(amount1) / (10 ** token1.decimals))
@@ -659,7 +536,6 @@ class UniswapMonitor:
                 n0 = 0
                 n1 = 0
 
-            # Get quote prices
             p0 = self._quote_price(token0.address)
             p1 = self._quote_price(token1.address)
 
@@ -671,7 +547,6 @@ class UniswapMonitor:
                 token1.price_quote = p1
                 self._add_point(token1, p1)
 
-            # Calculate volume in quote currency
             volume = None
             if p0 is not None and p1 is not None:
                 volume = (n0 * p0 + n1 * p1) / 2
@@ -683,16 +558,12 @@ class UniswapMonitor:
             if volume is not None and volume > 0:
                 token0.volume_quote += volume
                 token1.volume_quote += volume
-                self.logger.debug(
-                    f"Swap: {n0:.6f} {token0.symbol} <-> {n1:.6f} {token1.symbol} "
-                    f"at price {price:.6f}, volume=${volume:.2f}"
-                )
 
         except Exception as e:
             self.logger.error(f"Error processing swap log: {e}")
 
     async def _load_token(self, address: str) -> Optional[TokenState]:
-        """Load token metadata. Creates tokens dynamically for any address."""
+        """Load token metadata."""
         address = norm(address)
 
         if address in self.tokens:
@@ -763,7 +634,6 @@ class UniswapMonitor:
         if self.chain.quote_mode == "native" and self._is_quote_token(address):
             return 1.0
 
-        # BFS to find a path to a quote token
         queue = [{"token": address, "value": 1.0, "depth": 0}]
         seen = {address}
 
@@ -881,12 +751,17 @@ class UniswapMonitor:
         processed = self.last_processed_block if self.last_processed_block is not None else self.state.block_count
         return max(0, (self.state.rpc_head or 0) - (processed or 0))
 
+    def save_token_states(self) -> None:
+        """Save all token states to a JSON file."""
+        save_token_states(self.tokens, CONFIG["TOKEN_STATE_FILE"])
+
+
 # =============================================================================
 # MAIN MONITOR CLASS
 # =============================================================================
 
 class UniswapV3LiveMonitor:
-    """Main monitoring class - Aligned with the HTML/JS example."""
+    """Main monitoring class."""
 
     def __init__(self, config: Dict[str, Any]):
         self.config = config
@@ -920,7 +795,7 @@ class UniswapV3LiveMonitor:
             while self.state.is_running:
                 if self.monitor:
                     self.monitor.update_state_prices()
-                    self._print_stats()
+                    self.monitor.save_token_states()
 
                 save_state(self.state)
                 await asyncio.sleep(CONFIG["RENDER_INTERVAL_MS"] / 1000)
@@ -934,72 +809,10 @@ class UniswapV3LiveMonitor:
         self.state.is_running = False
         if self.monitor:
             await self.monitor.stop()
+            self.monitor.save_token_states()
             self.monitor = None
         save_state(self.state)
         self.logger.info("Monitor stopped. State saved.")
-
-    def _print_stats(self) -> None:
-        """Print current monitoring stats to the terminal."""
-        if not self.monitor:
-            return
-
-        lag = self.monitor.get_lag()
-        active_tokens = self.monitor.get_active_tokens()
-
-        # Clear screen (works in most terminals)
-        print("\033[H\033[J", end="")
-
-        print("=" * 100)
-        print("UNISWAP V3 LIVE ACTIVITY MONITOR")
-        print("=" * 100)
-        print(f"Chain: {self.state.network}")
-        print(f"Block: {self.state.block_count:,}")
-        print(f"Pools Seen: {self.state.pools_seen:,}")
-        print(f"Tokens Seen: {self.state.tokens_seen:,}")
-        print(f"Swaps / 15m: {len(self.monitor.swaps):,}")
-        print(f"Blocks Behind: {lag:,}")
-        print("=" * 100)
-        print(f"{'#':<4} {'Token':<10} {'Price':>12} {'1m':>8} {'5m':>8} {'15m':>8} {'Activity':>12} {'Volume':>12}")
-        print("-" * 100)
-
-        for i, token in enumerate(active_tokens[:50]):  # Show top 50 tokens
-            price = token.price_quote
-            price_str = f"${price:,.6f}" if price is not None else "No quote"
-
-            # Calculate percentage changes
-            pct_1m = self._calculate_pct_change(token, 60000)
-            pct_5m = self._calculate_pct_change(token, 300000)
-            pct_15m = self._calculate_pct_change(token, 900000)
-
-            pct_1m_str = f"{pct_1m:+.2f}%" if pct_1m is not None else "—"
-            pct_5m_str = f"{pct_5m:+.2f}%" if pct_5m is not None else "—"
-            pct_15m_str = f"{pct_15m:+.2f}%" if pct_15m is not None else "—"
-
-            activity = f"{len(token.swaps)} swaps"
-            volume = f"${token.volume_quote:,.2f}" if token.volume_quote > 0 else "—"
-
-            print(f"{i+1:<4} {token.symbol:<10} {price_str:>12} {pct_1m_str:>8} {pct_5m_str:>8} {pct_15m_str:>8} {activity:>12} {volume:>12}")
-
-        print("=" * 100)
-        print("Press Ctrl+C to stop")
-
-    def _calculate_pct_change(self, token: TokenState, ms: int) -> Optional[float]:
-        """Calculate percentage change over a time period."""
-        if token.price_quote is None:
-            return None
-
-        target_time = time.time() * 1000 - ms
-        old_price = None
-
-        for point in reversed(token.history):
-            if point["t"] <= target_time:
-                old_price = point["price"]
-                break
-
-        if old_price is None or old_price <= 0:
-            return None
-
-        return ((token.price_quote - old_price) / old_price) * 100
 
     def get_discovered_tokens(self) -> List[str]:
         if self.monitor:
@@ -1015,77 +828,3 @@ class UniswapV3LiveMonitor:
             self.logger.info(f"Changed chain to {chain_key}")
         else:
             self.logger.warning(f"Chain {chain_key} not configured")
-
-# =============================================================================
-# CLI INTERFACE
-# =============================================================================
-
-def parse_args():
-    import argparse
-    import sys
-    parser = argparse.ArgumentParser(description="Uniswap V3 Live Activity Monitor")
-    parser.add_argument("--config", type=str, default="config.json", help="Path to config file")
-    parser.add_argument("--test", action="store_true", help="Force test mode")
-    parser.add_argument("--chain", type=str, default=None,
-                        help="Chain to monitor (ethereum, arbitrum, base, optimism, polygon)")
-    parser.add_argument("--status", action="store_true", help="Show status and exit")
-    parser.add_argument("--tokens", action="store_true", help="Show discovered tokens and exit")
-    return parser.parse_args()
-
-def main():
-    import sys
-    args = parse_args()
-    config = load_config(args.config)
-
-    if args.test:
-        config["is_test_mode"] = True
-
-    if args.chain:
-        config["primary_price_source"] = args.chain
-        config["network"] = args.chain
-
-    # Initialize monitor
-    monitor = UniswapV3LiveMonitor(config)
-
-    # Handle CLI commands
-    if args.status:
-        print("=" * 60)
-        print("STATUS")
-        print("=" * 60)
-        print(f"Mode: {'TEST' if config.get('is_test_mode', True) else 'PROD'}")
-        print(f"Network: {monitor.state.network}")
-        print(f"Running: {monitor.state.is_running}")
-        print(f"Tokens: {len(monitor.get_discovered_tokens())}")
-        print(f"Pools Seen: {monitor.state.pools_seen}")
-        print(f"Tokens Seen: {monitor.state.tokens_seen}")
-        print(f"Swaps Count: {monitor.state.swaps_count}")
-        print("=" * 60)
-        sys.exit(0)
-
-    if args.tokens:
-        for symbol in monitor.get_discovered_tokens():
-            address = monitor.state.symbol_to_address.get(symbol, "N/A")
-            price = monitor.state.prices.get(symbol, 0)
-            print(f"{symbol:8} | ${price:>10.4f} | {address}")
-        sys.exit(0)
-
-    # Start the monitor
-    print("=" * 60)
-    print("UNISWAP V3 LIVE ACTIVITY MONITOR")
-    print("=" * 60)
-    print(f"Mode: {'TEST' if config.get('is_test_mode', True) else 'PROD'}")
-    print(f"Network: {config.get('network', 'ethereum')}")
-    print(f"Press Ctrl+C to stop")
-    print("=" * 60)
-
-    try:
-        asyncio.run(monitor.start())
-    except KeyboardInterrupt:
-        asyncio.run(monitor.stop())
-    except Exception as e:
-        monitor.logger.error(f"Fatal error: {e}")
-        asyncio.run(monitor.stop())
-        sys.exit(1)
-
-if __name__ == "__main__":
-    main()
