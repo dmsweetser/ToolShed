@@ -15,6 +15,7 @@ import websockets
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
+from config import Config
 from dataclasses import dataclass, field, asdict
 from collections import defaultdict
 
@@ -242,15 +243,8 @@ def setup_logging(debug_mode: str = "none") -> logging.Logger:
 
 
 def load_config(config_path: str = "config.json") -> Dict[str, Any]:
-    """Load configuration from JSON file."""
-    if not Path(config_path).exists():
-        return {
-            "network": "ethereum",
-            "primary_price_source": "ethereum",
-            "debug_mode": "none",
-        }
-    with open(config_path, "r") as f:
-        return json.load(f)
+    """Load configuration from .env file (falls back to defaults)."""
+    return Config.as_dict()
 
 
 def save_config(config: Dict[str, Any], config_path: str = "config.json") -> None:
