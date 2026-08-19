@@ -20,7 +20,7 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field, asdict
 from collections import defaultdict
 
-# Import the price monitor (assumes price_monitor.py is in the same directory)
+# Import the price monitor
 from price_monitor import (
     UniswapV3LiveMonitor,
     CHAINS,
@@ -53,12 +53,14 @@ class Trade:
     gas_price: float = 0.0
     network: str = ""
 
+
 @dataclass
 class Portfolio:
     """Represents the bot's portfolio."""
     holdings: Dict[str, float] = field(default_factory=dict)  # symbol: amount
     cash: float = 10000.0  # Default starting cash
     total_value: float = 0.0
+
 
 @dataclass
 class BotState:
@@ -77,6 +79,7 @@ class BotState:
     last_trade_time: Optional[float] = None
     state_lock: threading.Lock = field(default_factory=threading.Lock)
 
+
 # =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
@@ -85,15 +88,18 @@ def norm(a: str) -> str:
     """Normalize address to lowercase string."""
     return str(a).lower()
 
+
 def generate_symbol(address: str) -> str:
     """Generate a symbol from an address (for unknown tokens)."""
     return f"TKN_{address[:4].upper()}"
+
 
 def short(a: str) -> str:
     """Shorten address for display."""
     if not a:
         return ""
     return f"{a[:6]}...{a[-4:]}"
+
 
 def setup_logging(debug_mode: str = "none") -> logging.Logger:
     """Configure logging based on debug mode."""
@@ -121,6 +127,7 @@ def setup_logging(debug_mode: str = "none") -> logging.Logger:
 
     return logger
 
+
 def load_config(config_path: str = "./config.json") -> Dict[str, Any]:
     """Load configuration from JSON file."""
     if not Path(config_path).exists():
@@ -128,10 +135,12 @@ def load_config(config_path: str = "./config.json") -> Dict[str, Any]:
     with open(config_path, "r") as f:
         return json.load(f)
 
+
 def save_config(config: Dict[str, Any], config_path: str = "config.json") -> None:
     """Save configuration to JSON file."""
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
+
 
 def save_state(state: BotState, state_path: str = "trading_bot_state.json") -> None:
     """Save bot state to JSON file (excludes the lock)."""
@@ -155,6 +164,7 @@ def save_state(state: BotState, state_path: str = "trading_bot_state.json") -> N
     }
     with open(state_path, "w") as f:
         json.dump(state_dict, f, indent=2)
+
 
 def load_state(state_path: str = "trading_bot_state.json") -> BotState:
     """Load bot state from JSON file (recreates the lock)."""
@@ -180,9 +190,9 @@ def load_state(state_path: str = "trading_bot_state.json") -> BotState:
                 start_time=state_dict.get("start_time"),
                 last_price_update=state_dict.get("last_price_update"),
                 last_trade_time=state_dict.get("last_trade_time"),
-                # Lock is recreated automatically via `default_factory`
             )
     return BotState()
+
 
 def load_trades(trades_path: str = "trades.json") -> List[Dict[str, Any]]:
     """Load trade history from JSON file."""
@@ -191,10 +201,12 @@ def load_trades(trades_path: str = "trades.json") -> List[Dict[str, Any]]:
             return json.load(f)
     return []
 
+
 def save_trades(trades: List[Dict[str, Any]], trades_path: str = "trades.json") -> None:
     """Save trade history to JSON file."""
     with open(trades_path, "w") as f:
         json.dump(trades, f, indent=2)
+
 
 # =============================================================================
 # PORTFOLIO MANAGER
@@ -254,6 +266,7 @@ class PortfolioManager:
         with self.state.state_lock:
             self.state.portfolio.cash -= amount
             self.logger.info(f"Removed ${amount:.2f} cash from portfolio")
+
 
 # =============================================================================
 # TRADE EXECUTOR
@@ -416,6 +429,7 @@ class TradeExecutor:
         with self.state.state_lock:
             return [t for t in self.state.trades if t["status"] == "closed"]
 
+
 # =============================================================================
 # PATTERN DETECTOR
 # =============================================================================
@@ -522,6 +536,7 @@ class PatternDetector:
                         symbol, address, "sell", self.config.get("trade_step", 3.0), pattern["raw"]
                     )
 
+
 # =============================================================================
 # MAIN TRADING BOT CLASS
 # =============================================================================
@@ -561,19 +576,32 @@ class TradingBot:
         self.monitor = UniswapV3LiveMonitor(monitor_config)
 
         # Start monitor in a separate thread
-        self.monitor_thread = threading.Thread(target=self._run_monitor, daemon=True)
-        self.monitor_thread.start()
-
-        # Give it a moment to initialize
-        time.sleep(1)
+        self.monitor_thread: Optional[threading.Thread] = None
+        self._start_monitor_thread()
 
         self.logger.info("Trading bot initialized")
         self.logger.info(f"Mode: {'TEST' if self.state.is_test_mode else 'PROD'}")
         self.logger.info(f"Network: {self.state.network}")
 
+    def _start_monitor_thread(self) -> None:
+        """Start the price monitor in a background thread."""
+        self.monitor_thread = threading.Thread(target=self._run_monitor, daemon=True)
+        self.monitor_thread.start()
+        # Give it a moment to initialize
+        time.sleep(1)
+
     def _run_monitor(self) -> None:
         """Run the price monitor in a separate thread."""
         asyncio.run(self.monitor.start())
+
+    def _stop_monitor(self) -> None:
+        """Stop the price monitor thread."""
+        if self.monitor:
+            # Signal the monitor to stop
+            self.monitor.state.is_running = False
+            # Wait for the thread to finish
+            if self.monitor_thread and self.monitor_thread.is_alive():
+                self.monitor_thread.join(timeout=5)
 
     def start(self) -> None:
         """Start the trading bot's main loop."""
@@ -605,6 +633,7 @@ class TradingBot:
     def stop(self) -> None:
         """Stop the trading bot."""
         self.state.is_running = False
+        self._stop_monitor()
         self.trade_executor.close_all_open_trades()
         save_state(self.state)
         save_trades(self.state.trades)
@@ -613,13 +642,14 @@ class TradingBot:
     def _sync_monitor_state(self) -> None:
         """Synchronize state from the price monitor."""
         with self.state.state_lock:
-            # Copy prices and metadata from monitor
-            self.state.prices = dict(self.monitor.state.prices)
-            self.state.price_history = {k: v.copy() for k, v in self.monitor.state.price_history.items()}
-            self.state.address_to_symbol = dict(self.monitor.state.address_to_symbol)
-            self.state.symbol_to_address = dict(self.monitor.state.symbol_to_address)
-            self.state.block_count = self.monitor.state.block_count
-            self.state.last_price_update = self.monitor.state.last_price_update
+            # Safely copy prices and metadata from monitor
+            if self.monitor and self.monitor.state:
+                self.state.prices = dict(self.monitor.state.prices)
+                self.state.price_history = {k: v.copy() for k, v in self.monitor.state.price_history.items()}
+                self.state.address_to_symbol = dict(self.monitor.state.address_to_symbol)
+                self.state.symbol_to_address = dict(self.monitor.state.symbol_to_address)
+                self.state.block_count = self.monitor.state.block_count
+                self.state.last_price_update = self.monitor.state.last_price_update
 
     def simulate_trade(self, symbol: str, trade_type: str, amount_usd: float) -> Optional[Dict[str, Any]]:
         """Simulate a trade (for CLI)."""
@@ -632,6 +662,8 @@ class TradingBot:
     def get_discovered_tokens(self) -> List[str]:
         """Get list of discovered tokens."""
         with self.state.state_lock:
+            if self.monitor:
+                return self.monitor.get_discovered_tokens()
             return list(self.state.prices.keys())
 
     def get_open_trades(self) -> List[Dict[str, Any]]:
@@ -647,6 +679,7 @@ class TradingBot:
     def get_portfolio_holdings(self) -> Dict[str, float]:
         """Get current token holdings."""
         return self.portfolio_manager.get_holdings()
+
 
 # =============================================================================
 # OPTIONAL FEATURES
@@ -744,6 +777,7 @@ class OptionalFeatures:
             win_rate = (len(winning) / len(closed_trades) * 100) if closed_trades else 0.0
             self.logger.info(f"Stats: Trades={len(closed_trades)}, Open={len(open_trades)}, Win={win_rate:.1f}%, PnL=${total_pnl:.2f}")
 
+
 # =============================================================================
 # CLI INTERFACE
 # =============================================================================
@@ -763,6 +797,7 @@ def parse_args():
     parser.add_argument("--restore", type=str, metavar="FILE", help="Restore from backup and exit")
     parser.add_argument("--list-backups", action="store_true", help="List backups and exit")
     return parser.parse_args()
+
 
 def main():
     args = parse_args()
@@ -883,6 +918,7 @@ def main():
         bot.logger.error(f"Fatal error: {e}")
         bot.stop()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
