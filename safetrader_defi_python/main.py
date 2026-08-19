@@ -133,8 +133,31 @@ def save_config(config: Dict[str, Any], config_path: str = "config.json") -> Non
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
 
+def save_state(state: BotState, state_path: str = "trading_bot_state.json") -> None:
+    """Save bot state to JSON file (excludes the lock)."""
+    state_dict = {
+        "is_running": state.is_running,
+        "network": state.network,
+        "current_chain_key": state.current_chain_key,
+        "prices": state.prices,
+        "price_history": state.price_history,
+        "address_to_symbol": state.address_to_symbol,
+        "symbol_to_address": state.symbol_to_address,
+        "trades": state.trades,
+        "portfolio": {
+            "holdings": state.portfolio.holdings,
+            "cash": state.portfolio.cash,
+            "total_value": state.portfolio.total_value,
+        },
+        "start_time": state.start_time,
+        "last_price_update": state.last_price_update,
+        "last_trade_time": state.last_trade_time,
+    }
+    with open(state_path, "w") as f:
+        json.dump(state_dict, f, indent=2)
+
 def load_state(state_path: str = "trading_bot_state.json") -> BotState:
-    """Load bot state from JSON file."""
+    """Load bot state from JSON file (recreates the lock)."""
     if Path(state_path).exists():
         with open(state_path, "r") as f:
             state_dict = json.load(f)
@@ -142,7 +165,7 @@ def load_state(state_path: str = "trading_bot_state.json") -> BotState:
             portfolio = Portfolio(
                 holdings=portfolio_dict.get("holdings", {}),
                 cash=portfolio_dict.get("cash", 10000.0),
-                total_value=portfolio_dict.get("total_value", 0.0)
+                total_value=portfolio_dict.get("total_value", 0.0),
             )
             return BotState(
                 is_running=state_dict.get("is_running", False),
@@ -157,19 +180,9 @@ def load_state(state_path: str = "trading_bot_state.json") -> BotState:
                 start_time=state_dict.get("start_time"),
                 last_price_update=state_dict.get("last_price_update"),
                 last_trade_time=state_dict.get("last_trade_time"),
+                # Lock is recreated automatically via `default_factory`
             )
     return BotState()
-
-def save_state(state: BotState, state_path: str = "trading_bot_state.json") -> None:
-    """Save bot state to JSON file."""
-    state_dict = asdict(state)
-    state_dict["portfolio"] = {
-        "holdings": state.portfolio.holdings,
-        "cash": state.portfolio.cash,
-        "total_value": state.portfolio.total_value
-    }
-    with open(state_path, "w") as f:
-        json.dump(state_dict, f, indent=2)
 
 def load_trades(trades_path: str = "trades.json") -> List[Dict[str, Any]]:
     """Load trade history from JSON file."""

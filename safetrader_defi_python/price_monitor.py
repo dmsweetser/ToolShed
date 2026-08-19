@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
 """
 Uniswap V3 Live Activity Monitor
-A Python drop-in replacement for the HTML/JS blockchain monitoring example.
+A Python implementation of the HTML/JS blockchain monitoring example.
 Focuses on real-time monitoring of Uniswap V3 swaps, token discovery, and price tracking.
+
+Core Features:
+- WebSocket monitoring of Uniswap V3 swaps
+- Dynamic token discovery
+- Price tracking from on-chain data
+- Live activity display
+- Separate WebSocket connections for subscriptions and RPC calls
 """
 
 import json
-import os
 import sys
 import time
 import logging
-import argparse
 import asyncio
 import websockets
 from datetime import datetime
@@ -72,7 +77,7 @@ class BotState:
 # =============================================================================
 
 UNISWAP_V3_FACTORY = "0x1F98431c8aD98523631AE4a59f267346ea31F984"
-UNISWAP_V3_SWAP_TOPIC = "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca671"
+UNISWAP_V3_SWAP_TOPIC = "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67"
 
 # Known token configurations (for initial symbol hints)
 KNOWN_TOKENS: Dict[str, Dict[str, Any]] = {
@@ -99,7 +104,7 @@ KNOWN_TOKENS: Dict[str, Dict[str, Any]] = {
     # Optimism
     "0x4200000000000000000000000000000000000006": {"symbol": "WETH", "name": "Wrapped ETH", "decimals": 18},
     "0x0b2c639c533813f4aa9d7837caf62653d097ff85": {"symbol": "USDC", "name": "USD Coin", "decimals": 6},
-    "0x7f5c764cbc14f9669b88837ca1490cca17c31607": {"symbol": "USDT", "name": "Tether", "decimals": 6},
+    "0x7f5c764cbc14f9669b88837ca1490cCa17c31607": {"symbol": "USDT", "name": "Tether", "decimals": 6},
     # Polygon
     "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270": {"symbol": "WPOL", "name": "Wrapped POL", "decimals": 18},
     "0x2791bca1f2de4661ed88a30c99a7a9449aa84174": {"symbol": "USDC", "name": "USD Coin", "decimals": 6},
@@ -288,7 +293,7 @@ def save_state(state: BotState, state_path: str = "state.json") -> None:
 class UniswapMonitor:
     """
     Core class: Manages WebSocket connection to monitor Uniswap V3 swaps.
-    Aligned with the HTML/JS example functionality.
+    Uses separate connections for subscriptions and RPC calls.
     """
 
     def __init__(self, chain_key: str, config: Dict[str, Any], state: BotState, logger: logging.Logger):
@@ -301,8 +306,11 @@ class UniswapMonitor:
         # Session state
         self.active = True
         self.connected = False
-        self.ws = None
         self.session_serial = 0
+
+        # WebSocket connections
+        self.subscription_ws = None  # For newHeads subscription
+        self.rpc_ws = None           # For eth_getLogs RPC calls
 
         # Data structures
         self.pools: Dict[str, Dict[str, Any]] = {}
@@ -316,15 +324,11 @@ class UniswapMonitor:
         self.processing_blocks = False
         self.last_processed_block: Optional[int] = None
 
-    def current(self, s: Optional["UniswapMonitor"]) -> bool:
-        """Check if session is current."""
-        return (
-            s is not None
-            and s is self
-            and s.session_serial == self.session_serial
-            and s.active
-            and not self.state.is_running == False
-        )
+    def _normalize_topic_address(self, topic: str) -> str:
+        """Extract Ethereum address from a topic (32-byte value)."""
+        topic_clean = topic.lower().replace("0x", "")
+        address = topic_clean[-40:]  # Take last 40 chars (20 bytes)
+        return norm("0x" + address.zfill(40))
 
     async def start(self) -> None:
         """Start the WebSocket session."""
@@ -338,19 +342,26 @@ class UniswapMonitor:
         self.state.current_chain_key = self.chain_key
         self.state.network = self.chain_key
 
-        self.logger.info(f"Connecting to {self.chain.name} ({self.chain.ws})...")
-
         try:
-            self.ws = await websockets.connect(
+            # Connect for subscriptions (newHeads)
+            self.subscription_ws = await websockets.connect(
                 self.chain.ws,
                 ping_interval=20,
                 ping_timeout=10,
                 close_timeout=1
             )
-            self.connected = True
-            self.logger.info(f"Connected to {self.chain.name}")
+            self.logger.info(f"Connected to {self.chain.name} (subscriptions)")
 
-            # Subscribe to new block headers
+            # Connect for RPC calls (eth_getLogs)
+            self.rpc_ws = await websockets.connect(
+                self.chain.ws,
+                ping_interval=20,
+                ping_timeout=10,
+                close_timeout=1
+            )
+            self.logger.info(f"Connected to {self.chain.name} (RPC)")
+
+            # Subscribe to new blocks
             await self._subscribe_to_blocks()
 
             # Get current head
@@ -366,7 +377,7 @@ class UniswapMonitor:
             if self.chain.quote_mode == "native":
                 await self._load_token(self.chain.wrapped_native)
 
-            # Start listening for messages
+            # Start listening for subscription messages
             await self._listen_for_messages(current_serial)
 
         except websockets.exceptions.ConnectionClosed as e:
@@ -391,13 +402,14 @@ class UniswapMonitor:
         self.session_serial += 1
         self.connected = False
 
-        if self.ws:
-            try:
-                await self.ws.close()
-            except Exception:
-                pass
-            self.ws = None
-
+        for ws in [self.subscription_ws, self.rpc_ws]:
+            if ws:
+                try:
+                    await ws.close()
+                except Exception:
+                    pass
+        self.subscription_ws = None
+        self.rpc_ws = None
         self.logger.info(f"Disconnected from {self.chain.name}")
 
     async def _schedule_reconnect(self, current_serial: int) -> None:
@@ -419,28 +431,35 @@ class UniswapMonitor:
             "params": ["newHeads"]
         }
         try:
-            await self.ws.send(json.dumps(request))
+            await self.subscription_ws.send(json.dumps(request))
             self.logger.info("Subscribed to new block headers")
         except Exception as e:
             self.logger.error(f"Error subscribing to blocks: {e}")
 
     async def _get_block_number(self) -> int:
-        """Get the current block number."""
+        """Get the current block number (using RPC connection)."""
         request = {
             "jsonrpc": "2.0",
             "id": 2,
             "method": "eth_blockNumber",
             "params": []
         }
-        await self.ws.send(json.dumps(request))
-        response = await self.ws.recv()
-        data = json.loads(response)
-        return int(data["result"], 16)
+        try:
+            await self.rpc_ws.send(json.dumps(request))
+            response = await self.rpc_ws.recv()
+            data = json.loads(response)
+            if "error" in data:
+                self.logger.error(f"RPC error getting block number: {data['error']}")
+                return 0
+            return int(data["result"], 16)
+        except Exception as e:
+            self.logger.error(f"Failed to get block number: {e}")
+            return 0
 
     async def _listen_for_messages(self, current_serial: int) -> None:
-        """Listen for WebSocket messages and process them."""
+        """Listen for subscription messages (newHeads) only."""
         try:
-            async for message in self.ws:
+            async for message in self.subscription_ws:
                 if not self.active or current_serial != self.session_serial:
                     break
 
@@ -450,8 +469,9 @@ class UniswapMonitor:
                     # Handle block notifications (from subscription)
                     if "params" in data and "result" in data["params"]:
                         block = data["params"]["result"]
-                        block_number = int(block["number"], 16)
-                        await self._queue_block(block_number)
+                        if isinstance(block, dict) and "number" in block:
+                            block_number = int(block["number"], 16)
+                            await self._queue_block(block_number)
 
                 except json.JSONDecodeError:
                     self.logger.debug("Received non-JSON message")
@@ -460,12 +480,12 @@ class UniswapMonitor:
 
         except websockets.exceptions.ConnectionClosed:
             if current_serial == self.session_serial:
-                self.logger.error("WebSocket connection closed")
+                self.logger.error("Subscription WebSocket connection closed")
                 self.connected = False
                 await self._schedule_reconnect(current_serial)
         except Exception as e:
             if current_serial == self.session_serial:
-                self.logger.error(f"WebSocket error: {e}")
+                self.logger.error(f"Subscription WebSocket error: {e}")
                 self.connected = False
                 await self._schedule_reconnect(current_serial)
 
@@ -527,11 +547,13 @@ class UniswapMonitor:
         if not self.active:
             return
 
+        self.logger.debug(f"Processing block {block_number}")
+
         try:
             logs = await self._fetch_swap_logs(block_number)
             if logs:
-                self.state.swaps_count += len(logs)
                 self.logger.info(f"Found {len(logs)} swap events in block {block_number}")
+                self.state.swaps_count += len(logs)
 
                 # Process logs concurrently
                 tasks = []
@@ -544,7 +566,7 @@ class UniswapMonitor:
             self.logger.error(f"Error processing block {block_number}: {e}")
 
     async def _fetch_swap_logs(self, block_number: int) -> List[Dict[str, Any]]:
-        """Fetch Uniswap V3 Swap logs for a block."""
+        """Fetch Uniswap V3 Swap logs for a block (using RPC connection)."""
         request = {
             "jsonrpc": "2.0",
             "id": 3,
@@ -552,28 +574,43 @@ class UniswapMonitor:
             "params": [{
                 "fromBlock": hex(block_number),
                 "toBlock": hex(block_number),
-                "topics": [UNISWAP_V3_SWAP_TOPIC]
+                "topics": [UNISWAP_V3_SWAP_TOPIC]  # Topic without 0x prefix
             }]
         }
-        await self.ws.send(json.dumps(request))
-        response = await self.ws.recv()
-        data = json.loads(response)
-        return data.get("result", [])
+        try:
+            await self.rpc_ws.send(json.dumps(request))
+            response = await self.rpc_ws.recv()
+            data = json.loads(response)
+            if "error" in data:
+                self.logger.error(f"RPC error fetching logs: {data.get('error', {})}")
+                return []
+            logs = data.get("result", [])
+            if not isinstance(logs, list):
+                self.logger.error(f"Unexpected logs format: {type(logs)}")
+                return []
+            return logs
+        except Exception as e:
+            self.logger.error(f"Failed to fetch swap logs: {e}")
+            return []
 
     async def _process_swap_log(self, log: Dict[str, Any]) -> None:
         """Process a single Uniswap V3 Swap event log."""
         if not self.active:
             return
 
-        pool_address = norm(log.get("address", ""))
-        topics = log.get("topics", [])
+        if not isinstance(log, dict):
+            self.logger.error(f"Invalid log format: {type(log)}")
+            return
 
         # Extract token addresses from topics
-        if len(topics) >= 3:
-            token0_addr = norm(topics[1][2:])  # Remove 0x prefix
-            token1_addr = norm(topics[2][2:])
-        else:
+        topics = log.get("topics", [])
+        if len(topics) < 3:
+            self.logger.debug(f"Skipping log with insufficient topics: {topics}")
             return
+
+        # Extract addresses from topics (32-byte values, take last 20 bytes)
+        token0_addr = self._normalize_topic_address(topics[1])
+        token1_addr = self._normalize_topic_address(topics[2])
 
         # Load the tokens
         token0 = await self._load_token(token0_addr)
@@ -646,7 +683,6 @@ class UniswapMonitor:
             if volume is not None and volume > 0:
                 token0.volume_quote += volume
                 token1.volume_quote += volume
-
                 self.logger.debug(
                     f"Swap: {n0:.6f} {token0.symbol} <-> {n1:.6f} {token1.symbol} "
                     f"at price {price:.6f}, volume=${volume:.2f}"
@@ -846,7 +882,7 @@ class UniswapMonitor:
         return max(0, (self.state.rpc_head or 0) - (processed or 0))
 
 # =============================================================================
-# MAIN BOT CLASS
+# MAIN MONITOR CLASS
 # =============================================================================
 
 class UniswapV3LiveMonitor:
@@ -985,6 +1021,8 @@ class UniswapV3LiveMonitor:
 # =============================================================================
 
 def parse_args():
+    import argparse
+    import sys
     parser = argparse.ArgumentParser(description="Uniswap V3 Live Activity Monitor")
     parser.add_argument("--config", type=str, default="config.json", help="Path to config file")
     parser.add_argument("--test", action="store_true", help="Force test mode")
@@ -995,6 +1033,7 @@ def parse_args():
     return parser.parse_args()
 
 def main():
+    import sys
     args = parse_args()
     config = load_config(args.config)
 
