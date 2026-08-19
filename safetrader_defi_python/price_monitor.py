@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
 Uniswap V3 Live Activity Monitor (Subscription-Only)
-- Uses only WebSocket subscriptions (no RPC calls).
-- Outputs token states to a JSON file periodically.
-- Designed to work with main.py TradingBot.
+- Uses only WebSocket subscriptions (no RPC calls for logs/blocks).
+- Fetches real token names/symbols/decimals via WebSocket eth_call.
+- Outputs token states to token_states.json periodically.
+- Fully compatible with main.py.
 """
 
 import json
@@ -16,6 +17,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field, asdict
 from collections import defaultdict
+
 
 # =============================================================================
 # DATA CLASSES
@@ -74,6 +76,11 @@ class BotState:
 
 UNISWAP_V3_FACTORY = "0x1F98431c8aD98523631AE4a59f267346ea31F984"
 UNISWAP_V3_SWAP_TOPIC = "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67"
+
+# ERC-20 function selectors
+SYMBOL_SELECTOR = "0x95d89b41"
+NAME_SELECTOR = "0x06fdde03"
+DECIMALS_SELECTOR = "0x313ce567"
 
 # Known token configurations
 KNOWN_TOKENS: Dict[str, Dict[str, Any]] = {
@@ -188,6 +195,7 @@ CONFIG = {
     "LOG_CONCURRENCY": 4,
     "RENDER_INTERVAL_MS": 1000,
     "TOKEN_STATE_FILE": "token_states.json",
+    "ETH_CALL_TIMEOUT": 10.0,
 }
 
 
@@ -308,7 +316,8 @@ def save_token_states(tokens: Dict[str, TokenState], filepath: str = "token_stat
 class UniswapMonitor:
     """
     Manages WebSocket connection to monitor Uniswap V3 swaps.
-    Uses only subscriptions (no RPC calls).
+    Uses only subscriptions (no RPC calls for logs/blocks).
+    Fetches token metadata via WebSocket eth_call.
     """
 
     def __init__(self, chain_key: str, config: Dict[str, Any], state: BotState, logger: logging.Logger):
@@ -336,11 +345,46 @@ class UniswapMonitor:
         # Block tracking
         self.last_processed_block: Optional[int] = None
 
+        # For eth_call responses
+        self.pending_requests: Dict[int, asyncio.Future] = {}
+        self.request_id_counter = 10000  # Start high to avoid conflicts with subscription IDs (1, 2)
+
     def _normalize_topic_address(self, topic: str) -> str:
         """Extract Ethereum address from a topic (32-byte value)."""
         topic_clean = topic.lower().replace("0x", "")
         address = topic_clean[-40:]  # Take last 40 chars (20 bytes)
         return norm("0x" + address.zfill(40))
+
+    async def _call_contract(self, address: str, data: str, timeout: float = 10.0) -> Optional[str]:
+        """Call a contract method via WebSocket eth_call."""
+        if not self.ws:
+            return None
+
+        self.request_id_counter += 1
+        request_id = self.request_id_counter
+
+        request = {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "method": "eth_call",
+            "params": [{"to": address, "data": data}, "latest"]
+        }
+
+        # Create a future to await the response
+        future = asyncio.Future()
+        self.pending_requests[request_id] = future
+
+        try:
+            await self.ws.send(json.dumps(request))
+            return await asyncio.wait_for(future, timeout=timeout)
+        except asyncio.TimeoutError:
+            self.logger.debug(f"eth_call timeout for {address}")
+            return None
+        except Exception as e:
+            self.logger.debug(f"eth_call failed for {address}: {e}")
+            return None
+        finally:
+            self.pending_requests.pop(request_id, None)
 
     async def start(self) -> None:
         """Start the WebSocket session."""
@@ -411,7 +455,7 @@ class UniswapMonitor:
 
     async def _subscribe_to_events(self) -> None:
         """Subscribe to newHeads and Uniswap V3 Swap logs."""
-        # Subscribe to newHeads
+        # Subscribe to newHeads (ID 1)
         new_heads_request = {
             "jsonrpc": "2.0",
             "id": 1,
@@ -421,7 +465,7 @@ class UniswapMonitor:
         await self.ws.send(json.dumps(new_heads_request))
         self.logger.info("Subscribed to new block headers")
 
-        # Subscribe to Uniswap V3 Swap logs
+        # Subscribe to Uniswap V3 Swap logs (ID 2)
         logs_request = {
             "jsonrpc": "2.0",
             "id": 2,
@@ -437,7 +481,7 @@ class UniswapMonitor:
         self.logger.info("Subscribed to Uniswap V3 Swap logs")
 
     async def _listen_for_messages(self, current_serial: int) -> None:
-        """Listen for subscription messages (newHeads and logs)."""
+        """Listen for subscription messages and eth_call responses."""
         try:
             async for message in self.ws:
                 if not self.active or current_serial != self.session_serial:
@@ -446,11 +490,17 @@ class UniswapMonitor:
                 try:
                     data = json.loads(message)
 
-                    # Skip subscription confirmations
-                    if "id" in data:
+                    # Handle eth_call responses FIRST
+                    if "id" in data and data["id"] in self.pending_requests:
+                        future = self.pending_requests.pop(data["id"])
+                        future.set_result(data.get("result"))
                         continue
 
-                    # Handle notifications
+                    # Skip ONLY subscription confirmations (IDs 1 and 2)
+                    if "id" in data and data["id"] in {1, 2}:
+                        continue
+
+                    # Handle notifications (newHeads and logs)
                     if "params" in data and "result" in data.get("params", {}):
                         result = data["params"]["result"]
                         if isinstance(result, dict):
@@ -462,8 +512,6 @@ class UniswapMonitor:
                                 self.logger.info(f"New block: {block_number}")
                             elif "topics" in result:  # Log notification (swap)
                                 await self._process_swap_log(result)
-                            else:
-                                self.logger.debug(f"Unknown result type: {result}")
 
                 except json.JSONDecodeError:
                     self.logger.debug("Received non-JSON message")
@@ -563,7 +611,7 @@ class UniswapMonitor:
             self.logger.error(f"Error processing swap log: {e}")
 
     async def _load_token(self, address: str) -> Optional[TokenState]:
-        """Load token metadata."""
+        """Load token metadata, fetching from chain if unknown."""
         address = norm(address)
 
         if address in self.tokens:
@@ -578,11 +626,41 @@ class UniswapMonitor:
             name = f"Token {short(address)}"
             decimals = 18
 
+            # Check known tokens first
             if address in KNOWN_TOKENS:
                 token_data = KNOWN_TOKENS[address]
                 symbol = token_data.get("symbol", symbol)
                 name = token_data.get("name", name)
                 decimals = token_data.get("decimals", decimals)
+            else:
+                # Fetch from chain via WebSocket eth_call
+                try:
+                    # symbol()
+                    symbol_hex = await self._call_contract(address, SYMBOL_SELECTOR, timeout=CONFIG["ETH_CALL_TIMEOUT"])
+                    if symbol_hex and symbol_hex != "0x":
+                        try:
+                            symbol = bytes.fromhex(symbol_hex[2:]).decode('utf-8', errors='replace').strip('\x00')
+                        except (ValueError, UnicodeDecodeError):
+                            pass
+
+                    # name()
+                    name_hex = await self._call_contract(address, NAME_SELECTOR, timeout=CONFIG["ETH_CALL_TIMEOUT"])
+                    if name_hex and name_hex != "0x":
+                        try:
+                            name = bytes.fromhex(name_hex[2:]).decode('utf-8', errors='replace').strip('\x00')
+                        except (ValueError, UnicodeDecodeError):
+                            pass
+
+                    # decimals()
+                    decimals_hex = await self._call_contract(address, DECIMALS_SELECTOR, timeout=CONFIG["ETH_CALL_TIMEOUT"])
+                    if decimals_hex and decimals_hex != "0x":
+                        try:
+                            decimals = int(decimals_hex, 16)
+                        except ValueError:
+                            pass
+
+                except Exception as e:
+                    self.logger.debug(f"Failed to fetch token metadata for {address}: {e}")
 
             token = TokenState(
                 address=address,
@@ -601,7 +679,7 @@ class UniswapMonitor:
             self.state.address_to_symbol[address] = symbol
             self.state.symbol_to_address[symbol] = address
 
-            self.logger.info(f"Discovered new token: {symbol} ({address})")
+            self.logger.info(f"Discovered new token: {symbol} ({name}) at {address}")
             return token
 
         self.metadata_in_flight[key] = load()
@@ -828,3 +906,76 @@ class UniswapV3LiveMonitor:
             self.logger.info(f"Changed chain to {chain_key}")
         else:
             self.logger.warning(f"Chain {chain_key} not configured")
+
+
+# =============================================================================
+# CLI INTERFACE
+# =============================================================================
+
+def parse_args():
+    import argparse
+    parser = argparse.ArgumentParser(description="Uniswap V3 Live Activity Monitor")
+    parser.add_argument("--config", type=str, default="config.json", help="Path to config file")
+    parser.add_argument("--test", action="store_true", help="Force test mode")
+    parser.add_argument("--chain", type=str, default=None,
+                        help="Chain to monitor (ethereum, arbitrum, base, optimism, polygon)")
+    parser.add_argument("--status", action="store_true", help="Show status and exit")
+    parser.add_argument("--tokens", action="store_true", help="Show discovered tokens and exit")
+    return parser.parse_args()
+
+
+def main():
+    import sys
+    args = parse_args()
+    config = load_config(args.config)
+
+    if args.test:
+        config["is_test_mode"] = True
+
+    if args.chain:
+        config["primary_price_source"] = args.chain
+        config["network"] = args.chain
+
+    monitor = UniswapV3LiveMonitor(config)
+
+    if args.status:
+        print("=" * 60)
+        print("STATUS")
+        print("=" * 60)
+        print(f"Mode: {'TEST' if config.get('is_test_mode', True) else 'PROD'}")
+        print(f"Network: {monitor.state.network}")
+        print(f"Running: {monitor.state.is_running}")
+        print(f"Tokens: {len(monitor.get_discovered_tokens())}")
+        print(f"Pools Seen: {monitor.state.pools_seen}")
+        print(f"Tokens Seen: {monitor.state.tokens_seen}")
+        print(f"Swaps Count: {monitor.state.swaps_count}")
+        print("=" * 60)
+        sys.exit(0)
+
+    if args.tokens:
+        for symbol in monitor.get_discovered_tokens():
+            address = monitor.state.symbol_to_address.get(symbol, "N/A")
+            price = monitor.state.prices.get(symbol, 0)
+            print(f"{symbol:8} | ${price:>10.4f} | {address}")
+        sys.exit(0)
+
+    print("=" * 60)
+    print("UNISWAP V3 LIVE ACTIVITY MONITOR")
+    print("=" * 60)
+    print(f"Mode: {'TEST' if config.get('is_test_mode', True) else 'PROD'}")
+    print(f"Network: {config.get('network', 'ethereum')}")
+    print(f"Press Ctrl+C to stop")
+    print("=" * 60)
+
+    try:
+        asyncio.run(monitor.start())
+    except KeyboardInterrupt:
+        asyncio.run(monitor.stop())
+    except Exception as e:
+        monitor.logger.error(f"Fatal error: {e}")
+        asyncio.run(monitor.stop())
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
