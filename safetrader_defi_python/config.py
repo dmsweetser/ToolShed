@@ -38,19 +38,24 @@ class Config:
     BACKUP_INTERVAL = int(os.getenv("BACKUP_INTERVAL", "30"))
     ENCRYPTION_ENABLED = os.getenv("ENCRYPTION_ENABLED", "false").lower() in ("true", "1", "yes")
 
-    # RPC Endpoints
-    RPC_ARBITRUM_WS = os.getenv("RPC_ARBITRUM_WS", "wss://arb1.arbitrum.io/ws")
-    RPC_ARBITRUM_HTTP = os.getenv("RPC_ARBITRUM_HTTP", "https://arb1.arbitrum.io/rpc")
-    RPC_ETHEREUM_WS = os.getenv("RPC_ETHEREUM_WS", "wss://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY")
-    RPC_ETHEREUM_HTTP = os.getenv("RPC_ETHEREUM_HTTP", "https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY")
-    RPC_BASE_WS = os.getenv("RPC_BASE_WS", "wss://base-mainnet.g.alchemy.com/v2/YOUR_API_KEY")
-    RPC_BASE_HTTP = os.getenv("RPC_BASE_HTTP", "https://base-mainnet.g.alchemy.com/v2/YOUR_API_KEY")
-    RPC_OPTIMISM_WS = os.getenv("RPC_OPTIMISM_WS", "wss://optimism-mainnet.g.alchemy.com/v2/YOUR_API_KEY")
-    RPC_OPTIMISM_HTTP = os.getenv("RPC_OPTIMISM_HTTP", "https://optimism-mainnet.g.alchemy.com/v2/YOUR_API_KEY")
-    RPC_POLYGON_WS = os.getenv("RPC_POLYGON_WS", "wss://polygon-mainnet.g.alchemy.com/v2/YOUR_API_KEY")
-    RPC_POLYGON_HTTP = os.getenv("RPC_POLYGON_HTTP", "https://polygon-mainnet.g.alchemy.com/v2/YOUR_API_KEY")
+    # Free Public RPC Endpoints (No API Key Required)
+    # Using PublicNode (https://publicnode.com/) - Free tier with rate limits
+    RPC_ARBITRUM_WS = os.getenv("RPC_ARBITRUM_WS", "wss://arbitrum-one-rpc.publicnode.com")
+    RPC_ARBITRUM_HTTP = os.getenv("RPC_ARBITRUM_HTTP", "https://arbitrum-one-rpc.publicnode.com")
+    
+    RPC_ETHEREUM_WS = os.getenv("RPC_ETHEREUM_WS", "wss://ethereum-rpc.publicnode.com")
+    RPC_ETHEREUM_HTTP = os.getenv("RPC_ETHEREUM_HTTP", "https://ethereum-rpc.publicnode.com")
+    
+    RPC_BASE_WS = os.getenv("RPC_BASE_WS", "wss://base-rpc.publicnode.com")
+    RPC_BASE_HTTP = os.getenv("RPC_BASE_HTTP", "https://base-rpc.publicnode.com")
+    
+    RPC_OPTIMISM_WS = os.getenv("RPC_OPTIMISM_WS", "wss://optimism-rpc.publicnode.com")
+    RPC_OPTIMISM_HTTP = os.getenv("RPC_OPTIMISM_HTTP", "https://optimism-rpc.publicnode.com")
+    
+    RPC_POLYGON_WS = os.getenv("RPC_POLYGON_WS", "wss://polygon-bor-rpc.publicnode.com")
+    RPC_POLYGON_HTTP = os.getenv("RPC_POLYGON_HTTP", "https://polygon-bor-rpc.publicnode.com")
 
-    # API Keys
+    # API Keys (Optional - for services like CoinGecko)
     COINGECKO_API_KEY = os.getenv("COINGECKO_API_KEY", "")
     PRIVATE_KEY = os.getenv("PRIVATE_KEY", "")
 
