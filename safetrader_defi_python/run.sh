@@ -14,17 +14,11 @@ fi
 # Activate virtual environment
 source venv/bin/activate
 
-# Check if config exists
-if [ ! -f "config.json" ]; then
-    echo "Error: config.json not found. Please create it."
-    exit 1
-fi
-
 # Run the bot
 echo "Starting trading bot..."
 echo "Press Ctrl+C to stop."
 echo ""
-python main.py --config config.json
+python main.py
 
 echo ""
 echo "Bot stopped."

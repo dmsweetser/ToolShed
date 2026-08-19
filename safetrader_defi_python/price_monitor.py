@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Uniswap V3 Live Activity Monitor (Improved Token Metadata Fetching)
+Uniswap V3 Live Activity Monitor (Uses Config Class)
 - Uses only WebSocket subscriptions (no RPC calls for logs/blocks).
-- Fetches real token names/symbols/decimals via WebSocket eth_call with robust error handling.
+- Fetches real token names/symbols/decimals via WebSocket eth_call.
 - Outputs token states to token_states.json periodically.
-- Fully compatible with main.py.
+- Fully compatible with main.py and uses Config class for settings.
 """
 
 import json
@@ -17,10 +17,11 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field, asdict
 from collections import defaultdict
+from config import Config
 
 
 # =============================================================================
-# DATA CLASSES (Unchanged)
+# DATA CLASSES
 # =============================================================================
 
 @dataclass
@@ -71,7 +72,7 @@ class BotState:
 
 
 # =============================================================================
-# CONSTANTS (Unchanged)
+# CONSTANTS
 # =============================================================================
 
 UNISWAP_V3_FACTORY = "0x1F98431c8aD98523631AE4a59f267346ea31F984"
@@ -117,11 +118,13 @@ KNOWN_TOKENS: Dict[str, Dict[str, Any]] = {
     # "0x83bb6048d55ea0a84795a939531fdc1314c0d3e3": {"symbol": "MYTOKEN", "name": "My Token", "decimals": 18},
 }
 
+
+# Build CHAINS dynamically from Config class RPC endpoints
 CHAINS: Dict[str, ChainConfig] = {
     "ethereum": ChainConfig(
         name="Ethereum",
         chain_id=1,
-        ws="wss://ethereum-rpc.publicnode.com",
+        ws=Config.RPC_ETHEREUM_WS,
         factory=UNISWAP_V3_FACTORY,
         wrapped_native="0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
         quote_mode="usd",
@@ -135,7 +138,7 @@ CHAINS: Dict[str, ChainConfig] = {
     "base": ChainConfig(
         name="Base",
         chain_id=8453,
-        ws="wss://base-rpc.publicnode.com",
+        ws=Config.RPC_BASE_WS,
         factory=UNISWAP_V3_FACTORY,
         wrapped_native="0x4200000000000000000000000000000000000006",
         quote_mode="native",
@@ -148,7 +151,7 @@ CHAINS: Dict[str, ChainConfig] = {
     "arbitrum": ChainConfig(
         name="Arbitrum",
         chain_id=42161,
-        ws="wss://arbitrum-one-rpc.publicnode.com",
+        ws=Config.RPC_ARBITRUM_WS,
         factory=UNISWAP_V3_FACTORY,
         wrapped_native="0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
         quote_mode="native",
@@ -161,7 +164,7 @@ CHAINS: Dict[str, ChainConfig] = {
     "optimism": ChainConfig(
         name="Optimism",
         chain_id=10,
-        ws="wss://optimism-rpc.publicnode.com",
+        ws=Config.RPC_OPTIMISM_WS,
         factory=UNISWAP_V3_FACTORY,
         wrapped_native="0x4200000000000000000000000000000000000006",
         quote_mode="native",
@@ -174,7 +177,7 @@ CHAINS: Dict[str, ChainConfig] = {
     "polygon": ChainConfig(
         name="Polygon",
         chain_id=137,
-        ws="wss://polygon-bor-rpc.publicnode.com",
+        ws=Config.RPC_POLYGON_WS,
         factory=UNISWAP_V3_FACTORY,
         wrapped_native="0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
         quote_mode="native",
@@ -186,7 +189,8 @@ CHAINS: Dict[str, ChainConfig] = {
     ),
 }
 
-CONFIG = {
+# Configuration constants (can be overridden by Config class)
+MONITOR_CONFIG = {
     "MAX_TOKENS": 100,
     "WINDOW_MS": 15 * 60 * 1000,
     "HISTORY_MS": 15 * 60 * 1000,
@@ -203,7 +207,7 @@ CONFIG = {
 
 
 # =============================================================================
-# UTILITY FUNCTIONS (Unchanged)
+# UTILITY FUNCTIONS
 # =============================================================================
 
 def norm(a: str) -> str:
@@ -245,8 +249,7 @@ def setup_logging(debug_mode: str = "none") -> logging.Logger:
 
 
 def load_config(config_path: str = "config.json") -> Dict[str, Any]:
-    """Load configuration from .env file (falls back to defaults)."""
-    from config import Config
+    """Load configuration from Config class."""
     return Config.as_dict()
 
 
@@ -307,7 +310,7 @@ def save_token_states(tokens: Dict[str, TokenState], filepath: str = "token_stat
 
 
 # =============================================================================
-# IMPROVED CORE MONITOR CLASS
+# CORE MONITOR CLASS
 # =============================================================================
 
 class UniswapMonitor:
@@ -472,9 +475,6 @@ class UniswapMonitor:
         self.metadata_in_flight[key] = load()
         return await self.metadata_in_flight[key]
 
-    # --- REST OF THE CLASS REMAINS UNCHANGED ---
-    # (start, stop, _subscribe_to_events, _listen_for_messages, _process_swap_log, etc.)
-
     async def start(self) -> None:
         """Start the WebSocket session."""
         if not self.chain:
@@ -537,8 +537,8 @@ class UniswapMonitor:
         if not self.active or current_serial != self.session_serial:
             return
 
-        self.logger.info(f"Scheduling reconnect in {CONFIG['RETRY_DELAY_MS'] / 1000} seconds...")
-        await asyncio.sleep(CONFIG["RETRY_DELAY_MS"] / 1000)
+        self.logger.info(f"Scheduling reconnect in {MONITOR_CONFIG['RETRY_DELAY_MS'] / 1000} seconds...")
+        await asyncio.sleep(MONITOR_CONFIG["RETRY_DELAY_MS"] / 1000)
         if self.active and current_serial == self.session_serial:
             await self.start()
 
@@ -732,7 +732,7 @@ class UniswapMonitor:
         while queue:
             x = queue.pop(0)
 
-            if x["depth"] >= CONFIG["MAX_PRICE_PATH_DEPTH"]:
+            if x["depth"] >= MONITOR_CONFIG["MAX_PRICE_PATH_DEPTH"]:
                 continue
 
             neighbors = self.pair_prices.get(x["token"], {})
@@ -788,12 +788,12 @@ class UniswapMonitor:
         ts = time.time() * 1000
         token.history.append({"t": ts, "price": price})
 
-        cut = ts - CONFIG["HISTORY_MS"]
+        cut = ts - MONITOR_CONFIG["HISTORY_MS"]
         while token.history and token.history[0]["t"] < cut:
             token.history.pop(0)
 
-        if len(token.history) > CONFIG["MAX_HISTORY_POINTS"]:
-            token.history = token.history[-CONFIG["MAX_HISTORY_POINTS"]:]
+        if len(token.history) > MONITOR_CONFIG["MAX_HISTORY_POINTS"]:
+            token.history = token.history[-MONITOR_CONFIG["MAX_HISTORY_POINTS"]:]
 
     def update_state_prices(self) -> None:
         """Update the bot state prices from token states."""
@@ -821,7 +821,7 @@ class UniswapMonitor:
 
     def get_active_tokens(self) -> List[TokenState]:
         """Get tokens with recent swap activity."""
-        cut = time.time() * 1000 - CONFIG["WINDOW_MS"]
+        cut = time.time() * 1000 - MONITOR_CONFIG["WINDOW_MS"]
         active = []
 
         for token in self.tokens.values():
@@ -832,7 +832,7 @@ class UniswapMonitor:
                 active.append(token)
 
         active.sort(key=lambda t: (-len(t.swaps), -t.volume_quote, -t.last_seen))
-        return active[:CONFIG["MAX_TOKENS"]]
+        return active[:MONITOR_CONFIG["MAX_TOKENS"]]
 
     def get_all_token_symbols(self) -> List[str]:
         """Get all discovered token symbols."""
@@ -845,11 +845,11 @@ class UniswapMonitor:
 
     def save_token_states(self) -> None:
         """Save all token states to a JSON file."""
-        save_token_states(self.tokens, CONFIG["TOKEN_STATE_FILE"])
+        save_token_states(self.tokens, MONITOR_CONFIG["TOKEN_STATE_FILE"])
 
 
 # =============================================================================
-# MAIN MONITOR CLASS (Unchanged)
+# MAIN MONITOR CLASS
 # =============================================================================
 
 class UniswapV3LiveMonitor:
@@ -857,15 +857,15 @@ class UniswapV3LiveMonitor:
 
     def __init__(self, config: Dict[str, Any]):
         self.config = config
-        self.logger = setup_logging(config.get("debug_mode", "none"))
+        self.logger = setup_logging(config.get("debug_mode", Config.DEBUG_MODE))
 
         self.state = load_state()
-        self.state.is_test_mode = config.get("is_test_mode", True)
+        self.state.is_test_mode = config.get("is_test_mode", Config.IS_TEST_MODE)
 
         if not self.state.network:
-            self.state.network = config.get("network", "ethereum")
+            self.state.network = config.get("network", Config.NETWORK)
         if not self.state.current_chain_key:
-            self.state.current_chain_key = config.get("primary_price_source", "ethereum")
+            self.state.current_chain_key = config.get("primary_price_source", Config.PRIMARY_PRICE_SOURCE)
 
         self.monitor: Optional[UniswapMonitor] = None
 
@@ -879,7 +879,7 @@ class UniswapV3LiveMonitor:
         self.state.start_time = datetime.utcnow().isoformat()
         self.logger.info("Starting Uniswap V3 monitor...")
 
-        chain_key = self.config.get("primary_price_source", "ethereum")
+        chain_key = self.config.get("primary_price_source", Config.PRIMARY_PRICE_SOURCE)
         self.monitor = UniswapMonitor(chain_key, self.config, self.state, self.logger)
         await self.monitor.start()
 
@@ -890,7 +890,7 @@ class UniswapV3LiveMonitor:
                     self.monitor.save_token_states()
 
                 save_state(self.state)
-                await asyncio.sleep(CONFIG["RENDER_INTERVAL_MS"] / 1000)
+                await asyncio.sleep(MONITOR_CONFIG["RENDER_INTERVAL_MS"] / 1000)
 
         except KeyboardInterrupt:
             self.logger.info("Shutting down...")
@@ -923,7 +923,7 @@ class UniswapV3LiveMonitor:
 
 
 # =============================================================================
-# CLI INTERFACE (Unchanged)
+# CLI INTERFACE
 # =============================================================================
 
 def parse_args():

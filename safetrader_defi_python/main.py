@@ -4,6 +4,7 @@ Uniswap Trading Bot with Portfolio Management
 - Runs price_monitor.py in a background thread for live price data.
 - Manages a portfolio based on real-time prices.
 - Supports pattern detection, trade simulation, and state persistence.
+- Uses Config class for all settings.
 """
 
 import json
@@ -26,10 +27,11 @@ from price_monitor import (
     UniswapV3LiveMonitor,
     CHAINS,
     KNOWN_TOKENS,
-    CONFIG as MONITOR_CONFIG,
+    MONITOR_CONFIG,
     BotState as MonitorBotState,
     TokenState,
 )
+
 
 # =============================================================================
 # DATA CLASSES
@@ -130,7 +132,7 @@ def setup_logging(debug_mode: str = "none") -> logging.Logger:
 
 
 def load_config(config_path: str = "./config.json") -> Dict[str, Any]:
-    """Load configuration from .env file (falls back to defaults)."""
+    """Load configuration from Config class."""
     return Config.as_dict()
 
 
@@ -177,8 +179,8 @@ def load_state(state_path: str = "trading_bot_state.json") -> BotState:
             )
             return BotState(
                 is_running=state_dict.get("is_running", False),
-                network=state_dict.get("network", "arbitrum"),
-                current_chain_key=state_dict.get("current_chain_key", "arbitrum"),
+                network=state_dict.get("network", Config.NETWORK),
+                current_chain_key=state_dict.get("current_chain_key", Config.PRIMARY_PRICE_SOURCE),
                 prices=state_dict.get("prices", {}),
                 price_history=state_dict.get("price_history", {}),
                 address_to_symbol=state_dict.get("address_to_symbol", {}),
@@ -287,19 +289,19 @@ class TradeExecutor:
                 return None
 
             # Check if token is in allowed tokens list
-            allowed_tokens = self.config.get("tokens", [])
+            allowed_tokens = self.config.get("tokens", Config.TOKENS)
             if allowed_tokens and symbol not in allowed_tokens:
                 self.logger.info(f"Token {symbol} not in allowed tokens list. Skipping trade.")
                 return None
 
             # Check cooldown
-            if self.state.last_trade_time and (time.time() - self.state.last_trade_time) < self.config.get("trade_cooldown", 60):
+            if self.state.last_trade_time and (time.time() - self.state.last_trade_time) < self.config.get("trade_cooldown", Config.TRADE_COOLDOWN):
                 self.logger.info(f"Trade cooldown active for {symbol}. Skipping.")
                 return None
 
             # Check max open trades
             open_trades = [t for t in self.state.trades if t["status"] == "open"]
-            if len(open_trades) >= self.config.get("max_trades", 5):
+            if len(open_trades) >= self.config.get("max_trades", Config.MAX_TRADES):
                 self.logger.info(f"Max open trades ({len(open_trades)}) reached. Skipping.")
                 return None
 
@@ -314,7 +316,7 @@ class TradeExecutor:
 
             # Calculate gas fee (simulated)
             gas_price = 50.0  # Default simulated gas price
-            gas_limit = self.config.get("gas_limit", 500000)
+            gas_limit = self.config.get("gas_limit", Config.GAS_LIMIT)
             gas_fee_eth = (gas_limit * gas_price) / 1e9 / 1e18
             eth_price = self.state.prices.get("WETH", 3000.0)  # Use WETH price if available
             gas_fee_usd = gas_fee_eth * eth_price
@@ -348,7 +350,7 @@ class TradeExecutor:
                 "network": self.state.network,
             }
 
-            if self.config.get("is_test_mode", True):
+            if self.config.get("is_test_mode", Config.IS_TEST_MODE):
                 self.logger.info(f"[TEST MODE] Simulated {trade_type} {token_amount:.6f} {symbol} at ${price:.2f} (Pattern: {pattern})")
             else:
                 self.logger.warning("[PROD MODE] Real trade execution not implemented.")
@@ -393,8 +395,8 @@ class TradeExecutor:
             buy_trade["pnl"] = pnl
             sell_trade["pnl"] = pnl
 
-            stop_loss_pct = self.config.get("stop_loss", 2)
-            take_profit_pct = self.config.get("take_profit", 5)
+            stop_loss_pct = self.config.get("stop_loss", Config.STOP_LOSS)
+            take_profit_pct = self.config.get("take_profit", Config.TAKE_PROFIT)
 
             if pnl < 0:
                 loss_pct = abs(pnl) / (buy_trade["token_amount"] * buy_trade["price"]) * 100
@@ -444,8 +446,8 @@ class PatternDetector:
     def check_patterns(self) -> None:
         """Check all tokens for buy/sell patterns."""
         with self.state.state_lock:
-            buy_patterns = self._parse_patterns(self.config.get("buy_patterns", ""))
-            sell_patterns = self._parse_patterns(self.config.get("sell_patterns", ""))
+            buy_patterns = self._parse_patterns(self.config.get("buy_patterns", Config.BUY_PATTERNS))
+            sell_patterns = self._parse_patterns(self.config.get("sell_patterns", Config.SELL_PATTERNS))
 
             for symbol, history in self.state.price_history.items():
                 if len(history) < 2:
@@ -522,7 +524,7 @@ class PatternDetector:
                 address = self.state.symbol_to_address.get(symbol)
                 if address:
                     self.trade_executor.execute_trade(
-                        symbol, address, "buy", self.config.get("trade_step", 3.0), pattern["raw"]
+                        symbol, address, "buy", self.config.get("trade_step", Config.TRADE_STEP), pattern["raw"]
                     )
 
         for pattern in sell_patterns:
@@ -531,7 +533,7 @@ class PatternDetector:
                 address = self.state.symbol_to_address.get(symbol)
                 if address:
                     self.trade_executor.execute_trade(
-                        symbol, address, "sell", self.config.get("trade_step", 3.0), pattern["raw"]
+                        symbol, address, "sell", self.config.get("trade_step", Config.TRADE_STEP), pattern["raw"]
                     )
 
 
@@ -544,17 +546,17 @@ class TradingBot:
 
     def __init__(self, config: Dict[str, Any]):
         self.config = config
-        self.logger = setup_logging(config.get("debug_mode", "none"))
+        self.logger = setup_logging(config.get("debug_mode", Config.DEBUG_MODE))
 
         # Load state
         self.state = load_state()
         self.state.trades = load_trades()
 
         if not self.state.network:
-            self.state.network = config.get("network", "arbitrum")
+            self.state.network = config.get("network", Config.NETWORK)
         if not self.state.current_chain_key:
-            self.state.current_chain_key = config.get("primary_price_source", "arbitrum")
-        self.state.is_test_mode = config.get("is_test_mode", True)
+            self.state.current_chain_key = config.get("primary_price_source", Config.PRIMARY_PRICE_SOURCE)
+        self.state.is_test_mode = config.get("is_test_mode", Config.IS_TEST_MODE)
 
         # Initialize portfolio manager
         self.portfolio_manager = PortfolioManager(self.state, self.logger)
@@ -568,8 +570,8 @@ class TradingBot:
         # Initialize price monitor
         monitor_config = {
             **config,
-            "primary_price_source": config.get("primary_price_source", "arbitrum"),
-            "network": config.get("network", "arbitrum"),
+            "primary_price_source": config.get("primary_price_source", Config.PRIMARY_PRICE_SOURCE),
+            "network": config.get("network", Config.NETWORK),
         }
         self.monitor = UniswapV3LiveMonitor(monitor_config)
 
@@ -719,8 +721,8 @@ class OptionalFeatures:
         )
         self.state = BotState(
             is_running=backup_data["state"].get("is_running", False),
-            network=backup_data["state"].get("network", "arbitrum"),
-            current_chain_key=backup_data["state"].get("current_chain_key", "arbitrum"),
+            network=backup_data["state"].get("network", Config.NETWORK),
+            current_chain_key=backup_data["state"].get("current_chain_key", Config.PRIMARY_PRICE_SOURCE),
             prices=backup_data["state"].get("prices", {}),
             price_history=backup_data["state"].get("price_history", {}),
             address_to_symbol=backup_data["state"].get("address_to_symbol", {}),
@@ -734,7 +736,7 @@ class OptionalFeatures:
         self.logger.info(f"Restored from backup: {backup_file}")
 
     def auto_backup(self) -> None:
-        if self.config.get("auto_backup", False):
+        if self.config.get("auto_backup", Config.AUTO_BACKUP):
             self.create_backup()
 
     def list_backups(self) -> List[str]:
@@ -904,7 +906,7 @@ def main():
     print("UNISWAP TRADING BOT WITH PORTFOLIO MANAGEMENT")
     print("=" * 60)
     print(f"Mode: {'TEST' if config.get('is_test_mode', True) else 'PROD'}")
-    print(f"Network: {config.get('network', 'arbitrum')}")
+    print(f"Network: {config.get('network', Config.NETWORK)}")
     print(f"Press Ctrl+C to stop")
     print("=" * 60)
 
