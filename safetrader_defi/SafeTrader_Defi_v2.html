@@ -4609,8 +4609,10 @@
         function updatePnLDisplay() {
             const netPnL = state.portfolio.realizedPnL + state.portfolio.unrealizedPnL;
 
-            document.getElementById('totalPnL').textContent = '$' + netPnL.toFixed(2);
-            document.getElementById('totalPnL').className = netPnL >= 0 ? 'price-up' : 'price-down';
+            if (document.getElementById('totalPnL') != null) {
+                document.getElementById('totalPnL').textContent = '$' + netPnL.toFixed(2);
+                document.getElementById('totalPnL').className = netPnL >= 0 ? 'price-up' : 'price-down';
+            }
 
             const now = new Date();
             const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -4629,12 +4631,14 @@
                 .filter(t => new Date(t.closedAt || t.timestamp) >= monthStart && t.status === 'closed')
                 .reduce((sum, trade) => sum + trade.pnl, 0);
 
-            document.getElementById('dailyPnL').textContent = '$' + dailyPnL.toFixed(2);
-            document.getElementById('dailyPnL').className = dailyPnL >= 0 ? 'price-up' : 'price-down';
-            document.getElementById('weeklyPnL').textContent = '$' + weeklyPnL.toFixed(2);
-            document.getElementById('weeklyPnL').className = weeklyPnL >= 0 ? 'price-up' : 'price-down';
-            document.getElementById('monthlyPnL').textContent = '$' + monthlyPnL.toFixed(2);
-            document.getElementById('monthlyPnL').className = monthlyPnL >= 0 ? 'price-up' : 'price-down';
+            if (document.getElementById('dailyPnL') != null) {
+                document.getElementById('dailyPnL').textContent = '$' + dailyPnL.toFixed(2);
+                document.getElementById('dailyPnL').className = dailyPnL >= 0 ? 'price-up' : 'price-down';
+                document.getElementById('weeklyPnL').textContent = '$' + weeklyPnL.toFixed(2);
+                document.getElementById('weeklyPnL').className = weeklyPnL >= 0 ? 'price-up' : 'price-down';
+                document.getElementById('monthlyPnL').textContent = '$' + monthlyPnL.toFixed(2);
+                document.getElementById('monthlyPnL').className = monthlyPnL >= 0 ? 'price-up' : 'price-down';
+            }
         }
 
         function updateStatistics() {
