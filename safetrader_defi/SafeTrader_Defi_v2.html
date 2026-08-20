@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Arbitrum Trading Bot - PROD | Shadow Mode</title>
+    <title>Uniswap Trading Bot - ETH-Centric | Shadow Mode</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
@@ -574,7 +574,6 @@
             display: block;
         }
 
-        /* New styles for enhanced features */
         .metric-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -691,11 +690,11 @@
 <body>
     <div class="container">
         <header class="text-center mb-2">
-            <h1>Uniswap Arbitrum Trading Bot</h1>
+            <h1>Uniswap Trading Bot</h1>
             <p class="text-secondary">
                 <span id="executionModeBadge">SHADOW MODE</span>
                 <span class="fidelity-badge fidelity-high" id="fidelityBadge">Fidelity: 92%</span>
-                - Production-Like Simulation
+                - ETH-Centric Strategy
             </p>
         </header>
 
@@ -768,30 +767,30 @@
                     <div class="card-body">
                         <div class="d-flex justify-between">
                             <div>
-                                <p><strong>Starting Equity:</strong></p>
-                                <p class="value" id="startingEquity">$0.00</p>
+                                <p><strong>Starting ETH:</strong></p>
+                                <p class="value" id="startingEth">0.00 ETH</p>
                             </div>
                             <div>
-                                <p><strong>Current Equity:</strong></p>
-                                <p class="value" id="currentEquity">$0.00</p>
+                                <p><strong>Current ETH:</strong></p>
+                                <p class="value" id="currentEth">0.00 ETH</p>
                             </div>
                         </div>
                         <hr>
                         <div class="d-flex justify-between">
                             <div>
                                 <p><strong>Realized PnL:</strong></p>
-                                <p class="value price-up" id="realizedPnL">$0.00</p>
+                                <p class="value price-up" id="realizedPnL">0.00 ETH</p>
                             </div>
                             <div>
                                 <p><strong>Unrealized PnL:</strong></p>
-                                <p class="value" id="unrealizedPnL">$0.00</p>
+                                <p class="value" id="unrealizedPnL">0.00 ETH</p>
                             </div>
                         </div>
                         <hr>
                         <div class="d-flex justify-between">
                             <div>
                                 <p><strong>Net PnL:</strong></p>
-                                <p class="value" id="netPnL">$0.00</p>
+                                <p class="value" id="netPnL">0.00 ETH</p>
                             </div>
                             <div>
                                 <p><strong>Return:</strong></p>
@@ -845,7 +844,7 @@
             <div class="grid-2">
                 <div class="card">
                     <div class="card-header d-flex justify-between align-center">
-                        <span>Equity Curve</span>
+                        <span>ETH Equity Curve</span>
                         <div class="d-flex gap-1">
                             <button class="btn btn-secondary btn-xs" onclick="toggleEquityChartType()">Toggle
                                 Linear/Log</button>
@@ -893,15 +892,15 @@
                     </div>
                     <div class="card-body">
                         <div class="alert alert-info mb-2">
-                            Auto-Monitoring: All eligible tokens are automatically tracked and traded based on market
-                            liquidity.
+                            Auto-Monitoring: All eligible tokens are automatically tracked and traded based on ETH
+                            pairs.
                         </div>
                         <div id="priceTable">
                             <table class="table">
                                 <thead>
                                     <tr>
                                         <th>Token</th>
-                                        <th>Price (USD)</th>
+                                        <th>Price (ETH)</th>
                                         <th>24h Change</th>
                                         <th>Liquidity</th>
                                         <th>Pool Fee</th>
@@ -930,10 +929,10 @@
                                     <th>Time</th>
                                     <th>Token</th>
                                     <th>Type</th>
-                                    <th>Price</th>
+                                    <th>Price (ETH)</th>
                                     <th>Amount</th>
                                     <th>Status</th>
-                                    <th>PnL</th>
+                                    <th>PnL (ETH)</th>
                                 </tr>
                             </thead>
                             <tbody id="recentTrades">
@@ -984,7 +983,7 @@
                                 <tr>
                                     <th>Asset</th>
                                     <th>Balance</th>
-                                    <th>USD Value</th>
+                                    <th>ETH Value</th>
                                     <th>Allocation</th>
                                 </tr>
                             </thead>
@@ -1004,11 +1003,11 @@
                             <thead>
                                 <tr>
                                     <th>Token</th>
-                                    <th>Entry Price</th>
-                                    <th>Current Price</th>
+                                    <th>Entry Price (ETH)</th>
+                                    <th>Current Price (ETH)</th>
                                     <th>Amount</th>
-                                    <th>Value</th>
-                                    <th>Unrealized PnL</th>
+                                    <th>Value (ETH)</th>
+                                    <th>Unrealized PnL (ETH)</th>
                                     <th>Return</th>
                                 </tr>
                             </thead>
@@ -1037,13 +1036,14 @@
                 <div class="card">
                     <div class="card-header">Trade Quality</div>
                     <div class="card-body">
-                        <p><strong>Best Trade:</strong> <span class="price-up" id="portfolioBestTrade">$0.00</span></p>
-                        <p><strong>Worst Trade:</strong> <span class="price-down" id="portfolioWorstTrade">$0.00</span>
+                        <p><strong>Best Trade:</strong> <span class="price-up" id="portfolioBestTrade">0.00 ETH</span>
                         </p>
-                        <p><strong>Avg Win:</strong> <span class="price-up" id="portfolioAvgWin">$0.00</span></p>
-                        <p><strong>Avg Loss:</strong> <span class="price-down" id="portfolioAvgLoss">$0.00</span></p>
-                        <p><strong>Max Drawdown:</strong> <span class="price-down"
-                                id="portfolioMaxDrawdown">$0.00</span></p>
+                        <p><strong>Worst Trade:</strong> <span class="price-down" id="portfolioWorstTrade">0.00
+                                ETH</span></p>
+                        <p><strong>Avg Win:</strong> <span class="price-up" id="portfolioAvgWin">0.00 ETH</span></p>
+                        <p><strong>Avg Loss:</strong> <span class="price-down" id="portfolioAvgLoss">0.00 ETH</span></p>
+                        <p><strong>Max Drawdown:</strong> <span class="price-down" id="portfolioMaxDrawdown">0.00
+                                ETH</span></p>
                     </div>
                 </div>
 
@@ -1089,32 +1089,25 @@
                         <div>
                             <div class="form-group">
                                 <label class="form-label">Execution Settings</label>
-                                <div class="d-flex align-center gap-1 mb-2">
-                                    <input type="checkbox" id="testModeEnabled" onchange="toggleTestMode()">
-                                    <label for="testModeEnabled">Enable Test Mode (No Real Transactions)</label>
-                                </div>
-                                <small class="text-secondary">When enabled, trades are simulated with realistic market
-                                    conditions but no actual transactions are executed.</small>
-                            </div>
-
-                            <div class="grid-2">
-                                <div class="form-group">
-                                    <label class="form-label">Max Slippage (%)</label>
-                                    <input type="number" class="form-control" id="maxSlippage" value="0.5" min="0.1"
-                                        max="10" step="0.1">
-                                    <small class="text-secondary mt-1">Maximum allowed slippage before trade is
-                                        rejected.</small>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Latency Simulation (ms)</label>
-                                    <select class="form-control" id="latencySimulation">
-                                        <option value="0">None</option>
-                                        <option value="150-1200" selected>Realistic (150-1200ms)</option>
-                                        <option value="500-2000">High (500-2000ms)</option>
-                                        <option value="1000-3000">Extreme (1000-3000ms)</option>
-                                    </select>
-                                    <small class="text-secondary mt-1">Simulate network latency for more realistic
-                                        testing.</small>
+                                <div class="grid-2">
+                                    <div class="form-group">
+                                        <label class="form-label">Max Slippage (%)</label>
+                                        <input type="number" class="form-control" id="maxSlippage" value="0.5" min="0.1"
+                                            max="10" step="0.1">
+                                        <small class="text-secondary mt-1">Maximum allowed slippage before trade is
+                                            rejected.</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Latency Simulation (ms)</label>
+                                        <select class="form-control" id="latencySimulation">
+                                            <option value="0">None</option>
+                                            <option value="150-1200" selected>Realistic (150-1200ms)</option>
+                                            <option value="500-2000">High (500-2000ms)</option>
+                                            <option value="1000-3000">Extreme (1000-3000ms)</option>
+                                        </select>
+                                        <small class="text-secondary mt-1">Simulate network latency for more realistic
+                                            testing.</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1122,23 +1115,24 @@
 
                     <div class="grid-3">
                         <div class="form-group">
-                            <label class="form-label">Total Trade Capital (USD)</label>
-                            <input type="number" class="form-control" id="totalTradeCapital" value="1000" min="1"
-                                step="1">
-                            <small class="text-secondary mt-1">Total amount of USD available for trading across all
+                            <label class="form-label">Total Trade Capital (ETH)</label>
+                            <input type="number" class="form-control" id="totalTradeCapital" value="1.0" min="0.01"
+                                step="0.01">
+                            <small class="text-secondary mt-1">Total amount of ETH available for trading across all
                                 positions.</small>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Trade Step (USD)</label>
-                            <input type="number" class="form-control" id="tradeStep" value="50" min="0.1" step="0.1">
-                            <small class="text-secondary mt-1">Fixed amount in USD to allocate per individual
+                            <label class="form-label">Trade Step (ETH)</label>
+                            <input type="number" class="form-control" id="tradeStep" value="0.05" min="0.001"
+                                step="0.001">
+                            <small class="text-secondary mt-1">Fixed amount in ETH to allocate per individual
                                 trade.</small>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Min Trade Amount (USD)</label>
-                            <input type="number" class="form-control" id="minTradeAmount" value="10" min="0.1"
-                                step="0.1">
-                            <small class="text-secondary mt-1">Minimum USD value required to execute a trade.</small>
+                            <label class="form-label">Min Trade Amount (ETH)</label>
+                            <input type="number" class="form-control" id="minTradeAmount" value="0.01" min="0.001"
+                                step="0.001">
+                            <small class="text-secondary mt-1">Minimum ETH value required to execute a trade.</small>
                         </div>
                     </div>
 
@@ -1179,30 +1173,24 @@
                             <small class="text-secondary mt-1">Dynamic stop loss that follows the price upward.</small>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Starting Equity</label>
+                            <label class="form-label">Starting ETH</label>
                             <select class="form-control" id="startingEquitySelect">
-                                <option value="ETH_1.0">1.0 ETH</option>
+                                <option value="ETH_1.0" selected>1.0 ETH</option>
                                 <option value="ETH_0.5">0.5 ETH</option>
                                 <option value="ETH_0.25">0.25 ETH</option>
-                                <option value="USDC_1000" selected>1000 USDC</option>
-                                <option value="USDC_5000">5000 USDC</option>
-                                <option value="USDC_10000">10000 USDC</option>
+                                <option value="ETH_2.0">2.0 ETH</option>
+                                <option value="ETH_5.0">5.0 ETH</option>
                                 <option value="custom">Custom</option>
                             </select>
                             <div id="customEquityGroup" style="display:none; margin-top:10px;">
                                 <input type="number" class="form-control" id="customStartingEquity"
-                                    placeholder="Enter amount" value="1000" min="1">
-                                <select class="form-control mt-1" id="customEquityToken">
-                                    <option value="ETH">ETH</option>
-                                    <option value="USDC" selected>USDC</option>
-                                    <option value="USDT">USDT</option>
-                                </select>
+                                    placeholder="Enter amount" value="1.0" min="0.01" step="0.01">
                             </div>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Tokens to Trade</label>
+                        <label class="form-label">Tokens to Trade (ETH pairs)</label>
                         <div class="token-selector" id="tradeTokens"></div>
                     </div>
 
@@ -1215,51 +1203,6 @@
                         <button class="btn btn-warning" onclick="validatePatterns()">Validate Patterns</button>
                     </div>
                     <div id="patternValidationResult" class="mt-1"></div>
-                </div>
-            </div>
-
-            <!-- Trade Simulation -->
-            <div class="card">
-                <div class="card-header">Trade Simulation</div>
-                <div class="card-body">
-                    <div class="grid-2">
-                        <div>
-                            <div class="form-group">
-                                <label class="form-label">Token</label>
-                                <select class="form-control" id="simToken">
-                                    <option value="ETH">ETH</option>
-                                    <option value="WBTC">WBTC</option>
-                                    <option value="UNI">UNI</option>
-                                    <option value="LINK">LINK</option>
-                                    <option value="ARB">ARB</option>
-                                    <option value="GMX">GMX</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Amount (USD)</label>
-                                <input type="number" class="form-control" id="simAmount" value="100" min="1">
-                            </div>
-                        </div>
-                        <div>
-                            <div class="form-group">
-                                <label class="form-label">Action</label>
-                                <select class="form-control" id="simAction">
-                                    <option value="buy">Buy</option>
-                                    <option value="sell">Sell</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Slippage Tolerance (%)</label>
-                                <input type="number" class="form-control" id="simSlippage" value="0.5" min="0" max="10"
-                                    step="0.1">
-                            </div>
-                        </div>
-                    </div>
-                    <button class="btn btn-success" onclick="simulateTrade()">
-                        <span class="loading-spinner loading-spinner-dark" id="simSpinner"
-                            style="display:none;"></span>Simulate Trade
-                    </button>
-                    <div id="simulationResult" class="mt-2"></div>
                 </div>
             </div>
         </div>
@@ -1281,10 +1224,11 @@
                             <div class="form-group">
                                 <label class="form-label">Token to Backtest</label>
                                 <select class="form-control" id="backtestToken">
-                                    <option value="ETH">ETH</option>
                                     <option value="WBTC">WBTC</option>
                                     <option value="UNI">UNI</option>
                                     <option value="LINK">LINK</option>
+                                    <option value="ARB">ARB</option>
+                                    <option value="GMX">GMX</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -1309,12 +1253,14 @@
                         </div>
                         <div>
                             <div class="form-group">
-                                <label class="form-label">Initial Capital (USD)</label>
-                                <input type="number" class="form-control" id="backtestCapital" value="1000" min="1">
+                                <label class="form-label">Initial Capital (ETH)</label>
+                                <input type="number" class="form-control" id="backtestCapital" value="1.0" min="0.01"
+                                    step="0.01">
                             </div>
                             <div class="form-group">
-                                <label class="form-label">Trade Size (USD)</label>
-                                <input type="number" class="form-control" id="backtestTradeSize" value="100" min="1">
+                                <label class="form-label">Trade Size (ETH)</label>
+                                <input type="number" class="form-control" id="backtestTradeSize" value="0.1" min="0.01"
+                                    step="0.01">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Use Current Patterns</label>
@@ -1346,16 +1292,16 @@
                                 <p><strong>Failed Trades:</strong> <span id="backtestFailedTrades">0</span></p>
                             </div>
                             <div>
-                                <p><strong>Total PnL:</strong> <span id="backtestTotalPnL">$0.00</span></p>
+                                <p><strong>Total PnL:</strong> <span id="backtestTotalPnL">0.00 ETH</span></p>
                                 <p><strong>Win Rate:</strong> <span id="backtestWinRate">0%</span></p>
                                 <p><strong>Profit Factor:</strong> <span id="backtestProfitFactor">0.00</span></p>
                                 <p><strong>Success Rate:</strong> <span id="backtestSuccessRate">100%</span></p>
                             </div>
                             <div>
-                                <p><strong>Max Drawdown:</strong> <span id="backtestMaxDrawdown">$0.00</span></p>
-                                <p><strong>Avg Profit:</strong> <span id="backtestAvgProfit">$0.00</span></p>
-                                <p><strong>Avg Loss:</strong> <span id="backtestAvgLoss">$0.00</span></p>
-                                <p><strong>Total Fees:</strong> <span id="backtestTotalFees">$0.00</span></p>
+                                <p><strong>Max Drawdown:</strong> <span id="backtestMaxDrawdown">0.00 ETH</span></p>
+                                <p><strong>Avg Profit:</strong> <span id="backtestAvgProfit">0.00 ETH</span></p>
+                                <p><strong>Avg Loss:</strong> <span id="backtestAvgLoss">0.00 ETH</span></p>
+                                <p><strong>Total Fees:</strong> <span id="backtestTotalFees">0.00 ETH</span></p>
                             </div>
                         </div>
                         <div class="equity-chart-container mt-2">
@@ -1384,12 +1330,12 @@
                                 <th>Time</th>
                                 <th>Token</th>
                                 <th>Type</th>
-                                <th>Price</th>
+                                <th>Price (ETH)</th>
                                 <th>Amount</th>
-                                <th>Fee</th>
+                                <th>Fee (ETH)</th>
                                 <th>Gas</th>
                                 <th>Status</th>
-                                <th>PnL</th>
+                                <th>PnL (ETH)</th>
                             </tr>
                         </thead>
                         <tbody id="fullTradeHistory">
@@ -1409,24 +1355,24 @@
                             <h4>Overall</h4>
                             <p><strong>Total Trades:</strong> <span id="totalTrades">0</span></p>
                             <p><strong>Win Rate:</strong> <span id="winRate">0%</span></p>
-                            <p><strong>Avg Profit:</strong> <span id="avgProfit">$0.00</span></p>
-                            <p><strong>Max Drawdown:</strong> <span id="maxDrawdown">$0.00</span></p>
+                            <p><strong>Avg Profit:</strong> <span id="avgProfit">0.00 ETH</span></p>
+                            <p><strong>Max Drawdown:</strong> <span id="maxDrawdown">0.00 ETH</span></p>
                             <p><strong>Profit Factor:</strong> <span id="profitFactor">0.00</span></p>
-                            <p><strong>Total Fees:</strong> <span id="historyTotalFees">$0.00</span></p>
+                            <p><strong>Total Fees:</strong> <span id="historyTotalFees">0.00 ETH</span></p>
                         </div>
                         <div>
                             <h4>Current Session</h4>
                             <p><strong>Session Start:</strong> <span id="sessionStart">-</span></p>
                             <p><strong>Trades:</strong> <span id="sessionTrades">0</span></p>
-                            <p><strong>Session PnL:</strong> <span id="sessionPnL">$0.00</span></p>
-                            <p><strong>Best Trade:</strong> <span id="bestTrade">$0.00</span></p>
-                            <p><strong>Worst Trade:</strong> <span id="worstTrade">$0.00</span></p>
+                            <p><strong>Session PnL:</strong> <span id="sessionPnL">0.00 ETH</span></p>
+                            <p><strong>Best Trade:</strong> <span id="bestTrade">0.00 ETH</span></p>
+                            <p><strong>Worst Trade:</strong> <span id="worstTrade">0.00 ETH</span></p>
                             <p><strong>Success Rate:</strong> <span id="sessionSuccessRate">100%</span></p>
                         </div>
                         <div>
                             <h4>Best Performers</h4>
                             <p><strong>Token:</strong> <span id="bestToken">-</span></p>
-                            <p><strong>PnL:</strong> <span id="bestTokenPnL">$0.00</span></p>
+                            <p><strong>PnL:</strong> <span id="bestTokenPnL">0.00 ETH</span></p>
                             <p><strong>Win Rate:</strong> <span id="bestTokenWinRate">0%</span></p>
                             <p><strong>Trades:</strong> <span id="bestTokenTrades">0</span></p>
                             <p><strong>Avg Hold Time:</strong> <span id="bestTokenHoldTime">0s</span></p>
@@ -1478,6 +1424,13 @@
                             value="0xE592427A0AEce92De3Edee1F18E0157C05861564" readonly>
                         <small class="text-secondary mt-1">The official Uniswap V3 smart contract address for the
                             selected network.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Profit Address (ETH)</label>
+                        <input type="text" class="form-control" id="profitAddress" placeholder="0x...">
+                        <small class="text-secondary mt-1">All profits will be sent to this address when
+                            realized.</small>
                     </div>
                 </div>
             </div>
@@ -1674,7 +1627,7 @@
         // Configuration & Constants
         // ============================================
 
-        const APP_VERSION = '3.0.0-SHADOW';
+        const APP_VERSION = '4.0.0-ETH-CENTRIC';
         const ARBITRUM_CHAIN_ID = 42161;
         const ARBITRUM_GOERLI_CHAIN_ID = 421613;
         const MAINNET_CHAIN_ID = 1;
@@ -1733,8 +1686,8 @@
                 ws: "wss://ethereum-rpc.publicnode.com",
                 factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
                 wrappedNative: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-                quoteMode: "usd",
-                quoteLabel: "USD",
+                quoteMode: "native",
+                quoteLabel: "ETH",
                 stables: [
                     "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", // USDC
                     "0xdAC17F958D2ee523a2206206994597C13D831ec7", // USDT
@@ -1748,7 +1701,7 @@
                 factory: "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
                 wrappedNative: "0x4200000000000000000000000000000000000006",
                 quoteMode: "native",
-                quoteLabel: "WETH",
+                quoteLabel: "ETH",
                 stables: [
                     "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
                     "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42"  // USDT
@@ -1761,7 +1714,7 @@
                 factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
                 wrappedNative: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
                 quoteMode: "native",
-                quoteLabel: "WETH",
+                quoteLabel: "ETH",
                 stables: [
                     "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", // USDC
                     "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"  // USDT
@@ -1774,7 +1727,7 @@
                 factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
                 wrappedNative: "0x4200000000000000000000000000000000000006",
                 quoteMode: "native",
-                quoteLabel: "WETH",
+                quoteLabel: "ETH",
                 stables: [
                     "0x0b2C639c533813f4AaA9D7837CAf62653d097Ff85", // USDC
                     "0x7F5c764cBc14f9669B88837ca1490cCa17c31607"  // USDT
@@ -1835,39 +1788,40 @@
             walletAddress: null,
             network: 'arbitrum',
             prices: {},
+            ethPrice: 0,
             priceHistory: {},
             priceSources: {},
             trades: [],
             poolInfo: {},
             portfolio: {
-                balances: {}, // tokenAddress -> amount
+                balances: {}, // tokenAddress -> amount (in ETH value for non-ETH tokens)
                 positions: [], // Array of position objects
-                realizedPnL: 0,
-                unrealizedPnL: 0,
+                realizedPnL: 0, // in ETH
+                unrealizedPnL: 0, // in ETH
                 gasSpent: 0, // in ETH
                 feesPaid: 0, // in ETH
-                startingEquity: 1000, // in USD
-                currentEquity: 1000, // in USD
-                equityHistory: [], // {timestamp, equity}
+                startingEth: 1.0, // in ETH
+                currentEth: 1.0, // in ETH
+                equityHistory: [], // {timestamp, ethValue}
                 totalTrades: 0,
                 winningTrades: 0,
                 losingTrades: 0,
                 failedTrades: 0,
-                totalFees: 0 // in USD
+                totalFees: 0 // in ETH
             },
             settings: {
                 executionMode: EXECUTION_MODES.SHADOW,
                 buyPatterns: '',
                 sellPatterns: '',
-                totalTradeCapital: 1000,
-                minTradeAmount: 10,
-                tradeStep: 50,
+                totalTradeCapital: 1.0, // in ETH
+                minTradeAmount: 0.01, // in ETH
+                tradeStep: 0.05, // in ETH
                 profitAddress: '',
                 maxTrades: 5,
                 stopLoss: 2,
                 takeProfit: 5,
                 trailingStop: 1,
-                tokens: ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX', 'USDC', 'USDT'],
+                tokens: ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX'],
                 priceInterval: 5000,
                 maxPriceAge: 30,
                 slippage: 0.5,
@@ -1882,9 +1836,8 @@
                 backupInterval: 30,
                 encryptionEnabled: true,
                 debugMode: 'none',
-                isTestMode: false,
                 latencySimulation: '150-1200',
-                startingEquity: 'USDC_1000'
+                startingEquity: 'ETH_1.0'
             },
             startTime: null,
             lastPriceUpdate: null,
@@ -1897,7 +1850,7 @@
             gasHistory: [],
             replayMode: false,
             replayData: [],
-            replaySpeed: 1 // 1x = real-time, 2x = 2x speed, etc.
+            replaySpeed: 1
         };
 
         // Token Information
@@ -1916,57 +1869,47 @@
         let backtestEquityChart = null;
 
         // ============================================
-        // Portfolio Management
+        // Portfolio Management (ETH-Centric)
         // ============================================
 
         function initializePortfolio() {
-            // Set starting equity based on settings
+            // Set starting ETH based on settings
             const equitySetting = state.settings.startingEquity;
             if (equitySetting === 'custom') {
-                const amount = parseFloat(document.getElementById('customStartingEquity').value) || 1000;
-                const token = document.getElementById('customEquityToken').value;
-                state.portfolio.startingEquity = amount;
-                state.portfolio.currentEquity = amount;
+                const amount = parseFloat(document.getElementById('customStartingEquity').value) || 1.0;
+                state.portfolio.startingEth = amount;
+                state.portfolio.currentEth = amount;
                 state.portfolio.balances = {};
-                if (token === 'ETH') {
-                    state.portfolio.balances[CONTRACTS.arbitrum.weth] = amount;
-                } else {
-                    // For stablecoins, we'll track the USD value directly
-                    state.portfolio.balances[token] = amount;
-                }
+                // For ETH-centric, we track ETH directly
+                state.portfolio.balances['ETH'] = amount;
             } else {
                 const [token, amount] = equitySetting.split('_');
-                state.portfolio.startingEquity = parseFloat(amount);
-                state.portfolio.currentEquity = parseFloat(amount);
+                state.portfolio.startingEth = parseFloat(amount);
+                state.portfolio.currentEth = parseFloat(amount);
                 state.portfolio.balances = {};
-                if (token === 'ETH') {
-                    state.portfolio.balances[CONTRACTS.arbitrum.weth] = parseFloat(amount);
-                } else {
-                    state.portfolio.balances[token] = parseFloat(amount);
-                }
+                state.portfolio.balances['ETH'] = parseFloat(amount);
             }
 
             state.portfolio.equityHistory = [{
                 timestamp: Date.now(),
-                equity: state.portfolio.currentEquity
+                ethValue: state.portfolio.currentEth
             }];
 
-            log('info', `Portfolio initialized with $${state.portfolio.startingEquity} starting equity`);
+            log('info', `Portfolio initialized with ${state.portfolio.startingEth} ETH starting balance`);
             updatePortfolioUI();
         }
 
         function updatePortfolioEquity() {
-            let totalEquity = 0;
+            let totalEth = 0;
 
-            // Calculate equity from balances
-            for (const [tokenAddress, amount] of Object.entries(state.portfolio.balances)) {
-                if (tokenAddress === 'USDC' || tokenAddress === 'USDT') {
-                    totalEquity += amount; // Stablecoins are 1:1 with USD
-                } else {
-                    const tokenSymbol = getTokenSymbolFromAddress(tokenAddress);
-                    const price = state.prices[tokenSymbol] || 0;
-                    totalEquity += amount * price;
-                }
+            // ETH balance is tracked directly
+            totalEth += state.portfolio.balances['ETH'] || 0;
+
+            // Add value from other token balances (converted to ETH)
+            for (const [tokenSymbol, amount] of Object.entries(state.portfolio.balances)) {
+                if (tokenSymbol === 'ETH') continue;
+                const priceInEth = state.prices[tokenSymbol] || 0;
+                totalEth += amount * priceInEth;
             }
 
             // Add unrealized PnL from open positions
@@ -1975,17 +1918,17 @@
                     const currentPrice = state.prices[position.token] || position.entryPrice;
                     const currentValue = position.amount * currentPrice;
                     const unrealizedPnL = currentValue - (position.amount * position.entryPrice) - position.feesPaid;
-                    totalEquity += unrealizedPnL;
+                    totalEth += unrealizedPnL;
                 }
             });
 
-            state.portfolio.currentEquity = totalEquity;
-            state.portfolio.unrealizedPnL = totalEquity - state.portfolio.startingEquity - state.portfolio.realizedPnL;
+            state.portfolio.currentEth = totalEth;
+            state.portfolio.unrealizedPnL = totalEth - state.portfolio.startingEth - state.portfolio.realizedPnL;
 
             // Update equity history
             state.portfolio.equityHistory.push({
                 timestamp: Date.now(),
-                equity: state.portfolio.currentEquity
+                ethValue: state.portfolio.currentEth
             });
 
             // Keep only the last 1000 points
@@ -2013,35 +1956,35 @@
 
         function updatePortfolioUI() {
             // Update portfolio summary
-            document.getElementById('startingEquity').textContent = '$' + state.portfolio.startingEquity.toFixed(2);
-            document.getElementById('currentEquity').textContent = '$' + state.portfolio.currentEquity.toFixed(2);
-            document.getElementById('realizedPnL').textContent = '$' + state.portfolio.realizedPnL.toFixed(2);
+            document.getElementById('startingEth').textContent = state.portfolio.startingEth.toFixed(6) + ' ETH';
+            document.getElementById('currentEth').textContent = state.portfolio.currentEth.toFixed(6) + ' ETH';
+            document.getElementById('realizedPnL').textContent = state.portfolio.realizedPnL.toFixed(6) + ' ETH';
             document.getElementById('realizedPnL').className = state.portfolio.realizedPnL >= 0 ? 'value price-up' : 'value price-down';
 
-            document.getElementById('unrealizedPnL').textContent = '$' + state.portfolio.unrealizedPnL.toFixed(2);
+            document.getElementById('unrealizedPnL').textContent = state.portfolio.unrealizedPnL.toFixed(6) + ' ETH';
             document.getElementById('unrealizedPnL').className = state.portfolio.unrealizedPnL >= 0 ? 'value price-up' : 'value price-down';
 
             const netPnL = state.portfolio.realizedPnL + state.portfolio.unrealizedPnL;
-            document.getElementById('netPnL').textContent = '$' + netPnL.toFixed(2);
+            document.getElementById('netPnL').textContent = netPnL.toFixed(6) + ' ETH';
             document.getElementById('netPnL').className = netPnL >= 0 ? 'value price-up' : 'value price-down';
 
-            const returnPct = (netPnL / state.portfolio.startingEquity) * 100;
+            const returnPct = (netPnL / state.portfolio.startingEth) * 100;
             document.getElementById('portfolioReturn').textContent = returnPct.toFixed(2) + '%';
             document.getElementById('portfolioReturn').className = returnPct >= 0 ? 'value price-up' : 'value price-down';
 
             // Update gas and fees
             document.getElementById('gasSpent').textContent = state.portfolio.gasSpent.toFixed(6) + ' ETH';
-            document.getElementById('gasSpentUSD').textContent = (state.portfolio.gasSpent * (state.prices.ETH || 3000)).toFixed(2);
+            document.getElementById('gasSpentUSD').textContent = (state.portfolio.gasSpent * state.ethPrice).toFixed(2);
 
             document.getElementById('dexFees').textContent = state.portfolio.feesPaid.toFixed(6) + ' ETH';
-            document.getElementById('dexFeesUSD').textContent = (state.portfolio.feesPaid * (state.prices.ETH || 3000)).toFixed(2);
+            document.getElementById('dexFeesUSD').textContent = (state.portfolio.feesPaid * state.ethPrice).toFixed(2);
 
             const totalFeesETH = state.portfolio.gasSpent + state.portfolio.feesPaid;
             document.getElementById('totalFees').textContent = totalFeesETH.toFixed(6) + ' ETH';
-            document.getElementById('totalFeesUSD').textContent = (totalFeesETH * (state.prices.ETH || 3000)).toFixed(2);
+            document.getElementById('totalFeesUSD').textContent = (totalFeesETH * state.ethPrice).toFixed(2);
 
             // Update fee impact bar
-            const feeImpactPct = Math.min(100, (Math.abs(netPnL) > 0 ? (totalFeesETH * (state.prices.ETH || 3000) / Math.abs(netPnL)) * 100 : 0));
+            const feeImpactPct = Math.min(100, (Math.abs(netPnL) > 0 ? (totalFeesETH * state.ethPrice / Math.abs(netPnL * state.ethPrice)) * 100 : 0));
             document.getElementById('feeImpactBar').style.width = feeImpactPct + '%';
 
             // Update portfolio balances
@@ -2059,56 +2002,35 @@
             let html = '';
 
             // Add ETH balance
-            const ethAddress = CONTRACTS.arbitrum.weth;
-            const ethBalance = state.portfolio.balances[ethAddress] || 0;
-            const ethValue = ethBalance * (state.prices.ETH || 0);
-            const totalEquity = state.portfolio.currentEquity;
-            const ethAllocation = totalEquity > 0 ? (ethValue / totalEquity) * 100 : 0;
+            const ethBalance = state.portfolio.balances['ETH'] || 0;
+            const totalEquity = state.portfolio.currentEth;
+            const ethAllocation = totalEquity > 0 ? (ethBalance / totalEquity) * 100 : 0;
 
             html += `
                 <tr>
                     <td><strong>ETH</strong></td>
                     <td>${ethBalance.toFixed(6)}</td>
-                    <td>$${ethValue.toFixed(2)}</td>
+                    <td>${ethBalance.toFixed(6)}</td>
                     <td>${ethAllocation.toFixed(2)}%</td>
                 </tr>
             `;
 
-            // Add stablecoin balances
-            ['USDC', 'USDT'].forEach(symbol => {
-                const balance = state.portfolio.balances[symbol] || 0;
-                if (balance > 0) {
-                    const value = balance; // Stablecoins are 1:1
-                    const allocation = totalEquity > 0 ? (value / totalEquity) * 100 : 0;
-                    html += `
-                        <tr>
-                            <td><strong>${symbol}</strong></td>
-                            <td>${balance.toFixed(2)}</td>
-                            <td>$${value.toFixed(2)}</td>
-                            <td>${allocation.toFixed(2)}%</td>
-                        </tr>
-                    `;
-                }
-            });
-
             // Add other token balances
-            for (const [address, amount] of Object.entries(state.portfolio.balances)) {
-                if (address === ethAddress || address === 'USDC' || address === 'USDT') continue;
+            for (const [tokenSymbol, amount] of Object.entries(state.portfolio.balances)) {
+                if (tokenSymbol === 'ETH') continue;
 
-                const symbol = getTokenSymbolFromAddress(address);
-                if (symbol) {
-                    const price = state.prices[symbol] || 0;
-                    const value = amount * price;
-                    const allocation = totalEquity > 0 ? (value / totalEquity) * 100 : 0;
-                    html += `
+                const priceInEth = state.prices[tokenSymbol] || 0;
+                const ethValue = amount * priceInEth;
+                const allocation = totalEquity > 0 ? (ethValue / totalEquity) * 100 : 0;
+
+                html += `
                         <tr>
-                            <td><strong>${symbol}</strong></td>
+                            <td><strong>${tokenSymbol}</strong></td>
                             <td>${amount.toFixed(6)}</td>
-                            <td>$${value.toFixed(2)}</td>
+                            <td>${ethValue.toFixed(6)}</td>
                             <td>${allocation.toFixed(2)}%</td>
                         </tr>
                     `;
-                }
             }
 
             if (html === '') {
@@ -2133,12 +2055,12 @@
                 html += `
                     <tr>
                         <td><strong>${position.token}</strong></td>
-                        <td>$${position.entryPrice.toFixed(2)}</td>
-                        <td>$${currentPrice.toFixed(2)}</td>
+                        <td>${position.entryPrice.toFixed(6)}</td>
+                        <td>${currentPrice.toFixed(6)}</td>
                         <td>${position.amount.toFixed(6)}</td>
-                        <td>$${currentValue.toFixed(2)}</td>
+                        <td>${currentValue.toFixed(6)}</td>
                         <td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">
-                            $${unrealizedPnL.toFixed(2)}
+                            ${unrealizedPnL.toFixed(6)}
                         </td>
                         <td class="${returnPct >= 0 ? 'price-up' : 'price-down'}">
                             ${returnPct.toFixed(2)}%
@@ -2184,34 +2106,34 @@
             const worstTrade = closedPositions.length > 0 ?
                 Math.min(...closedPositions.map(p => p.pnl)) : 0;
 
-            document.getElementById('portfolioBestTrade').textContent = '$' + bestTrade.toFixed(2);
-            document.getElementById('portfolioWorstTrade').textContent = '$' + worstTrade.toFixed(2);
+            document.getElementById('portfolioBestTrade').textContent = bestTrade.toFixed(6) + ' ETH';
+            document.getElementById('portfolioWorstTrade').textContent = worstTrade.toFixed(6) + ' ETH';
 
             // Average win and loss
             const winningTrades = closedPositions.filter(p => p.pnl > 0);
             const losingTrades = closedPositions.filter(p => p.pnl < 0);
 
             const avgWin = winningTrades.length > 0 ?
-                (winningTrades.reduce((sum, p) => sum + p.pnl, 0) / winningTrades.length).toFixed(2) : '0.00';
+                (winningTrades.reduce((sum, p) => sum + p.pnl, 0) / winningTrades.length).toFixed(6) + ' ETH' : '0.00 ETH';
             const avgLoss = losingTrades.length > 0 ?
-                (losingTrades.reduce((sum, p) => sum + p.pnl, 0) / losingTrades.length).toFixed(2) : '0.00';
+                (losingTrades.reduce((sum, p) => sum + p.pnl, 0) / losingTrades.length).toFixed(6) + ' ETH' : '0.00 ETH';
 
-            document.getElementById('portfolioAvgWin').textContent = '$' + avgWin;
-            document.getElementById('portfolioAvgLoss').textContent = '$' + avgLoss;
+            document.getElementById('portfolioAvgWin').textContent = avgWin;
+            document.getElementById('portfolioAvgLoss').textContent = avgLoss;
 
             // Max drawdown
             let maxDrawdown = 0;
-            let runningMax = state.portfolio.startingEquity;
-            let runningEquity = state.portfolio.startingEquity;
+            let runningMax = state.portfolio.startingEth;
+            let runningEquity = state.portfolio.startingEth;
 
             state.portfolio.equityHistory.forEach(point => {
-                runningEquity = point.equity;
+                runningEquity = point.ethValue;
                 if (runningEquity > runningMax) runningMax = runningEquity;
                 const drawdown = runningMax - runningEquity;
                 if (drawdown > maxDrawdown) maxDrawdown = drawdown;
             });
 
-            document.getElementById('portfolioMaxDrawdown').textContent = '$' + maxDrawdown.toFixed(2);
+            document.getElementById('portfolioMaxDrawdown').textContent = maxDrawdown.toFixed(6) + ' ETH';
 
             // Efficiency metrics
             const avgHoldTime = closedPositions.length > 0 ?
@@ -2263,7 +2185,7 @@
                     data: {
                         labels: [],
                         datasets: [{
-                            label: 'Portfolio Equity',
+                            label: 'Portfolio Value (ETH)',
                             data: [],
                             borderColor: '#0d6efd',
                             backgroundColor: 'rgba(13, 110, 253, 0.1)',
@@ -2279,7 +2201,7 @@
                             y: {
                                 beginAtZero: false,
                                 type: 'linear',
-                                title: { display: true, text: 'Equity (USD)' }
+                                title: { display: true, text: 'ETH Value' }
                             },
                             x: {
                                 type: 'time',
@@ -2291,7 +2213,7 @@
                             tooltip: {
                                 callbacks: {
                                     label: function (context) {
-                                        return '$' + context.parsed.y.toFixed(2);
+                                        return context.parsed.y.toFixed(6) + ' ETH';
                                     }
                                 }
                             }
@@ -2308,7 +2230,7 @@
                     data: {
                         labels: [],
                         datasets: [{
-                            label: 'Backtest Equity',
+                            label: 'Backtest Value (ETH)',
                             data: [],
                             borderColor: '#198754',
                             backgroundColor: 'rgba(25, 135, 84, 0.1)',
@@ -2323,7 +2245,7 @@
                         scales: {
                             y: {
                                 beginAtZero: false,
-                                title: { display: true, text: 'Equity (USD)' }
+                                title: { display: true, text: 'ETH Value' }
                             },
                             x: {
                                 type: 'time',
@@ -2338,7 +2260,7 @@
 
         function setupEventListeners() {
             // Tab switching
-            document.querySelectorAll('.nav-link').forEach(link => {
+            document.querySelectorAll('.nav-tabs .nav-link').forEach(link => {
                 link.addEventListener('click', function () {
                     const tab = this.getAttribute('data-tab');
                     switchTab(tab);
@@ -2346,7 +2268,7 @@
             });
 
             // Token selectors
-            document.querySelectorAll('#tokenSelector .token-btn, #tradeTokens .token-btn').forEach(btn => {
+            document.querySelectorAll('#tradeTokens .token-btn').forEach(btn => {
                 btn.addEventListener('click', function () {
                     this.classList.toggle('active');
                 });
@@ -2506,7 +2428,7 @@
             if (!equityChart) return;
 
             const labels = state.portfolio.equityHistory.map(point => new Date(point.timestamp));
-            const data = state.portfolio.equityHistory.map(point => point.equity);
+            const data = state.portfolio.equityHistory.map(point => point.ethValue);
 
             equityChart.data.labels = labels;
             equityChart.data.datasets[0].data = data;
@@ -2518,7 +2440,7 @@
 
             const currentType = equityChart.options.scales.y.type;
             equityChart.options.scales.y.type = currentType === 'linear' ? 'logarithmic' : 'linear';
-            equityChart.options.scales.y.title.text = currentType === 'linear' ? 'Equity (USD, Log)' : 'Equity (USD)';
+            equityChart.options.scales.y.title.text = currentType === 'linear' ? 'ETH Value (Log)' : 'ETH Value';
             equityChart.update();
         }
 
@@ -2832,26 +2754,10 @@
             }
 
             state.settings.executionMode = mode;
-            state.settings.isTestMode = (mode === EXECUTION_MODES.PAPER);
             updateExecutionModeBadge();
             updateConfidenceScore();
             saveSettings();
             log('info', `Execution mode changed to: ${mode}`);
-        }
-
-        function toggleTestMode() {
-            const isChecked = document.getElementById('testModeEnabled').checked;
-            if (isChecked) {
-                document.getElementById('executionModeSelect').value = EXECUTION_MODES.PAPER;
-                state.settings.executionMode = EXECUTION_MODES.PAPER;
-            } else {
-                document.getElementById('executionModeSelect').value = EXECUTION_MODES.SHADOW;
-                state.settings.executionMode = EXECUTION_MODES.SHADOW;
-            }
-            state.settings.isTestMode = isChecked;
-            updateExecutionModeBadge();
-            updateConfidenceScore();
-            saveSettings();
         }
 
         async function startBot() {
@@ -2974,12 +2880,6 @@
                 const priceFeedConnected = activeSession?.connected || false;
                 priceFeedStatus.className = `status-item ${priceFeedConnected ? 'status-connected' : 'status-disconnected'}`;
                 priceFeedStatus.innerHTML = priceFeedConnected ? 'Price Feed &check;' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Price Feed';
-            }
-
-            const priceSource = document.getElementById('priceSource');
-            if (priceSource) {
-                const activeSource = activeSession?.connected ? CHAINS[currentChainKey]?.name || 'Unknown' : 'None';
-                priceSource.textContent = activeSource;
             }
         }
 
@@ -3564,7 +3464,7 @@
                 t1.volumeQuote += volume;
             }
 
-            // Update state prices
+            // Update state prices (in ETH)
             if (p0 != null && t0.symbol) {
                 state.prices[t0.symbol] = p0;
             }
@@ -3647,7 +3547,6 @@
         }
 
         function updateQuoteUI(chain) {
-            // Console log for debugging
             console.log('Quote mode:', chain?.quoteMode, chain?.quoteLabel);
         }
 
@@ -3679,10 +3578,10 @@
         }
 
         // ============================================
-        // Trade Execution with Realistic Simulation
+        // Trade Execution with ETH-Centric Strategy
         // ============================================
 
-        async function executeTrade(token, action, pattern = 'Manual', amountUSD = null) {
+        async function executeTrade(token, action, pattern = 'Manual', amountETH = null) {
             if (!state.isRunning) {
                 log('warn', 'Cannot execute trade: bot is not running');
                 return null;
@@ -3696,13 +3595,13 @@
             }
 
             // Use default trade step if amount not specified
-            if (amountUSD === null) {
-                amountUSD = state.settings.tradeStep;
+            if (amountETH === null) {
+                amountETH = state.settings.tradeStep;
             }
 
             // Check minimum trade amount
-            if (amountUSD < state.settings.minTradeAmount) {
-                log('warn', `Trade amount ${amountUSD} below minimum ${state.settings.minTradeAmount}`);
+            if (amountETH < state.settings.minTradeAmount) {
+                log('warn', `Trade amount ${amountETH} below minimum ${state.settings.minTradeAmount}`);
                 return null;
             }
 
@@ -3745,7 +3644,7 @@
             }
 
             // Calculate token amount
-            const tokenAmount = amountUSD / currentPrice;
+            const tokenAmount = amountETH / currentPrice;
 
             // Get pool info for realistic simulation
             const poolInfo = await getEnhancedPoolInfo(tokenSymbol);
@@ -3771,7 +3670,7 @@
                     action,
                     currentPrice,
                     tokenAmount,
-                    amountUSD,
+                    amountETH,
                     pattern,
                     'failed',
                     tradeResult.reason
@@ -3794,7 +3693,7 @@
                 action,
                 tradeResult.executionPrice,
                 tradeResult.tokenAmount,
-                tradeResult.amountUSD,
+                tradeResult.amountETH,
                 pattern,
                 'open',
                 null,
@@ -3817,8 +3716,8 @@
                 await settleTrade(trade);
             }
 
-            log('info', `Executed ${action} ${tradeResult.tokenAmount.toFixed(6)} ${tokenSymbol} at $${tradeResult.executionPrice.toFixed(2)}`);
-            showNotification('Success', `Executed ${action.toUpperCase()} ${tradeResult.tokenAmount.toFixed(6)} ${tokenSymbol} at $${tradeResult.executionPrice.toFixed(2)}`);
+            log('info', `Executed ${action} ${tradeResult.tokenAmount.toFixed(6)} ${tokenSymbol} at ${tradeResult.executionPrice.toFixed(6)} ETH`);
+            showNotification('Success', `Executed ${action.toUpperCase()} ${tradeResult.tokenAmount.toFixed(6)} ${tokenSymbol} at ${tradeResult.executionPrice.toFixed(6)} ETH`);
 
             updateDashboard();
             updatePortfolioUI();
@@ -3827,7 +3726,7 @@
             return trade;
         }
 
-        function createTradeObject(token, action, price, tokenAmount, amountUSD, pattern, status, reason = null,
+        function createTradeObject(token, action, price, tokenAmount, amountETH, pattern, status, reason = null,
             gasUsed = 0, gasPrice = 0, feeAmount = 0, priceImpact = 0, slippage = 0) {
             const tradeId = 'trade_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             const timestamp = new Date().toISOString();
@@ -3839,7 +3738,7 @@
                 type: action,
                 price: price,
                 tokenAmount: tokenAmount,
-                amountUSD: amountUSD,
+                amountETH: amountETH,
                 fee: feeAmount,
                 gasUsed: gasUsed,
                 gasPrice: gasPrice,
@@ -3859,7 +3758,7 @@
             const result = {
                 success: true,
                 tokenAmount: tokenAmount,
-                amountUSD: tokenAmount * currentPrice,
+                amountETH: tokenAmount * currentPrice,
                 executionPrice: currentPrice,
                 gasUsed: 0,
                 gasPrice: 0,
@@ -3882,7 +3781,7 @@
                 // Calculate fee amount (DEX fee)
                 const feeTier = poolInfo.feeTier || POOL_FEES.MEDIUM;
                 const feePercent = feeTier / 1000000; // Convert to decimal (e.g., 0.003 for 0.3%)
-                result.feeAmount = result.amountUSD * feePercent;
+                result.feeAmount = result.amountETH * feePercent;
 
                 // Calculate price impact based on liquidity
                 result.priceImpact = calculatePriceImpact(token, tokenAmount, poolInfo);
@@ -3908,9 +3807,9 @@
                 }
 
                 // Recalculate amount based on execution price
-                result.amountUSD = tokenAmount * result.executionPrice;
+                result.amountETH = tokenAmount * result.executionPrice;
                 result.tokenAmount = action === 'buy' ?
-                    (result.amountUSD / result.executionPrice) :
+                    (result.amountETH / result.executionPrice) :
                     tokenAmount;
 
                 return result;
@@ -3957,18 +3856,15 @@
 
             // For now, return mock data based on token
             const mockData = {
-                ETH: { liquidity: 50000000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'ETH', decimals0: 18, decimals1: 18 },
-                WBTC: { liquidity: 20000000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'WBTC', decimals0: 18, decimals1: 8 },
-                UNI: { liquidity: 5000000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'UNI', decimals0: 18, decimals1: 18 },
-                LINK: { liquidity: 3000000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'LINK', decimals0: 18, decimals1: 18 },
-                ARB: { liquidity: 10000000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'ARB', decimals0: 18, decimals1: 18 },
-                GMX: { liquidity: 2000000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'GMX', decimals0: 18, decimals1: 18 },
-                USDC: { liquidity: 100000000, feeTier: POOL_FEES.LOW, token0: 'WETH', token1: 'USDC', decimals0: 18, decimals1: 6 },
-                USDT: { liquidity: 80000000, feeTier: POOL_FEES.LOW, token0: 'WETH', token1: 'USDT', decimals0: 18, decimals1: 6 }
+                WBTC: { liquidity: 20000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'WBTC', decimals0: 18, decimals1: 8 },
+                UNI: { liquidity: 50000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'UNI', decimals0: 18, decimals1: 18 },
+                LINK: { liquidity: 30000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'LINK', decimals0: 18, decimals1: 18 },
+                ARB: { liquidity: 100000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'ARB', decimals0: 18, decimals1: 18 },
+                GMX: { liquidity: 20000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'GMX', decimals0: 18, decimals1: 18 }
             };
 
             return mockData[token] || {
-                liquidity: 1000000,
+                liquidity: 10000,
                 feeTier: POOL_FEES.MEDIUM,
                 token0: 'WETH',
                 token1: token,
@@ -3980,11 +3876,11 @@
         function calculatePriceImpact(token, tokenAmount, poolInfo) {
             // Calculate price impact based on trade size relative to pool liquidity
             const tokenValue = tokenAmount * (state.prices[token] || 0);
-            const liquidityUSD = poolInfo.liquidity * (state.prices[token] || 0);
+            const liquidityETH = poolInfo.liquidity;
 
-            if (liquidityUSD <= 0) return 0;
+            if (liquidityETH <= 0) return 0;
 
-            const tradeSizeRatio = tokenValue / liquidityUSD;
+            const tradeSizeRatio = tokenValue / liquidityETH;
             // Price impact formula: impact = tradeSizeRatio * tradeSizeRatio * 100
             // This is a simplified model - real impact would depend on pool curve
             const priceImpact = Math.min(tradeSizeRatio * tradeSizeRatio * 100, 10); // Cap at 10%
@@ -3995,27 +3891,21 @@
         function updatePortfolioForTrade(trade, action, tradeResult) {
             const token = trade.token;
             const tokenSymbol = token;
-            const tokenAddress = getTokenAddressFromSymbol(tokenSymbol);
 
             // For shadow and paper modes, we track virtual balances
             if (state.settings.executionMode !== EXECUTION_MODES.LIVE) {
                 if (action === 'buy') {
-                    // Deduct USD value from stablecoin balance
-                    const usdcBalance = state.portfolio.balances['USDC'] || 0;
-                    const usdtBalance = state.portfolio.balances['USDT'] || 0;
-
-                    // Try to deduct from USDC first
-                    if (usdcBalance >= tradeResult.amountUSD) {
-                        state.portfolio.balances['USDC'] = usdcBalance - tradeResult.amountUSD;
-                    } else if (usdtBalance >= tradeResult.amountUSD) {
-                        state.portfolio.balances['USDT'] = usdtBalance - tradeResult.amountUSD;
-                    } else {
-                        // Not enough stablecoins - trade fails
+                    // Deduct ETH for the trade
+                    const ethBalance = state.portfolio.balances['ETH'] || 0;
+                    if (ethBalance < tradeResult.amountETH) {
+                        // Not enough ETH - trade fails
                         trade.status = 'failed';
-                        trade.reason = 'Insufficient funds';
+                        trade.reason = 'Insufficient ETH';
                         state.portfolio.failedTrades++;
                         return;
                     }
+
+                    state.portfolio.balances['ETH'] = ethBalance - tradeResult.amountETH;
 
                     // Add token to balances
                     if (!state.portfolio.balances[tokenSymbol]) {
@@ -4029,10 +3919,10 @@
                         token: tokenSymbol,
                         entryPrice: tradeResult.executionPrice,
                         amount: tradeResult.tokenAmount,
-                        usdValue: tradeResult.amountUSD,
+                        usdValue: tradeResult.amountETH,
                         entryTime: Date.now(),
                         gasPaid: tradeResult.gasUsed * tradeResult.gasPrice / 1e9 / 1e18, // ETH
-                        feesPaid: tradeResult.feeAmount / (state.prices.ETH || 3000), // Convert to ETH
+                        feesPaid: tradeResult.feeAmount, // in ETH
                         status: 'open',
                         tradeId: trade.id
                     };
@@ -4041,7 +3931,7 @@
                     // Track gas and fees
                     state.portfolio.gasSpent += position.gasPaid;
                     state.portfolio.feesPaid += position.feesPaid;
-                    state.portfolio.totalFees += (position.gasPaid + position.feesPaid) * (state.prices.ETH || 3000);
+                    state.portfolio.totalFees += (position.gasPaid + position.feesPaid);
 
                 } else if (action === 'sell') {
                     // Find matching position to close
@@ -4052,12 +3942,12 @@
                     if (positionIndex >= 0) {
                         const position = state.portfolio.positions[positionIndex];
 
-                        // Calculate PnL
+                        // Calculate PnL in ETH
                         const pnl = (tradeResult.tokenAmount * tradeResult.executionPrice) -
                             (position.amount * position.entryPrice) -
                             position.feesPaid -
                             (tradeResult.gasUsed * tradeResult.gasPrice / 1e9 / 1e18) -
-                            (tradeResult.feeAmount / (state.prices.ETH || 3000));
+                            tradeResult.feeAmount;
 
                         // Update position
                         position.status = 'closed';
@@ -4069,9 +3959,9 @@
                         // Update portfolio
                         state.portfolio.realizedPnL += pnl;
 
-                        // Add USD value to stablecoin balance
-                        const usdValue = tradeResult.tokenAmount * tradeResult.executionPrice;
-                        state.portfolio.balances['USDC'] = (state.portfolio.balances['USDC'] || 0) + usdValue;
+                        // Add ETH from the sale
+                        const ethValue = tradeResult.tokenAmount * tradeResult.executionPrice;
+                        state.portfolio.balances['ETH'] = (state.portfolio.balances['ETH'] || 0) + ethValue;
 
                         // Update trade
                         trade.pnl = pnl;
@@ -4084,10 +3974,10 @@
 
                         // Track gas and fees for this trade
                         const gasCostETH = tradeResult.gasUsed * tradeResult.gasPrice / 1e9 / 1e18;
-                        const feeCostETH = tradeResult.feeAmount / (state.prices.ETH || 3000);
+                        const feeCostETH = tradeResult.feeAmount;
                         state.portfolio.gasSpent += gasCostETH;
                         state.portfolio.feesPaid += feeCostETH;
-                        state.portfolio.totalFees += (gasCostETH + feeCostETH) * (state.prices.ETH || 3000);
+                        state.portfolio.totalFees += (gasCostETH + feeCostETH);
                     } else {
                         // No matching position - this shouldn't happen in normal operation
                         trade.status = 'failed';
@@ -4213,25 +4103,15 @@
         }
 
         function parsePatterns(patternString) {
-            // Simple pattern parsing - in a real implementation, this would be more sophisticated
             if (!patternString) return [];
-
-            // Split by common delimiters
-            const patterns = patternString.split(/[,&;]+/).map(p => p.trim()).filter(p => p);
-
-            return patterns;
+            return patternString.split(/[,&;]+/).map(p => p.trim()).filter(p => p);
         }
 
         function matchesPattern(changePct, pattern, action) {
-            // Very simple pattern matching for demo purposes
-            // In a real implementation, this would parse the pattern string properly
-
             if (action === 'buy') {
-                // Buy patterns typically trigger on negative changes
-                return changePct < -0.5; // Example: buy if price drops more than 0.5%
+                return changePct < -0.5;
             } else {
-                // Sell patterns typically trigger on positive changes
-                return changePct > 0.5; // Example: sell if price rises more than 0.5%
+                return changePct > 0.5;
             }
         }
 
@@ -4260,126 +4140,6 @@
             state.settings.sellPatterns = document.getElementById('sellPatterns').value;
             saveSettings();
             validatePatterns();
-        }
-
-        // ============================================
-        // Trade Simulation (UI)
-        // ============================================
-
-        async function simulateTrade() {
-            const token = document.getElementById('simToken').value;
-            const action = document.getElementById('simAction').value;
-            const amountUSD = parseFloat(document.getElementById('simAmount').value);
-            const slippage = parseFloat(document.getElementById('simSlippage').value);
-
-            if (!token || !action || !amountUSD || amountUSD <= 0) {
-                showNotification('Error', 'Please fill in all fields');
-                return;
-            }
-
-            showLoading('simSpinner');
-            document.getElementById('simulationResult').innerHTML = '<div class="alert alert-info">Simulating trade...</div>';
-
-            try {
-                // Get current price
-                const currentPrice = state.prices[token];
-                if (!currentPrice) throw new Error(`No price available for ${token}`);
-
-                // Get pool info
-                const poolInfo = await getEnhancedPoolInfo(token);
-                if (!poolInfo) throw new Error(`Could not get pool info for ${token}`);
-
-                // Simulate the trade
-                const result = await simulateRealisticTrade(
-                    token,
-                    action,
-                    amountUSD / currentPrice,
-                    currentPrice,
-                    poolInfo,
-                    0 // No latency for manual simulation
-                );
-
-                if (!result.success) {
-                    document.getElementById('simulationResult').innerHTML =
-                        `<div class="alert alert-danger">Simulation failed: ${result.reason}</div>`;
-                    return;
-                }
-
-                // Calculate additional metrics
-                const gasPriceGwei = activeSession?.gasPrice || state.settings.maxGasPrice;
-                const gasCostETH = result.gasUsed * gasPriceGwei / 1e9 / 1e18;
-                const gasCostUSD = gasCostETH * (state.prices.ETH || 3000);
-                const feeCostUSD = result.feeAmount;
-                const totalCost = result.amountUSD + gasCostUSD + feeCostUSD;
-
-                // Format results
-                let html = '<div class="alert alert-success">Trade Simulation Complete</div>';
-                html += '<table class="table table-striped"><tbody>';
-                html += `<tr><td><strong>Action:</strong></td><td>${action.toUpperCase()} ${token}</td></tr>`;
-                html += `<tr><td><strong>Amount:</strong></td><td>$${amountUSD.toFixed(2)} (${result.tokenAmount.toFixed(6)} ${token})</td></tr>`;
-                html += `<tr><td><strong>Current Price:</strong></td><td>$${currentPrice.toFixed(2)}</td></tr>`;
-                html += `<tr><td><strong>Execution Price:</strong></td><td>$${result.executionPrice.toFixed(2)}</td></tr>`;
-                html += `<tr><td><strong>Price Impact:</strong></td><td>${result.priceImpact.toFixed(4)}%</td></tr>`;
-                html += `<tr><td><strong>Slippage:</strong></td><td>${result.slippage.toFixed(4)}%</td></tr>`;
-                html += `<tr><td><strong>Pool Fee (${(poolInfo.feeTier / 10000).toFixed(2)}%):</strong></td><td>$${result.feeAmount.toFixed(2)}</td></tr>`;
-                html += `<tr><td><strong>Gas Used:</strong></td><td>${result.gasUsed.toFixed(0)}</td></tr>`;
-                html += `<tr><td><strong>Gas Price:</strong></td><td>${result.gasPrice.toFixed(2)} gwei</td></tr>`;
-                html += `<tr><td><strong>Gas Cost:</strong></td><td>${gasCostETH.toFixed(6)} ETH (~$${gasCostUSD.toFixed(2)})</td></tr>`;
-                html += `<tr><td><strong>Total Cost:</strong></td><td>$${totalCost.toFixed(2)}</td></tr>`;
-
-                if (action === 'buy') {
-                    html += `<tr><td><strong>Tokens Received:</strong></td><td>${result.tokenAmount.toFixed(6)} ${token}</td></tr>`;
-                } else {
-                    html += `<tr><td><strong>Tokens Sold:</strong></td><td>${result.tokenAmount.toFixed(6)} ${token}</td></tr>`;
-                }
-
-                html += '</tbody></table>';
-
-                // Show execute button for paper/shadow modes
-                if (state.settings.executionMode !== EXECUTION_MODES.LIVE) {
-                    html += `<div class="mt-2">
-                        <button class="btn btn-success btn-sm" onclick="confirmSimulationTrade('${token}', '${action}', ${amountUSD})">
-                            Execute This Trade
-                        </button>
-                    </div>`;
-                }
-
-                document.getElementById('simulationResult').innerHTML = html;
-                log('info', `Trade simulation: ${action} ${result.tokenAmount.toFixed(6)} ${token} at $${result.executionPrice.toFixed(2)}`);
-
-            } catch (error) {
-                console.error('Simulation error:', error);
-                document.getElementById('simulationResult').innerHTML =
-                    `<div class="alert alert-danger">Simulation failed: ${error.message}</div>`;
-                log('error', `Simulation failed: ${error.message}`);
-            } finally {
-                hideLoading('simSpinner');
-            }
-        }
-
-        async function confirmSimulationTrade(token, action, amountUSD) {
-            closeTxModal();
-            await executeTrade(token, action, 'Manual', amountUSD);
-        }
-
-        async function executeManualTrade(token, action) {
-            if (!state.isConnected && state.settings.executionMode === EXECUTION_MODES.LIVE) {
-                showNotification('Error', 'Wallet not connected for live trading');
-                return;
-            }
-
-            const amountUSD = parseFloat(prompt('Enter trade amount in USD:', state.settings.tradeStep || '50'));
-            if (!amountUSD || amountUSD <= 0) return;
-
-            showTxModal(`Confirm ${action.toUpperCase()} ${token} for $${amountUSD}`);
-            window.currentTrade = { token, action, amountUSD };
-        }
-
-        async function confirmTransaction() {
-            closeTxModal();
-            const { token, action, amountUSD } = window.currentTrade;
-            if (!token || !action || !amountUSD) return;
-            await executeTrade(token, action, 'Manual', amountUSD);
         }
 
         // ============================================
@@ -4438,9 +4198,9 @@
                 html += `
                 <tr>
                     <td><strong>${esc(t.symbol)}</strong></td>
-                    <td>$${t.priceQuote != null ? fp(t.priceQuote) : '<span class="text-secondary">No quote</span>'}</td>
+                    <td>${t.priceQuote != null ? fp(t.priceQuote) : '<span class="text-secondary">No quote</span>'}</td>
                     <td class="price-change ${changeClass}">${changeSymbol} ${Math.abs(change15m || 0).toFixed(2)}%</td>
-                    <td class="pool-info">$${compact(t.volumeQuote)}</td>
+                    <td class="pool-info">${compact(t.volumeQuote)}</td>
                     <td>${feeTier}</td>
                     <td>
                         <button class="btn btn-primary btn-xs" onclick="executeTrade('${t.symbol}', 'buy')">Buy</button>
@@ -4468,19 +4228,15 @@
                 }
             }
 
-            // Return default based on token
             const defaults = {
-                ETH: { feeTier: POOL_FEES.MEDIUM, liquidity: 50000000 },
-                WBTC: { feeTier: POOL_FEES.MEDIUM, liquidity: 20000000 },
-                UNI: { feeTier: POOL_FEES.MEDIUM, liquidity: 5000000 },
-                LINK: { feeTier: POOL_FEES.MEDIUM, liquidity: 3000000 },
-                ARB: { feeTier: POOL_FEES.MEDIUM, liquidity: 10000000 },
-                GMX: { feeTier: POOL_FEES.MEDIUM, liquidity: 2000000 },
-                USDC: { feeTier: POOL_FEES.LOW, liquidity: 100000000 },
-                USDT: { feeTier: POOL_FEES.LOW, liquidity: 80000000 }
+                WBTC: { feeTier: POOL_FEES.MEDIUM, liquidity: 20000 },
+                UNI: { feeTier: POOL_FEES.MEDIUM, liquidity: 50000 },
+                LINK: { feeTier: POOL_FEES.MEDIUM, liquidity: 30000 },
+                ARB: { feeTier: POOL_FEES.MEDIUM, liquidity: 100000 },
+                GMX: { feeTier: POOL_FEES.MEDIUM, liquidity: 20000 }
             };
 
-            return defaults[token] || { feeTier: POOL_FEES.MEDIUM, liquidity: 1000000 };
+            return defaults[token] || { feeTier: POOL_FEES.MEDIUM, liquidity: 10000 };
         }
 
         function updateStats(s = activeSession) {
@@ -4547,7 +4303,7 @@
             }
 
             document.getElementById('activeCount').textContent = openPositions.length;
-            let html = '<table class="table table-striped"><thead><tr><th>Token</th><th>Entry Price</th><th>Amount</th><th>Value</th><th>Unrealized PnL</th><th>Pattern</th></tr></thead><tbody>';
+            let html = '<table class="table table-striped"><thead><tr><th>Token</th><th>Entry Price (ETH)</th><th>Amount</th><th>Value (ETH)</th><th>Unrealized PnL (ETH)</th><th>Pattern</th></tr></thead><tbody>';
 
             openPositions.forEach(position => {
                 const currentPrice = state.prices[position.token] || position.entryPrice;
@@ -4560,11 +4316,11 @@
                 html += `
                 <tr>
                     <td><strong>${position.token}</strong></td>
-                    <td>$${position.entryPrice.toFixed(2)}</td>
+                    <td>${position.entryPrice.toFixed(6)}</td>
                     <td>${position.amount.toFixed(6)}</td>
-                    <td>$${currentValue.toFixed(2)}</td>
+                    <td>${currentValue.toFixed(6)}</td>
                     <td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">
-                        $${unrealizedPnL.toFixed(2)} (${((unrealizedPnL / (position.amount * position.entryPrice)) * 100).toFixed(2)}%)
+                        ${unrealizedPnL.toFixed(6)} (${((unrealizedPnL / (position.amount * position.entryPrice)) * 100).toFixed(2)}%)
                     </td>
                     <td><small>${trade?.pattern || 'Manual'}</small></td>
                 </tr>`;
@@ -4596,10 +4352,10 @@
                     <td>${new Date(trade.timestamp).toLocaleTimeString()}</td>
                     <td><strong>${trade.token}</strong></td>
                     <td><span class="badge badge-${trade.type === 'buy' ? 'success' : 'danger'}">${trade.type.toUpperCase()}</span></td>
-                    <td>$${trade.price.toFixed(2)}</td>
+                    <td>${trade.price.toFixed(6)}</td>
                     <td>${trade.tokenAmount.toFixed(6)}</td>
                     <td><span class="badge ${statusClass}">${statusText}</span></td>
-                    <td class="${pnlClass}">$${trade.pnl.toFixed(2)}</td>
+                    <td class="${pnlClass}">${trade.pnl.toFixed(6)}</td>
                 </tr>`;
             });
 
@@ -4610,7 +4366,7 @@
             const netPnL = state.portfolio.realizedPnL + state.portfolio.unrealizedPnL;
 
             if (document.getElementById('totalPnL') != null) {
-                document.getElementById('totalPnL').textContent = '$' + netPnL.toFixed(2);
+                document.getElementById('totalPnL').textContent = netPnL.toFixed(6) + ' ETH';
                 document.getElementById('totalPnL').className = netPnL >= 0 ? 'price-up' : 'price-down';
             }
 
@@ -4630,15 +4386,6 @@
             const monthlyPnL = state.trades
                 .filter(t => new Date(t.closedAt || t.timestamp) >= monthStart && t.status === 'closed')
                 .reduce((sum, trade) => sum + trade.pnl, 0);
-
-            if (document.getElementById('dailyPnL') != null) {
-                document.getElementById('dailyPnL').textContent = '$' + dailyPnL.toFixed(2);
-                document.getElementById('dailyPnL').className = dailyPnL >= 0 ? 'price-up' : 'price-down';
-                document.getElementById('weeklyPnL').textContent = '$' + weeklyPnL.toFixed(2);
-                document.getElementById('weeklyPnL').className = weeklyPnL >= 0 ? 'price-up' : 'price-down';
-                document.getElementById('monthlyPnL').textContent = '$' + monthlyPnL.toFixed(2);
-                document.getElementById('monthlyPnL').className = monthlyPnL >= 0 ? 'price-up' : 'price-down';
-            }
         }
 
         function updateStatistics() {
@@ -4653,21 +4400,21 @@
             document.getElementById('winRate').textContent = winRate;
 
             const avgProfit = closedTrades.length > 0 ?
-                (closedTrades.reduce((sum, t) => sum + t.pnl, 0) / closedTrades.length).toFixed(2) : '0.00';
-            document.getElementById('avgProfit').textContent = '$' + avgProfit;
+                (closedTrades.reduce((sum, t) => sum + t.pnl, 0) / closedTrades.length).toFixed(6) + ' ETH' : '0.00 ETH';
+            document.getElementById('avgProfit').textContent = avgProfit;
 
             let maxDrawdown = 0;
-            let runningMax = state.portfolio.startingEquity;
-            let runningEquity = state.portfolio.startingEquity;
+            let runningMax = state.portfolio.startingEth;
+            let runningEquity = state.portfolio.startingEth;
 
             state.portfolio.equityHistory.forEach(point => {
-                runningEquity = point.equity;
+                runningEquity = point.ethValue;
                 if (runningEquity > runningMax) runningMax = runningEquity;
                 const drawdown = runningMax - runningEquity;
                 if (drawdown > maxDrawdown) maxDrawdown = drawdown;
             });
 
-            document.getElementById('maxDrawdown').textContent = '$' + maxDrawdown.toFixed(2);
+            document.getElementById('maxDrawdown').textContent = maxDrawdown.toFixed(6) + ' ETH';
 
             const grossProfit = winningTrades.reduce((sum, t) => sum + t.pnl, 0);
             const grossLoss = Math.abs(losingTrades.reduce((sum, t) => sum + t.pnl, 0));
@@ -4685,12 +4432,12 @@
                 state.startTime && new Date(t.timestamp) >= state.startTime && t.status === 'closed' && t.pnl !== undefined
             ).reduce((sum, t) => sum + t.pnl, 0);
 
-            document.getElementById('sessionPnL').textContent = '$' + sessionPnL.toFixed(2);
+            document.getElementById('sessionPnL').textContent = sessionPnL.toFixed(6) + ' ETH';
 
             const bestTrade = Math.max(...closedTrades.map(t => t.pnl), 0);
             const worstTrade = Math.min(...closedTrades.map(t => t.pnl), 0);
-            document.getElementById('bestTrade').textContent = '$' + bestTrade.toFixed(2);
-            document.getElementById('worstTrade').textContent = '$' + worstTrade.toFixed(2);
+            document.getElementById('bestTrade').textContent = bestTrade.toFixed(6) + ' ETH';
+            document.getElementById('worstTrade').textContent = worstTrade.toFixed(6) + ' ETH';
 
             const tokenPnL = {};
             const tokenTrades = {};
@@ -4720,13 +4467,13 @@
             if (bestToken) {
                 const winRate = (tokenWinRates[bestToken].wins / tokenWinRates[bestToken].total * 100).toFixed(1) + '%';
                 document.getElementById('bestToken').textContent = bestToken;
-                document.getElementById('bestTokenPnL').textContent = '$' + bestTokenPnL.toFixed(2);
+                document.getElementById('bestTokenPnL').textContent = bestTokenPnL.toFixed(6) + ' ETH';
                 document.getElementById('bestTokenWinRate').textContent = winRate;
                 document.getElementById('bestTokenTrades').textContent = tokenTrades[bestToken] || 0;
             }
 
             // Update history tab fees
-            document.getElementById('historyTotalFees').textContent = '$' + state.portfolio.totalFees.toFixed(2);
+            document.getElementById('historyTotalFees').textContent = state.portfolio.totalFees.toFixed(6) + ' ETH';
 
             // Update session success rate
             const sessionSuccessRate = sessionTrades > 0 ?
@@ -4760,12 +4507,12 @@
                     <td>${new Date(trade.timestamp).toLocaleString()}</td>
                     <td><strong>${trade.token || 'N/A'}</strong></td>
                     <td><span class="badge badge-${trade.type === 'buy' ? 'success' : 'danger'}">${(trade.type || 'N/A').toUpperCase()}</span></td>
-                    <td>$${(trade.price || 0).toFixed(2)}</td>
+                    <td>${(trade.price || 0).toFixed(6)}</td>
                     <td>${(trade.tokenAmount || 0).toFixed(6)}</td>
-                    <td>$${(trade.fee || 0).toFixed(4)}</td>
+                    <td>${(trade.fee || 0).toFixed(6)}</td>
                     <td>${trade.gasUsed ? trade.gasUsed.toFixed(0) : 'N/A'}</td>
                     <td><span class="badge ${statusClass}">${statusText}</span></td>
-                    <td class="${pnlClass}">$${(trade.pnl || 0).toFixed(2)}</td>
+                    <td class="${pnlClass}">${(trade.pnl || 0).toFixed(6)}</td>
                 </tr>`;
             });
 
@@ -4777,17 +4524,17 @@
                 'Timestamp': trade.timestamp,
                 'Token': trade.token,
                 'Type': trade.type,
-                'Price': trade.price,
+                'Price (ETH)': trade.price,
                 'Amount (Token)': trade.tokenAmount,
-                'Amount (USD)': trade.amountUSD,
-                'Fee (USD)': trade.fee,
+                'Amount (ETH)': trade.amountETH,
+                'Fee (ETH)': trade.fee,
                 'Gas Used': trade.gasUsed,
                 'Gas Price (gwei)': trade.gasPrice,
                 'Price Impact (%)': trade.priceImpact,
                 'Slippage (%)': trade.slippage,
                 'Status': trade.status,
                 'Reason': trade.reason || '',
-                'PnL': trade.pnl,
+                'PnL (ETH)': trade.pnl,
                 'Pattern': trade.pattern || '',
                 'Tx Hash': trade.txHash || '',
                 'Network': trade.network || ''
@@ -4830,9 +4577,9 @@
             state.portfolio.failedTrades = 0;
             state.portfolio.equityHistory = [{
                 timestamp: Date.now(),
-                equity: state.portfolio.startingEquity
+                ethValue: state.portfolio.startingEth
             }];
-            state.portfolio.currentEquity = state.portfolio.startingEquity;
+            state.portfolio.currentEth = state.portfolio.startingEth;
 
             saveAllTrades();
             renderFullTradeHistory();
@@ -5060,7 +4807,7 @@
             const equitySelect = document.getElementById('startingEquitySelect');
             state.settings.startingEquity = equitySelect.value;
             if (equitySelect.value === 'custom') {
-                state.settings.startingEquity = `custom_${document.getElementById('customStartingEquity').value}_${document.getElementById('customEquityToken').value}`;
+                state.settings.startingEquity = `custom_${document.getElementById('customStartingEquity').value}`;
             }
 
             saveSettings();
@@ -5117,7 +4864,6 @@
                 }
                 if (savedTrades) {
                     state.trades = savedTrades;
-                    // Reconstruct portfolio from trades
                     reconstructPortfolioFromTrades();
                 }
                 if (savedLogs) {
@@ -5137,9 +4883,6 @@
         }
 
         function reconstructPortfolioFromTrades() {
-            // This is a simplified reconstruction
-            // In a real implementation, you'd want to properly rebuild the portfolio state
-
             state.portfolio = {
                 balances: {},
                 positions: [],
@@ -5147,11 +4890,11 @@
                 unrealizedPnL: 0,
                 gasSpent: 0,
                 feesPaid: 0,
-                startingEquity: state.settings.totalTradeCapital || 1000,
-                currentEquity: state.settings.totalTradeCapital || 1000,
+                startingEth: state.settings.totalTradeCapital || 1.0,
+                currentEth: state.settings.totalTradeCapital || 1.0,
                 equityHistory: [{
                     timestamp: Date.now(),
-                    equity: state.settings.totalTradeCapital || 1000
+                    ethValue: state.settings.totalTradeCapital || 1.0
                 }],
                 totalTrades: state.trades.length,
                 winningTrades: state.trades.filter(t => t.pnl > 0).length,
@@ -5160,18 +4903,16 @@
                 totalFees: 0
             };
 
-            // This is a placeholder - a full reconstruction would be more complex
             log('info', 'Portfolio state reconstructed from trade history (simplified)');
         }
 
         function updateSettingsUI() {
             document.getElementById('buyPatterns').value = state.settings.buyPatterns || '';
             document.getElementById('sellPatterns').value = state.settings.sellPatterns || '';
-            document.getElementById('totalTradeCapital').value = state.settings.totalTradeCapital || 1000;
-            document.getElementById('minTradeAmount').value = state.settings.minTradeAmount || 10;
-            document.getElementById('tradeStep').value = state.settings.tradeStep || 50;
+            document.getElementById('totalTradeCapital').value = state.settings.totalTradeCapital || 1.0;
+            document.getElementById('minTradeAmount').value = state.settings.minTradeAmount || 0.01;
+            document.getElementById('tradeStep').value = state.settings.tradeStep || 0.05;
             document.getElementById('profitAddress').value = state.settings.profitAddress || '';
-            document.getElementById('testModeEnabled').checked = state.settings.isTestMode || false;
             document.getElementById('maxTrades').value = state.settings.maxTrades || 5;
             document.getElementById('stopLoss').value = state.settings.stopLoss || 2;
             document.getElementById('takeProfit').value = state.settings.takeProfit || 5;
@@ -5196,13 +4937,12 @@
             document.getElementById('latencySimulation').value = state.settings.latencySimulation || '150-1200';
 
             // Starting equity
-            document.getElementById('startingEquitySelect').value = state.settings.startingEquity || 'USDC_1000';
+            document.getElementById('startingEquitySelect').value = state.settings.startingEquity || 'ETH_1.0';
             if (state.settings.startingEquity && state.settings.startingEquity.startsWith('custom')) {
                 document.getElementById('customEquityGroup').style.display = 'block';
                 const parts = state.settings.startingEquity.split('_');
-                if (parts.length >= 3) {
+                if (parts.length >= 2) {
                     document.getElementById('customStartingEquity').value = parts[1];
-                    document.getElementById('customEquityToken').value = parts[2];
                 }
             } else {
                 document.getElementById('customEquityGroup').style.display = 'none';
@@ -5351,11 +5091,11 @@
                     unrealizedPnL: 0,
                     gasSpent: 0,
                     feesPaid: 0,
-                    startingEquity: 1000,
-                    currentEquity: 1000,
+                    startingEth: 1.0,
+                    currentEth: 1.0,
                     equityHistory: [{
                         timestamp: Date.now(),
-                        equity: 1000
+                        ethValue: 1.0
                     }],
                     totalTrades: 0,
                     winningTrades: 0,
@@ -5455,13 +5195,11 @@
             try {
                 log('info', 'Fetching available tokens...');
 
-                // Use fallback token list for now
-                AVAILABLE_TOKENS = ['ETH', 'WBTC', 'USDC', 'USDT', 'UNI', 'LINK', 'ARB', 'GMX'];
+                // Use ETH-centric token list
+                AVAILABLE_TOKENS = ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX'];
                 TOKENS = {
                     ETH: { address: null, decimals: 18, symbol: 'ETH', isNative: true, name: 'Ethereum' },
                     WBTC: { address: CONTRACTS.arbitrum.wbtc, decimals: 8, symbol: 'WBTC', name: 'Wrapped Bitcoin' },
-                    USDC: { address: CONTRACTS.arbitrum.usdc, decimals: 6, symbol: 'USDC', name: 'USD Coin' },
-                    USDT: { address: CONTRACTS.arbitrum.usdt, decimals: 6, symbol: 'USDT', name: 'Tether' },
                     UNI: { address: CONTRACTS.arbitrum.uni, decimals: 18, symbol: 'UNI', name: 'Uniswap' },
                     LINK: { address: CONTRACTS.arbitrum.link, decimals: 18, symbol: 'LINK', name: 'Chainlink' },
                     ARB: { address: CONTRACTS.arbitrum.arb, decimals: 18, symbol: 'ARB', name: 'Arbitrum' },
@@ -5476,7 +5214,7 @@
             } catch (error) {
                 console.error('Error fetching tokens:', error);
                 log('warn', `Failed to fetch tokens: ${error.message}. Using fallback list.`);
-                AVAILABLE_TOKENS = ['ETH', 'WBTC', 'USDC', 'USDT', 'UNI', 'LINK', 'ARB', 'GMX'];
+                AVAILABLE_TOKENS = ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX'];
                 updateTokenSelectors();
             }
         }
