@@ -684,6 +684,16 @@
             background: rgba(220, 53, 69, 0.2);
             color: var(--bs-danger);
         }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .setting-description {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
     </style>
 </head>
 
@@ -1071,7 +1081,7 @@
                                 <label class="form-label">Buy Patterns</label>
                                 <textarea class="form-control pattern-input" id="buyPatterns" rows="3"
                                     placeholder="Enter buy patterns (e.g., &lt;_-0.5_150-450)&amp;(&lt;_-1.5_150-450)"></textarea>
-                                <small class="text-secondary mt-1">Define conditions that trigger a buy. Format:
+                                <small class="setting-description">Define conditions that trigger a buy. Format:
                                     &lt;_[-percentage]_minSec-maxSec. Example: &lt;_-0.5_150-450 buys if price drops
                                     0.5% over 150-450 seconds.</small>
                             </div>
@@ -1080,7 +1090,7 @@
                                 <label class="form-label">Sell Patterns</label>
                                 <textarea class="form-control pattern-input" id="sellPatterns" rows="3"
                                     placeholder="Enter sell patterns"></textarea>
-                                <small class="text-secondary mt-1">Define conditions that trigger a sell. Format:
+                                <small class="setting-description">Define conditions that trigger a sell. Format:
                                     &gt;_[+percentage]_minSec-maxSec. Example: &gt;_+0.5_60-300 sells if price rises
                                     0.5% over 60-300 seconds.</small>
                             </div>
@@ -1094,7 +1104,7 @@
                                         <label class="form-label">Max Slippage (%)</label>
                                         <input type="number" class="form-control" id="maxSlippage" value="0.5" min="0.1"
                                             max="10" step="0.1">
-                                        <small class="text-secondary mt-1">Maximum allowed slippage before trade is
+                                        <small class="setting-description">Maximum allowed slippage before trade is
                                             rejected.</small>
                                     </div>
                                     <div class="form-group">
@@ -1105,7 +1115,7 @@
                                             <option value="500-2000">High (500-2000ms)</option>
                                             <option value="1000-3000">Extreme (1000-3000ms)</option>
                                         </select>
-                                        <small class="text-secondary mt-1">Simulate network latency for more realistic
+                                        <small class="setting-description">Simulate network latency for more realistic
                                             testing.</small>
                                     </div>
                                 </div>
@@ -1118,21 +1128,21 @@
                             <label class="form-label">Total Trade Capital (ETH)</label>
                             <input type="number" class="form-control" id="totalTradeCapital" value="1.0" min="0.01"
                                 step="0.01">
-                            <small class="text-secondary mt-1">Total amount of ETH available for trading across all
+                            <small class="setting-description">Total amount of ETH available for trading across all
                                 positions.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Trade Step (ETH)</label>
                             <input type="number" class="form-control" id="tradeStep" value="0.05" min="0.001"
                                 step="0.001">
-                            <small class="text-secondary mt-1">Fixed amount in ETH to allocate per individual
+                            <small class="setting-description">Fixed amount in ETH to allocate per individual
                                 trade.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Min Trade Amount (ETH)</label>
                             <input type="number" class="form-control" id="minTradeAmount" value="0.01" min="0.001"
                                 step="0.001">
-                            <small class="text-secondary mt-1">Minimum ETH value required to execute a trade.</small>
+                            <small class="setting-description">Minimum ETH value required to execute a trade.</small>
                         </div>
                     </div>
 
@@ -1140,20 +1150,20 @@
                         <div class="form-group">
                             <label class="form-label">Max Open Trades</label>
                             <input type="number" class="form-control" id="maxTrades" value="5" min="1" max="20">
-                            <small class="text-secondary mt-1">Maximum number of simultaneous open positions
+                            <small class="setting-description">Maximum number of simultaneous open positions
                                 allowed.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Cooldown (sec)</label>
                             <input type="number" class="form-control" id="tradeCooldown" value="60" min="0">
-                            <small class="text-secondary mt-1">Waiting period between consecutive trades on the same
+                            <small class="setting-description">Waiting period between consecutive trades on the same
                                 token.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Stop Loss (%)</label>
                             <input type="number" class="form-control" id="stopLoss" value="2" min="0" max="100"
                                 step="0.1">
-                            <small class="text-secondary mt-1">Percentage drop from entry price that automatically
+                            <small class="setting-description">Percentage drop from entry price that automatically
                                 closes a position.</small>
                         </div>
                     </div>
@@ -1163,14 +1173,14 @@
                             <label class="form-label">Take Profit (%)</label>
                             <input type="number" class="form-control" id="takeProfit" value="5" min="0" max="100"
                                 step="0.1">
-                            <small class="text-secondary mt-1">Percentage gain from entry price that automatically
+                            <small class="setting-description">Percentage gain from entry price that automatically
                                 closes a position.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Trailing Stop (%)</label>
                             <input type="number" class="form-control" id="trailingStop" value="1" min="0" max="100"
                                 step="0.1">
-                            <small class="text-secondary mt-1">Dynamic stop loss that follows the price upward.</small>
+                            <small class="setting-description">Dynamic stop loss that follows the price upward.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Starting ETH</label>
@@ -1398,7 +1408,7 @@
                             <button class="btn btn-danger btn-sm" id="disconnectWalletBtn" onclick="disconnectWallet()"
                                 style="display:none;">Disconnect</button>
                         </div>
-                        <small class="text-secondary mt-1">Connect your Web3 wallet to enable live trading and interact
+                        <small class="setting-description">Connect your Web3 wallet to enable live trading and interact
                             with the blockchain.</small>
                         <div id="walletInfo" class="mt-1"></div>
                     </div>
@@ -1413,23 +1423,24 @@
                             <option value="optimism">Optimism</option>
                             <option value="polygon">Polygon</option>
                         </select>
-                        <small class="text-secondary mt-1">Select the blockchain network where your tokens and trades
+                        <small class="setting-description">Select the blockchain network where your tokens and trades
                             will operate.</small>
-                        <small class="text-secondary">Current: <span id="currentNetwork">Arbitrum One</span></small>
+                        <small class="setting-description">Current: <span id="currentNetwork">Arbitrum
+                                One</span></small>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">Uniswap Router</label>
                         <input type="text" class="form-control" id="routerAddress"
                             value="0xE592427A0AEce92De3Edee1F18E0157C05861564" readonly>
-                        <small class="text-secondary mt-1">The official Uniswap V3 smart contract address for the
+                        <small class="setting-description">The official Uniswap V3 smart contract address for the
                             selected network.</small>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">Profit Address (ETH)</label>
                         <input type="text" class="form-control" id="profitAddress" placeholder="0x...">
-                        <small class="text-secondary mt-1">All profits will be sent to this address when
+                        <small class="setting-description">All profits will be sent to this address when
                             realized.</small>
                     </div>
                 </div>
@@ -1447,7 +1458,7 @@
                             <option value="optimism">Optimism (On-Chain)</option>
                             <option value="polygon">Polygon (On-Chain)</option>
                         </select>
-                        <small class="text-secondary mt-1">Main data feed for real-time token prices. On-chain swap
+                        <small class="setting-description">Main data feed for real-time token prices. On-chain swap
                             tracking provides instant updates.</small>
                     </div>
 
@@ -1456,13 +1467,13 @@
                             <label class="form-label">Price Update Interval (ms)</label>
                             <input type="number" class="form-control" id="priceInterval" value="5000" min="1000"
                                 max="60000">
-                            <small class="text-secondary mt-1">How often (in milliseconds) the app polls for fresh price
+                            <small class="setting-description">How often (in milliseconds) the app polls for fresh price
                                 data.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Max Price Age (sec)</label>
                             <input type="number" class="form-control" id="maxPriceAge" value="30" min="5" max="300">
-                            <small class="text-secondary mt-1">Maximum allowed age of price data before considered
+                            <small class="setting-description">Maximum allowed age of price data before considered
                                 stale.</small>
                         </div>
                     </div>
@@ -1498,7 +1509,7 @@
 
                     <div class="form-group">
                         <button class="btn btn-danger btn-sm" onclick="clearAllData()">Clear All Data</button>
-                        <small class="text-secondary">This will delete all stored data including trade history and
+                        <small class="setting-description">This will delete all stored data including trade history and
                             settings</small>
                     </div>
                 </div>
@@ -1511,33 +1522,32 @@
                         <div class="form-group">
                             <label class="form-label">Max Gas Price (gwei)</label>
                             <input type="number" class="form-control" id="maxGasPrice" value="200" min="1">
+                            <small class="setting-description">Maximum gas price you're willing to pay for
+                                transactions.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Gas Limit</label>
                             <input type="number" class="form-control" id="gasLimit" value="500000" min="21000">
+                            <small class="setting-description">Gas limit for each transaction.</small>
                         </div>
                     </div>
 
                     <div class="grid-2">
                         <div class="form-group">
-                            <label class="form-label">Slippage Tolerance (%)</label>
-                            <input type="number" class="form-control" id="slippage" value="0.5" min="0" max="10"
-                                step="0.1">
-                        </div>
-                        <div class="form-group">
                             <label class="form-label">Price Impact Limit (%)</label>
                             <input type="number" class="form-control" id="maxPriceImpact" value="1" min="0" max="50"
                                 step="0.1">
+                            <small class="setting-description">Maximum acceptable price impact for trades.</small>
                         </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Debug Mode</label>
-                        <select class="form-control" id="debugMode">
-                            <option value="none">None</option>
-                            <option value="basic">Basic</option>
-                            <option value="verbose">Verbose</option>
-                        </select>
+                        <div class="form-group">
+                            <label class="form-label">Debug Mode</label>
+                            <select class="form-control" id="debugMode">
+                                <option value="none">None</option>
+                                <option value="basic">Basic</option>
+                                <option value="verbose">Verbose</option>
+                            </select>
+                            <small class="setting-description">Controls the level of detail in logs.</small>
+                        </div>
                     </div>
 
                     <button class="btn btn-primary" onclick="saveAdvancedSettings()">Save Advanced Settings</button>
@@ -1627,7 +1637,7 @@
         // Configuration & Constants
         // ============================================
 
-        const APP_VERSION = '4.0.0-ETH-CENTRIC';
+        const APP_VERSION = '4.1.0-ETH-CENTRIC';
         const ARBITRUM_CHAIN_ID = 42161;
         const ARBITRUM_GOERLI_CHAIN_ID = 421613;
         const MAINNET_CHAIN_ID = 1;
@@ -1794,28 +1804,28 @@
             trades: [],
             poolInfo: {},
             portfolio: {
-                balances: {}, // tokenAddress -> amount (in ETH value for non-ETH tokens)
-                positions: [], // Array of position objects
-                realizedPnL: 0, // in ETH
-                unrealizedPnL: 0, // in ETH
-                gasSpent: 0, // in ETH
-                feesPaid: 0, // in ETH
-                startingEth: 1.0, // in ETH
-                currentEth: 1.0, // in ETH
-                equityHistory: [], // {timestamp, ethValue}
+                balances: {},
+                positions: [],
+                realizedPnL: 0,
+                unrealizedPnL: 0,
+                gasSpent: 0,
+                feesPaid: 0,
+                startingEth: 1.0,
+                currentEth: 1.0,
+                equityHistory: [],
                 totalTrades: 0,
                 winningTrades: 0,
                 losingTrades: 0,
                 failedTrades: 0,
-                totalFees: 0 // in ETH
+                totalFees: 0
             },
             settings: {
                 executionMode: EXECUTION_MODES.SHADOW,
                 buyPatterns: '',
                 sellPatterns: '',
-                totalTradeCapital: 1.0, // in ETH
-                minTradeAmount: 0.01, // in ETH
-                tradeStep: 0.05, // in ETH
+                totalTradeCapital: 1.0,
+                minTradeAmount: 0.01,
+                tradeStep: 0.05,
                 profitAddress: '',
                 maxTrades: 5,
                 stopLoss: 2,
@@ -1824,7 +1834,6 @@
                 tokens: ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX'],
                 priceInterval: 5000,
                 maxPriceAge: 30,
-                slippage: 0.5,
                 maxSlippage: 0.5,
                 maxGasPrice: 200,
                 gasLimit: 500000,
@@ -1873,14 +1882,12 @@
         // ============================================
 
         function initializePortfolio() {
-            // Set starting ETH based on settings
             const equitySetting = state.settings.startingEquity;
             if (equitySetting === 'custom') {
                 const amount = parseFloat(document.getElementById('customStartingEquity').value) || 1.0;
                 state.portfolio.startingEth = amount;
                 state.portfolio.currentEth = amount;
                 state.portfolio.balances = {};
-                // For ETH-centric, we track ETH directly
                 state.portfolio.balances['ETH'] = amount;
             } else {
                 const [token, amount] = equitySetting.split('_');
@@ -1900,10 +1907,7 @@
         }
 
         function updatePortfolioEquity() {
-            let totalEth = 0;
-
-            // ETH balance is tracked directly
-            totalEth += state.portfolio.balances['ETH'] || 0;
+            let totalEth = state.portfolio.balances['ETH'] || 0;
 
             // Add value from other token balances (converted to ETH)
             for (const [tokenSymbol, amount] of Object.entries(state.portfolio.balances)) {
@@ -1931,7 +1935,6 @@
                 ethValue: state.portfolio.currentEth
             });
 
-            // Keep only the last 1000 points
             if (state.portfolio.equityHistory.length > 1000) {
                 state.portfolio.equityHistory.shift();
             }
@@ -1955,7 +1958,6 @@
         }
 
         function updatePortfolioUI() {
-            // Update portfolio summary
             document.getElementById('startingEth').textContent = state.portfolio.startingEth.toFixed(6) + ' ETH';
             document.getElementById('currentEth').textContent = state.portfolio.currentEth.toFixed(6) + ' ETH';
             document.getElementById('realizedPnL').textContent = state.portfolio.realizedPnL.toFixed(6) + ' ETH';
@@ -1972,7 +1974,6 @@
             document.getElementById('portfolioReturn').textContent = returnPct.toFixed(2) + '%';
             document.getElementById('portfolioReturn').className = returnPct >= 0 ? 'value price-up' : 'value price-down';
 
-            // Update gas and fees
             document.getElementById('gasSpent').textContent = state.portfolio.gasSpent.toFixed(6) + ' ETH';
             document.getElementById('gasSpentUSD').textContent = (state.portfolio.gasSpent * state.ethPrice).toFixed(2);
 
@@ -1983,17 +1984,11 @@
             document.getElementById('totalFees').textContent = totalFeesETH.toFixed(6) + ' ETH';
             document.getElementById('totalFeesUSD').textContent = (totalFeesETH * state.ethPrice).toFixed(2);
 
-            // Update fee impact bar
             const feeImpactPct = Math.min(100, (Math.abs(netPnL) > 0 ? (totalFeesETH * state.ethPrice / Math.abs(netPnL * state.ethPrice)) * 100 : 0));
             document.getElementById('feeImpactBar').style.width = feeImpactPct + '%';
 
-            // Update portfolio balances
             updatePortfolioBalances();
-
-            // Update position details
             updatePositionDetails();
-
-            // Update performance metrics
             updatePortfolioMetrics();
         }
 
@@ -2001,7 +1996,6 @@
             const balancesTable = document.getElementById('portfolioBalances');
             let html = '';
 
-            // Add ETH balance
             const ethBalance = state.portfolio.balances['ETH'] || 0;
             const totalEquity = state.portfolio.currentEth;
             const ethAllocation = totalEquity > 0 ? (ethBalance / totalEquity) * 100 : 0;
@@ -2015,7 +2009,6 @@
                 </tr>
             `;
 
-            // Add other token balances
             for (const [tokenSymbol, amount] of Object.entries(state.portfolio.balances)) {
                 if (tokenSymbol === 'ETH') continue;
 
@@ -2078,17 +2071,14 @@
         }
 
         function updatePortfolioMetrics() {
-            // Total trades
             document.getElementById('portfolioTotalTrades').textContent = state.portfolio.totalTrades;
             document.getElementById('portfolioWinningTrades').textContent = state.portfolio.winningTrades;
             document.getElementById('portfolioLosingTrades').textContent = state.portfolio.losingTrades;
 
-            // Win rate
             const winRate = state.portfolio.totalTrades > 0 ?
                 ((state.portfolio.winningTrades / state.portfolio.totalTrades) * 100).toFixed(1) + '%' : '0%';
             document.getElementById('portfolioWinRate').textContent = winRate;
 
-            // Profit factor
             const grossProfit = state.portfolio.positions
                 .filter(p => p.status === 'closed' && p.pnl > 0)
                 .reduce((sum, p) => sum + p.pnl, 0);
@@ -2099,7 +2089,6 @@
             const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss).toFixed(2) : '∞';
             document.getElementById('portfolioProfitFactor').textContent = profitFactor;
 
-            // Best and worst trades
             const closedPositions = state.portfolio.positions.filter(p => p.status === 'closed');
             const bestTrade = closedPositions.length > 0 ?
                 Math.max(...closedPositions.map(p => p.pnl)) : 0;
@@ -2109,7 +2098,6 @@
             document.getElementById('portfolioBestTrade').textContent = bestTrade.toFixed(6) + ' ETH';
             document.getElementById('portfolioWorstTrade').textContent = worstTrade.toFixed(6) + ' ETH';
 
-            // Average win and loss
             const winningTrades = closedPositions.filter(p => p.pnl > 0);
             const losingTrades = closedPositions.filter(p => p.pnl < 0);
 
@@ -2121,7 +2109,6 @@
             document.getElementById('portfolioAvgWin').textContent = avgWin;
             document.getElementById('portfolioAvgLoss').textContent = avgLoss;
 
-            // Max drawdown
             let maxDrawdown = 0;
             let runningMax = state.portfolio.startingEth;
             let runningEquity = state.portfolio.startingEth;
@@ -2135,7 +2122,6 @@
 
             document.getElementById('portfolioMaxDrawdown').textContent = maxDrawdown.toFixed(6) + ' ETH';
 
-            // Efficiency metrics
             const avgHoldTime = closedPositions.length > 0 ?
                 (closedPositions.reduce((sum, p) => sum + (p.exitTime - p.entryTime), 0) / closedPositions.length / 1000).toFixed(0) + 's' : '0s';
             const avgGas = state.portfolio.totalTrades > 0 ?
@@ -2147,7 +2133,6 @@
             document.getElementById('portfolioAvgGas').textContent = avgGas;
             document.getElementById('portfolioAvgFees').textContent = avgFees;
 
-            // Failed trades and success rate
             document.getElementById('portfolioFailedTrades').textContent = state.portfolio.failedTrades;
             const successRate = state.portfolio.totalTrades > 0 ?
                 (((state.portfolio.totalTrades - state.portfolio.failedTrades) / state.portfolio.totalTrades) * 100).toFixed(1) + '%' : '100%';
@@ -2177,7 +2162,6 @@
         }
 
         function initializeCharts() {
-            // Initialize Equity Chart
             const equityCtx = document.getElementById('equityChartCanvas');
             if (equityCtx) {
                 equityChart = new Chart(equityCtx, {
@@ -2222,7 +2206,6 @@
                 });
             }
 
-            // Initialize Backtest Equity Chart
             const backtestCtx = document.getElementById('backtestEquityChart');
             if (backtestCtx) {
                 backtestEquityChart = new Chart(backtestCtx, {
@@ -2259,7 +2242,6 @@
         }
 
         function setupEventListeners() {
-            // Tab switching
             document.querySelectorAll('.nav-tabs .nav-link').forEach(link => {
                 link.addEventListener('click', function () {
                     const tab = this.getAttribute('data-tab');
@@ -2267,14 +2249,12 @@
                 });
             });
 
-            // Token selectors
             document.querySelectorAll('#tradeTokens .token-btn').forEach(btn => {
                 btn.addEventListener('click', function () {
                     this.classList.toggle('active');
                 });
             });
 
-            // Auto-backup toggle
             document.getElementById('autoBackupEnabled').addEventListener('change', function () {
                 if (this.checked) {
                     startBackupTimer();
@@ -2283,7 +2263,6 @@
                 }
             });
 
-            // Price source select
             document.getElementById('priceSourceSelect').addEventListener('change', function () {
                 const source = this.value;
                 state.settings.primaryPriceSource = source;
@@ -2294,13 +2273,11 @@
                 updateConnectionStatus();
             });
 
-            // Log auto-scroll toggle
             document.querySelector('#logs .btn-warning').addEventListener('click', function () {
                 state.autoScroll = !state.autoScroll;
                 this.textContent = 'Auto-Scroll: ' + (state.autoScroll ? 'ON' : 'OFF');
             });
 
-            // Backtest range selector
             document.getElementById('backtestRange').addEventListener('change', function () {
                 const range = this.value;
                 if (range === 'custom') {
@@ -2312,7 +2289,6 @@
                 }
             });
 
-            // Starting equity selector
             document.getElementById('startingEquitySelect').addEventListener('change', function () {
                 const value = this.value;
                 if (value === 'custom') {
@@ -2322,7 +2298,6 @@
                 }
             });
 
-            // Execution mode selector
             document.getElementById('executionModeSelect').addEventListener('change', function () {
                 const mode = this.value;
                 if (mode === EXECUTION_MODES.LIVE && !state.isConnected) {
@@ -2387,7 +2362,6 @@
             let score = 0;
             let checks = [];
 
-            // Always enabled in shadow and live modes
             checks.push({ name: 'Gas Modeling', enabled: mode !== EXECUTION_MODES.PAPER });
             checks.push({ name: 'Liquidity', enabled: true });
             checks.push({ name: 'Pool Fees', enabled: true });
@@ -2398,11 +2372,9 @@
             const passed = checks.filter(c => c.enabled).length;
             score = Math.round((passed / checks.length) * 100);
 
-            // Update UI
             document.getElementById('confidenceScore').textContent = score + '%';
             document.getElementById('confidenceFill').style.width = score + '%';
 
-            // Update fidelity badge
             const badge = document.getElementById('fidelityBadge');
             if (score >= 80) {
                 badge.textContent = 'HIGH';
@@ -2415,7 +2387,6 @@
                 badge.className = 'fidelity-badge fidelity-low';
             }
 
-            // Update checkmarks
             checks.forEach(check => {
                 const element = document.getElementById(check.name.toLowerCase().replace(' ', '') + 'Fidelity');
                 if (element) {
@@ -2624,7 +2595,6 @@
                 const chainId = await window.ethereum.request({ method: 'eth_chainId' });
                 const chainIdNum = parseInt(chainId);
 
-                // Update network based on chain ID
                 if (chainIdNum === ARBITRUM_CHAIN_ID) {
                     state.network = 'arbitrum';
                     state.currentNetwork = 'Arbitrum One';
@@ -2681,7 +2651,6 @@
                 } else if (CONTRACTS[state.network] && CONTRACTS[state.network][symbol.toLowerCase()]) {
                     token.address = CONTRACTS[state.network][symbol.toLowerCase()];
                 } else {
-                    // Fallback to Arbitrum addresses if not found
                     token.address = CONTRACTS.arbitrum[symbol.toLowerCase()] || null;
                 }
             }
@@ -2766,7 +2735,6 @@
                 return;
             }
 
-            // Initialize portfolio
             initializePortfolio();
 
             showLoading('startSpinner');
@@ -3089,7 +3057,7 @@
                     log('info', `Reconnecting to ${s.chain.name}...`);
                     startUniswapSession();
                 }
-            }, 5000); // Retry after 5 seconds
+            }, 5000);
         }
 
         function queueBlock(s, n) {
@@ -3155,7 +3123,6 @@
             }
             await Promise.all(Array.from({ length: Math.min(4, logs.length) }, worker));
 
-            // Update gas price periodically
             if (n % 10 === 0) {
                 await updateGasPriceForSession(s);
             }
@@ -3163,11 +3130,7 @@
 
         async function startGasMonitoring(s) {
             if (!s || !s.provider) return;
-
-            // Update gas price immediately
             await updateGasPriceForSession(s);
-
-            // Then update every 15 seconds
             setInterval(async () => {
                 if (current(s)) {
                     await updateGasPriceForSession(s);
@@ -3192,12 +3155,10 @@
                     }
                 }
 
-                // Update UI
                 if (document.getElementById('gasPrice')) {
                     document.getElementById('gasPrice').textContent = s.gasPrice ? s.gasPrice.toFixed(2) : '-';
                 }
 
-                // Calculate average gas
                 if (s.gasPriceHistory.length > 0) {
                     const avgGas = s.gasPriceHistory.reduce((sum, g) => sum + g.gasPrice, 0) / s.gasPriceHistory.length;
                     if (document.getElementById('avgGasPrice')) {
@@ -3241,16 +3202,14 @@
                     t.decimals = Number(decimals);
                     t.name = String(name);
 
-                    // Try to find liquidity and fee tier from known pools
                     for (const [poolAddress, pool] of s.pools) {
                         if (pool.token0 === address || pool.token1 === address) {
-                            t.liquidity += 1; // Simple count for now
+                            t.liquidity += 1;
                             t.feeTier = pool.fee;
                         }
                     }
                 } catch (e) {
                     console.debug("Token metadata unavailable", address, e);
-                    // Try to match with known tokens
                     for (const [symbol, token] of Object.entries(TOKENS)) {
                         if (norm(token.address) === norm(address)) {
                             t.symbol = symbol;
@@ -3309,7 +3268,6 @@
 
                     if (!current(s) || !pool.token0Meta || !pool.token1Meta) return null;
 
-                    // Update token liquidity and fee tier
                     if (pool.token0Meta) {
                         pool.token0Meta.liquidity += pool.liquidity;
                         pool.token0Meta.feeTier = pool.fee;
@@ -3392,7 +3350,7 @@
             if (!Number.isFinite(p) || p <= 0) return;
             const ts = now();
             t.history.push({ t: ts, price: p });
-            const cut = ts - 15 * 60 * 1000; // 15 minutes
+            const cut = ts - 15 * 60 * 1000;
             while (t.history.length && t.history[0].t < cut) t.history.shift();
             if (t.history.length > 180) t.history.splice(0, t.history.length - 180);
         }
@@ -3430,7 +3388,7 @@
 
             setPair(s, pool.token0, pool.token1, pair);
             const ts = now();
-            const cut = ts - 15 * 60 * 1000; // 15 minutes
+            const cut = ts - 15 * 60 * 1000;
             const t0 = pool.token0Meta;
             const t1 = pool.token1Meta;
 
@@ -3467,11 +3425,14 @@
             // Update state prices (in ETH)
             if (p0 != null && t0.symbol) {
                 state.prices[t0.symbol] = p0;
+                updatePriceDisplay(t0.symbol, p0);
             }
             if (p1 != null && t1.symbol) {
                 state.prices[t1.symbol] = p1;
+                updatePriceDisplay(t1.symbol, p1);
             }
             state.lastPriceUpdate = new Date();
+            document.getElementById('lastPriceUpdate').textContent = new Date().toLocaleTimeString();
 
             // Check patterns and potentially execute trades
             if (state.isRunning) {
@@ -3480,9 +3441,20 @@
             }
         }
 
+        function updatePriceDisplay(symbol, price) {
+            const priceRow = document.querySelector(`#priceRows tr td:first-child:contains("${symbol}")`)?.parentElement;
+            if (priceRow) {
+                const priceCell = priceRow.querySelector('td:nth-child(2)');
+                if (priceCell) {
+                    priceCell.textContent = price.toFixed(6);
+                }
+            }
+            updateDashboard();
+        }
+
         function activeTokens(s) {
             if (!s) return [];
-            const cut = now() - 15 * 60 * 1000; // 15 minutes
+            const cut = now() - 15 * 60 * 1000;
             const list = [];
             for (const t of s.tokens.values()) {
                 while (t.swaps.length && t.swaps[0] < cut) t.swaps.shift();
@@ -3594,25 +3566,21 @@
                 return null;
             }
 
-            // Use default trade step if amount not specified
             if (amountETH === null) {
                 amountETH = state.settings.tradeStep;
             }
 
-            // Check minimum trade amount
             if (amountETH < state.settings.minTradeAmount) {
                 log('warn', `Trade amount ${amountETH} below minimum ${state.settings.minTradeAmount}`);
                 return null;
             }
 
-            // Check maximum open trades
             const openPositions = state.portfolio.positions.filter(p => p.status === 'open' && p.token === token);
             if (openPositions.length >= state.settings.maxTrades) {
                 log('warn', `Maximum open trades (${state.settings.maxTrades}) reached for ${token}`);
                 return null;
             }
 
-            // Check cooldown
             const lastTradeTime = state.lastTradeTime;
             if (lastTradeTime && (Date.now() - lastTradeTime) < (state.settings.tradeCooldown * 1000)) {
                 log('warn', `Trade cooldown active for ${token}. Please wait.`);
@@ -3643,17 +3611,13 @@
                 document.getElementById('avgLatency').textContent = `${latency.toFixed(0)}ms`;
             }
 
-            // Calculate token amount
             const tokenAmount = amountETH / currentPrice;
-
-            // Get pool info for realistic simulation
             const poolInfo = await getEnhancedPoolInfo(tokenSymbol);
             if (!poolInfo) {
                 log('error', `Could not get pool info for ${tokenSymbol}`);
                 return null;
             }
 
-            // Simulate the trade
             const tradeResult = await simulateRealisticTrade(
                 tokenSymbol,
                 action,
@@ -3664,7 +3628,6 @@
             );
 
             if (!tradeResult.success) {
-                // Trade failed - record as failed trade
                 const failedTrade = createTradeObject(
                     tokenSymbol,
                     action,
@@ -3687,7 +3650,6 @@
                 return failedTrade;
             }
 
-            // Trade succeeded
             const trade = createTradeObject(
                 tokenSymbol,
                 action,
@@ -3704,14 +3666,12 @@
                 tradeResult.slippage
             );
 
-            // Update portfolio
             updatePortfolioForTrade(trade, action, tradeResult);
 
             state.trades.push(trade);
             state.lastTradeTime = Date.now();
             state.portfolio.totalTrades++;
 
-            // If this is a sell, try to settle any matching buy
             if (action === 'sell') {
                 await settleTrade(trade);
             }
@@ -3769,29 +3729,22 @@
             };
 
             try {
-                // Get current gas price
                 const gasPriceGwei = activeSession?.gasPrice || state.settings.maxGasPrice;
                 result.gasPrice = gasPriceGwei;
-                const gasPriceWei = ethers.parseUnits(gasPriceGwei.toString(), 'gwei');
 
-                // Estimate gas for swap
                 const estimatedGas = estimateSwapGas(action, token);
                 result.gasUsed = estimatedGas;
 
-                // Calculate fee amount (DEX fee)
                 const feeTier = poolInfo.feeTier || POOL_FEES.MEDIUM;
-                const feePercent = feeTier / 1000000; // Convert to decimal (e.g., 0.003 for 0.3%)
+                const feePercent = feeTier / 1000000;
                 result.feeAmount = result.amountETH * feePercent;
 
-                // Calculate price impact based on liquidity
                 result.priceImpact = calculatePriceImpact(token, tokenAmount, poolInfo);
 
-                // Calculate slippage based on price impact and latency
                 const baseSlippage = result.priceImpact;
-                const latencySlippage = latency > 0 ? (latency / 1000) * 0.05 : 0; // 0.05% per second of latency
+                const latencySlippage = latency > 0 ? (latency / 1000) * 0.05 : 0;
                 result.slippage = baseSlippage + latencySlippage;
 
-                // Check if slippage exceeds maximum
                 const maxSlippage = state.settings.maxSlippage || 0.5;
                 if (result.slippage > maxSlippage) {
                     result.success = false;
@@ -3799,14 +3752,12 @@
                     return result;
                 }
 
-                // Adjust execution price based on slippage
                 if (action === 'buy') {
                     result.executionPrice = currentPrice * (1 + result.slippage / 100);
                 } else {
                     result.executionPrice = currentPrice * (1 - result.slippage / 100);
                 }
 
-                // Recalculate amount based on execution price
                 result.amountETH = tokenAmount * result.executionPrice;
                 result.tokenAmount = action === 'buy' ?
                     (result.amountETH / result.executionPrice) :
@@ -3822,20 +3773,16 @@
         }
 
         function estimateSwapGas(action, token) {
-            // Base gas for swap
             let gas = 150000;
 
-            // Additional gas for certain tokens
             if (token === 'ETH' || token === 'WBTC') {
-                gas += 20000; // Extra for WETH wrapping/unwrapping
+                gas += 20000;
             }
 
-            // Additional gas for buy vs sell
             if (action === 'buy') {
                 gas += 10000;
             }
 
-            // Random variation
             gas += Math.random() * 20000;
 
             return Math.min(gas, state.settings.gasLimit);
@@ -3843,7 +3790,6 @@
 
         async function getEnhancedPoolInfo(token) {
             if (!activeSession) {
-                // Return default pool info if no active session
                 return {
                     liquidity: 1000000,
                     feeTier: POOL_FEES.MEDIUM,
@@ -3854,7 +3800,6 @@
                 };
             }
 
-            // For now, return mock data based on token
             const mockData = {
                 WBTC: { liquidity: 20000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'WBTC', decimals0: 18, decimals1: 8 },
                 UNI: { liquidity: 50000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'UNI', decimals0: 18, decimals1: 18 },
@@ -3874,16 +3819,13 @@
         }
 
         function calculatePriceImpact(token, tokenAmount, poolInfo) {
-            // Calculate price impact based on trade size relative to pool liquidity
             const tokenValue = tokenAmount * (state.prices[token] || 0);
             const liquidityETH = poolInfo.liquidity;
 
             if (liquidityETH <= 0) return 0;
 
             const tradeSizeRatio = tokenValue / liquidityETH;
-            // Price impact formula: impact = tradeSizeRatio * tradeSizeRatio * 100
-            // This is a simplified model - real impact would depend on pool curve
-            const priceImpact = Math.min(tradeSizeRatio * tradeSizeRatio * 100, 10); // Cap at 10%
+            const priceImpact = Math.min(tradeSizeRatio * tradeSizeRatio * 100, 10);
 
             return priceImpact;
         }
@@ -3892,13 +3834,10 @@
             const token = trade.token;
             const tokenSymbol = token;
 
-            // For shadow and paper modes, we track virtual balances
             if (state.settings.executionMode !== EXECUTION_MODES.LIVE) {
                 if (action === 'buy') {
-                    // Deduct ETH for the trade
                     const ethBalance = state.portfolio.balances['ETH'] || 0;
                     if (ethBalance < tradeResult.amountETH) {
-                        // Not enough ETH - trade fails
                         trade.status = 'failed';
                         trade.reason = 'Insufficient ETH';
                         state.portfolio.failedTrades++;
@@ -3907,13 +3846,11 @@
 
                     state.portfolio.balances['ETH'] = ethBalance - tradeResult.amountETH;
 
-                    // Add token to balances
                     if (!state.portfolio.balances[tokenSymbol]) {
                         state.portfolio.balances[tokenSymbol] = 0;
                     }
                     state.portfolio.balances[tokenSymbol] += tradeResult.tokenAmount;
 
-                    // Create position
                     const position = {
                         id: trade.id,
                         token: tokenSymbol,
@@ -3921,20 +3858,18 @@
                         amount: tradeResult.tokenAmount,
                         usdValue: tradeResult.amountETH,
                         entryTime: Date.now(),
-                        gasPaid: tradeResult.gasUsed * tradeResult.gasPrice / 1e9 / 1e18, // ETH
-                        feesPaid: tradeResult.feeAmount, // in ETH
+                        gasPaid: tradeResult.gasUsed * tradeResult.gasPrice / 1e9 / 1e18,
+                        feesPaid: tradeResult.feeAmount,
                         status: 'open',
                         tradeId: trade.id
                     };
                     state.portfolio.positions.push(position);
 
-                    // Track gas and fees
                     state.portfolio.gasSpent += position.gasPaid;
                     state.portfolio.feesPaid += position.feesPaid;
                     state.portfolio.totalFees += (position.gasPaid + position.feesPaid);
 
                 } else if (action === 'sell') {
-                    // Find matching position to close
                     const positionIndex = state.portfolio.positions.findIndex(
                         p => p.token === tokenSymbol && p.status === 'open'
                     );
@@ -3942,50 +3877,41 @@
                     if (positionIndex >= 0) {
                         const position = state.portfolio.positions[positionIndex];
 
-                        // Calculate PnL in ETH
                         const pnl = (tradeResult.tokenAmount * tradeResult.executionPrice) -
                             (position.amount * position.entryPrice) -
                             position.feesPaid -
                             (tradeResult.gasUsed * tradeResult.gasPrice / 1e9 / 1e18) -
                             tradeResult.feeAmount;
 
-                        // Update position
                         position.status = 'closed';
                         position.exitPrice = tradeResult.executionPrice;
                         position.exitTime = Date.now();
                         position.pnl = pnl;
                         position.sellTradeId = trade.id;
 
-                        // Update portfolio
                         state.portfolio.realizedPnL += pnl;
 
-                        // Add ETH from the sale
                         const ethValue = tradeResult.tokenAmount * tradeResult.executionPrice;
                         state.portfolio.balances['ETH'] = (state.portfolio.balances['ETH'] || 0) + ethValue;
 
-                        // Update trade
                         trade.pnl = pnl;
                         trade.status = 'closed';
                         trade.closedAt = new Date().toISOString();
 
-                        // Update statistics
                         if (pnl > 0) state.portfolio.winningTrades++;
                         else if (pnl < 0) state.portfolio.losingTrades++;
 
-                        // Track gas and fees for this trade
                         const gasCostETH = tradeResult.gasUsed * tradeResult.gasPrice / 1e9 / 1e18;
                         const feeCostETH = tradeResult.feeAmount;
                         state.portfolio.gasSpent += gasCostETH;
                         state.portfolio.feesPaid += feeCostETH;
                         state.portfolio.totalFees += (gasCostETH + feeCostETH);
                     } else {
-                        // No matching position - this shouldn't happen in normal operation
                         trade.status = 'failed';
                         trade.reason = 'No matching position found';
                         state.portfolio.failedTrades++;
                     }
 
-                    // Deduct token from balances
                     if (state.portfolio.balances[tokenSymbol]) {
                         state.portfolio.balances[tokenSymbol] -= tradeResult.tokenAmount;
                         if (state.portfolio.balances[tokenSymbol] < 0.000001) {
@@ -3994,7 +3920,6 @@
                     }
                 }
 
-                // Update equity
                 updatePortfolioEquity();
             }
         }
@@ -4002,8 +3927,6 @@
         async function settleTrade(trade) {
             if (trade.type !== 'sell') return;
 
-            // In our portfolio system, trades are settled immediately when executed
-            // So this function is mainly for backward compatibility
             const buyTrade = state.portfolio.positions.find(p =>
                 p.token === trade.token &&
                 p.status === 'open' &&
@@ -4015,12 +3938,10 @@
                 return;
             }
 
-            // Mark as closed
             buyTrade.status = 'closed';
             buyTrade.exitPrice = trade.price;
             buyTrade.exitTime = Date.now();
 
-            // Calculate PnL
             const pnl = (trade.tokenAmount * trade.price) -
                 (buyTrade.amount * buyTrade.entryPrice) -
                 buyTrade.feesPaid -
@@ -4030,18 +3951,14 @@
             buyTrade.pnl = pnl;
             trade.pnl = pnl;
 
-            // Update portfolio
             state.portfolio.realizedPnL += pnl;
 
-            // Update statistics
             if (pnl > 0) state.portfolio.winningTrades++;
             else if (pnl < 0) state.portfolio.losingTrades++;
 
-            // Update trade status
             trade.status = 'closed';
             trade.closedAt = new Date().toISOString();
 
-            // Check stop loss / take profit
             const stopLossPercent = state.settings.stopLoss || 2;
             const takeProfitPercent = state.settings.takeProfit || 5;
 
@@ -4081,7 +3998,6 @@
             const previous = history[history.length - 2];
             const changePct = ((latest.price - previous.price) / previous.price) * 100;
 
-            // Check buy patterns
             if (state.settings.buyPatterns) {
                 const buyPatterns = parsePatterns(state.settings.buyPatterns);
                 buyPatterns.forEach(pattern => {
@@ -4091,7 +4007,6 @@
                 });
             }
 
-            // Check sell patterns
             if (state.settings.sellPatterns) {
                 const sellPatterns = parsePatterns(state.settings.sellPatterns);
                 sellPatterns.forEach(pattern => {
@@ -4191,14 +4106,17 @@
                 const changeClass = cls(change15m);
                 const changeSymbol = change15m > 0 ? '&#9650;' : change15m < 0 ? '&#9660;' : '';
 
-                // Get pool fee tier for this token
                 const poolInfo = getPoolInfoForToken(t.symbol);
                 const feeTier = poolInfo ? (poolInfo.feeTier / 10000).toFixed(2) + '%' : 'N/A';
+
+                // Use the token's priceQuote for display
+                const displayPrice = t.priceQuote != null ? fp(t.priceQuote) : '<span class="text-secondary">No quote</span>';
+                const priceValue = t.priceQuote != null ? t.priceQuote : 0;
 
                 html += `
                 <tr>
                     <td><strong>${esc(t.symbol)}</strong></td>
-                    <td>${t.priceQuote != null ? fp(t.priceQuote) : '<span class="text-secondary">No quote</span>'}</td>
+                    <td>${displayPrice}</td>
                     <td class="price-change ${changeClass}">${changeSymbol} ${Math.abs(change15m || 0).toFixed(2)}%</td>
                     <td class="pool-info">${compact(t.volumeQuote)}</td>
                     <td>${feeTier}</td>
@@ -4287,6 +4205,7 @@
                     }
                 }
                 state.lastPriceUpdate = new Date();
+                document.getElementById('lastPriceUpdate').textContent = new Date().toLocaleTimeString();
             }
             renderDashboard();
             checkPatterns();
@@ -4310,7 +4229,6 @@
                 const currentValue = position.amount * currentPrice;
                 const unrealizedPnL = currentValue - (position.amount * position.entryPrice) - position.feesPaid;
 
-                // Find the trade for this position
                 const trade = state.trades.find(t => t.id === position.tradeId);
 
                 html += `
@@ -4472,10 +4390,8 @@
                 document.getElementById('bestTokenTrades').textContent = tokenTrades[bestToken] || 0;
             }
 
-            // Update history tab fees
             document.getElementById('historyTotalFees').textContent = state.portfolio.totalFees.toFixed(6) + ' ETH';
 
-            // Update session success rate
             const sessionSuccessRate = sessionTrades > 0 ?
                 (((sessionTrades - failedTrades.length) / sessionTrades) * 100).toFixed(1) + '%' : '100%';
             document.getElementById('sessionSuccessRate').textContent = sessionSuccessRate;
@@ -4604,7 +4520,6 @@
             document.getElementById('replayStatus').innerHTML = '<div class="alert alert-info">Preparing replay data...</div>';
 
             try {
-                // Get historical data based on duration
                 let startTime;
                 const endTime = new Date();
 
@@ -4617,7 +4532,6 @@
                     startTime = new Date(startDate + 'T00:00:00');
                     endTime = new Date(endDate + 'T23:59:59');
                 } else {
-                    // Parse duration
                     const [value, unit] = duration.match(/(\d+)(\D+)/).slice(1);
                     const num = parseInt(value);
 
@@ -4628,8 +4542,6 @@
                     }
                 }
 
-                // For now, we'll use the existing price history
-                // In a real implementation, we would fetch historical data from an API
                 state.replayData = [];
                 for (const [token, history] of Object.entries(state.priceHistory)) {
                     const tokenData = history.filter(point =>
@@ -4646,19 +4558,15 @@
                     throw new Error('No historical data available for the selected time range.');
                 }
 
-                // Sort by timestamp
                 state.replayData.sort((a, b) => a.timestamp - b.timestamp);
 
-                // Initialize replay
                 state.replayMode = true;
                 state.replayIndex = 0;
                 state.replayStartTime = Date.now();
                 state.replaySpeed = 1;
 
-                // Reset portfolio for replay
                 initializePortfolio();
 
-                // Start replay
                 document.getElementById('startReplayBtn').disabled = true;
                 document.getElementById('stopReplayBtn').disabled = false;
                 document.getElementById('replayStatus').innerHTML = `
@@ -4667,10 +4575,7 @@
                     </div>
                 `;
 
-                // Process first data point immediately
                 await processReplayData();
-
-                // Start replay timer
                 state.replayTimer = setInterval(processReplayData, 100);
 
                 log('info', `Replay started for ${duration} with ${state.replayData.length} data points`);
@@ -4696,24 +4601,19 @@
             const elapsed = now - state.replayStartTime;
             const targetTime = state.replayData[state.replayIndex].timestamp;
 
-            // Calculate when this data point should be processed
             const dataStartTime = state.replayData[0].timestamp;
             const dataElapsed = targetTime - dataStartTime;
             const targetElapsed = dataElapsed / state.replaySpeed;
 
             if (elapsed < targetElapsed) {
-                // Not time yet for this data point
                 return;
             }
 
-            // Process this data point
             const dataPoint = state.replayData[state.replayIndex];
             state.replayIndex++;
 
-            // Update price
             state.prices[dataPoint.token] = dataPoint.price;
 
-            // Update price history
             if (!state.priceHistory[dataPoint.token]) {
                 state.priceHistory[dataPoint.token] = [];
             }
@@ -4722,14 +4622,10 @@
                 timestamp: dataPoint.timestamp
             });
 
-            // Check patterns
             await checkPatternsForToken(dataPoint.token);
-
-            // Update UI
             updatePriceUI();
             updateDashboard();
 
-            // Log progress
             const progress = Math.round((state.replayIndex / state.replayData.length) * 100);
             document.getElementById('replayStatus').innerHTML = `
                 <div class="alert alert-info">
@@ -4737,7 +4633,6 @@
                 </div>
             `;
 
-            // If we've processed all data points, stop
             if (state.replayIndex >= state.replayData.length) {
                 stopReplayMode();
             }
@@ -4753,7 +4648,6 @@
             document.getElementById('startReplayBtn').disabled = true;
             document.getElementById('stopReplayBtn').disabled = false;
 
-            // Start processing
             state.replayTimer = setInterval(processReplayData, 100);
         }
 
@@ -4803,7 +4697,6 @@
             state.settings.maxSlippage = parseFloat(document.getElementById('maxSlippage').value);
             state.settings.latencySimulation = document.getElementById('latencySimulation').value;
 
-            // Handle starting equity
             const equitySelect = document.getElementById('startingEquitySelect');
             state.settings.startingEquity = equitySelect.value;
             if (equitySelect.value === 'custom') {
@@ -4826,7 +4719,6 @@
         }
 
         function saveAdvancedSettings() {
-            state.settings.slippage = parseFloat(document.getElementById('slippage').value);
             state.settings.maxGasPrice = parseInt(document.getElementById('maxGasPrice').value);
             state.settings.gasLimit = parseInt(document.getElementById('gasLimit').value);
             state.settings.maxPriceImpact = parseFloat(document.getElementById('maxPriceImpact').value);
@@ -4918,7 +4810,7 @@
             document.getElementById('takeProfit').value = state.settings.takeProfit || 5;
             document.getElementById('trailingStop').value = state.settings.trailingStop || 1;
             document.getElementById('tradeCooldown').value = state.settings.tradeCooldown || 60;
-            document.getElementById('slippage').value = state.settings.slippage || 0.5;
+            document.getElementById('maxSlippage').value = state.settings.maxSlippage || 0.5;
             document.getElementById('maxGasPrice').value = state.settings.maxGasPrice || 200;
             document.getElementById('gasLimit').value = state.settings.gasLimit || 500000;
             document.getElementById('maxPriceImpact').value = state.settings.maxPriceImpact || 1;
@@ -4928,15 +4820,12 @@
             document.getElementById('maxPriceAge').value = state.settings.maxPriceAge || 30;
             document.getElementById('autoBackupEnabled').checked = state.settings.autoBackup !== false;
             document.getElementById('backupInterval').value = state.settings.backupInterval || 30;
-            document.getElementById('encryptionEnabled').checked = state.settings.encryptionEnabled !== false;
             document.getElementById('logLevel').value = state.settings.debugMode || 'info';
             document.getElementById('maxLogEntries').value = 1000;
             document.getElementById('logToConsole').checked = true;
             document.getElementById('executionModeSelect').value = state.settings.executionMode || EXECUTION_MODES.SHADOW;
-            document.getElementById('maxSlippage').value = state.settings.maxSlippage || 0.5;
             document.getElementById('latencySimulation').value = state.settings.latencySimulation || '150-1200';
 
-            // Starting equity
             document.getElementById('startingEquitySelect').value = state.settings.startingEquity || 'ETH_1.0';
             if (state.settings.startingEquity && state.settings.startingEquity.startsWith('custom')) {
                 document.getElementById('customEquityGroup').style.display = 'block';
@@ -5195,7 +5084,6 @@
             try {
                 log('info', 'Fetching available tokens...');
 
-                // Use ETH-centric token list
                 AVAILABLE_TOKENS = ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX'];
                 TOKENS = {
                     ETH: { address: null, decimals: 18, symbol: 'ETH', isNative: true, name: 'Ethereum' },
@@ -5206,7 +5094,6 @@
                     GMX: { address: CONTRACTS.arbitrum.gmx, decimals: 18, symbol: 'GMX', name: 'GMX' }
                 };
 
-                // Update token addresses based on current network
                 updateTokenAddresses();
 
                 log('info', `Loaded ${AVAILABLE_TOKENS.length} tokens.`);
@@ -5240,7 +5127,6 @@
 
         async function updateGasPrice() {
             if (state.settings.executionMode === EXECUTION_MODES.PAPER) {
-                // In paper mode, use a fixed gas price
                 const mockGas = 15.50;
                 document.getElementById('gasPrice').textContent = mockGas.toFixed(2);
                 if (activeSession) {
@@ -5251,12 +5137,9 @@
             }
 
             if (!activeSession || !activeSession.provider) {
-                // Use settings default
                 document.getElementById('gasPrice').textContent = state.settings.maxGasPrice;
                 return;
             }
-
-            // Gas price is updated via the session monitoring
         }
 
         async function refreshPrices() {
@@ -5265,7 +5148,6 @@
 
             try {
                 if (activeSession?.connected) {
-                    // Prices update via WebSocket
                     updatePriceUI();
                 }
                 log('info', 'Prices refreshed');
@@ -5361,7 +5243,6 @@
             if (spinner) spinner.style.display = 'none';
         }
 
-        // Close modals when clicking outside
         document.getElementById('notificationModal').addEventListener('click', function (e) {
             if (e.target === this) closeModal();
         });
@@ -5396,13 +5277,6 @@
             saveAllTrades();
             saveLogs();
         });
-
-        // ============================================
-        // Helper Functions
-        // ============================================
-
-        function norm(a) { return String(a).toLowerCase(); }
-        function current(s) { return !!s && activeSession === s && s.id === sessionSerial && s.active && !manuallyStopped; }
     </script>
 </body>
 
