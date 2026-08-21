@@ -616,6 +616,7 @@
             <div class="nav-link" data-tab="logs">Logs</div>
         </div>
 
+        <!-- Dashboard Tab -->
         <div id="dashboard" class="tab-content active">
             <div class="grid-4">
                 <div class="card">
@@ -868,6 +869,7 @@
             </div>
         </div>
 
+        <!-- Portfolio Tab -->
         <div id="portfolio" class="tab-content">
             <div class="grid-2">
                 <div class="card">
@@ -951,6 +953,7 @@
             </div>
         </div>
 
+        <!-- Trading Tab -->
         <div id="trading" class="tab-content">
             <div class="card">
                 <div class="card-header">Trading Strategies</div>
@@ -989,9 +992,9 @@
                                         <label class="form-label">Latency Simulation (ms)</label>
                                         <select class="form-control" id="latencySimulation">
                                             <option value="0">None</option>
-                                            <option value="150-1200" selected>Realistic (150-1200ms)</option>
+                                            <option value="150-1200">Realistic (150-1200ms)</option>
                                             <option value="500-2000">High (500-2000ms)</option>
-                                            <option value="1000-3000">Extreme (1000-3000ms)</option>
+                                            <option value="1000-3000" selected>Extreme (1000-3000ms)</option>
                                         </select>
                                         <small class="setting-description">Simulate network latency for more realistic
                                             testing.</small>
@@ -1003,31 +1006,31 @@
 
                     <div class="grid-3">
                         <div class="form-group">
-                            <label class="form-label">Total Trade Capital (ETH)</label>
-                            <input type="number" class="form-control" id="totalTradeCapital" value="1.0" min="0.01"
+                            <label class="form-label">Starting ETH</label>
+                            <input type="number" class="form-control" id="startingEth" value="0.5" min="0.01"
                                 step="0.01">
-                            <small class="setting-description">Total amount of ETH available for trading across all
-                                positions.</small>
+                            <small class="setting-description">Initial ETH amount for trading. In Live mode, this will
+                                be set to your wallet balance.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Trade Step (ETH)</label>
-                            <input type="number" class="form-control" id="tradeStep" value="0.05" min="0.001"
+                            <input type="number" class="form-control" id="tradeStep" value="0.0001" min="0.001"
                                 step="0.001">
                             <small class="setting-description">Fixed amount in ETH to allocate per individual
                                 trade.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Min Trade Amount (ETH)</label>
-                            <input type="number" class="form-control" id="minTradeAmount" value="0.01" min="0.001"
+                            <input type="number" class="form-control" id="minTradeAmount" value="0.0001" min="0.001"
                                 step="0.001">
                             <small class="setting-description">Minimum ETH value required to execute a trade.</small>
                         </div>
                     </div>
 
-                    <div class="grid-3">
+                    <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Max Open Trades</label>
-                            <input type="number" class="form-control" id="maxTrades" value="5" min="1" max="20">
+                            <input type="number" class="form-control" id="maxTrades" value="100" min="1" max="20">
                             <small class="setting-description">Maximum number of simultaneous open positions
                                 allowed.</small>
                         </div>
@@ -1037,52 +1040,13 @@
                             <small class="setting-description">Waiting period between consecutive trades on the same
                                 token.</small>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Stop Loss (%)</label>
-                            <input type="number" class="form-control" id="stopLoss" value="2" min="0" max="100"
-                                step="0.1">
-                            <small class="setting-description">Percentage drop from entry price that automatically
-                                closes a position.</small>
-                        </div>
                     </div>
 
-                    <div class="grid-3">
-                        <div class="form-group">
-                            <label class="form-label">Take Profit (%)</label>
-                            <input type="number" class="form-control" id="takeProfit" value="5" min="0" max="100"
-                                step="0.1">
-                            <small class="setting-description">Percentage gain from entry price that automatically
-                                closes a position.</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Trailing Stop (%)</label>
-                            <input type="number" class="form-control" id="trailingStop" value="1" min="0" max="100"
-                                step="0.1">
-                            <small class="setting-description">Dynamic stop loss that follows the price upward.</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Starting ETH</label>
-                            <select class="form-control" id="startingEquitySelect">
-                                <option value="ETH_1.0" selected>1.0 ETH</option>
-                                <option value="ETH_0.5">0.5 ETH</option>
-                                <option value="ETH_0.25">0.25 ETH</option>
-                                <option value="ETH_2.0">2.0 ETH</option>
-                                <option value="ETH_5.0">5.0 ETH</option>
-                                <option value="custom">Custom</option>
-                            </select>
-                            <div id="customEquityGroup" style="display:none; margin-top:10px;">
-                                <input type="number" class="form-control" id="customStartingEquity"
-                                    placeholder="Enter amount" value="1.0" min="0.01" step="0.01">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- NEW SETTINGS FOR PROFIT AND AGE-BASED SELLING -->
-                    <div class="grid-3">
+                    <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Min Profit for Selling (%)</label>
-                            <input type="number" class="form-control" id="minProfitPercent" value="0.5" min="0"
-                                max="100" step="0.1">
+                            <input type="number" class="form-control" id="minProfitPercent" value="2" min="0" max="100"
+                                step="0.1">
                             <small class="setting-description">Minimum profit % required to sell when a pattern
                                 matches.</small>
                         </div>
@@ -1093,6 +1057,9 @@
                             <small class="setting-description">Auto-sell if position is older than this (and
                                 profitable).</small>
                         </div>
+                    </div>
+
+                    <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Enforce Profit for Patterns</label>
                             <input type="checkbox" class="form-control" id="enforceProfitForPatterns" checked>
@@ -1125,6 +1092,7 @@
             </div>
         </div>
 
+        <!-- Backtest Tab -->
         <div id="backtest" class="tab-content">
             <div class="card">
                 <div class="card-header">Backtesting</div>
@@ -1235,6 +1203,7 @@
             </div>
         </div>
 
+        <!-- History Tab -->
         <div id="history" class="tab-content">
             <div class="card">
                 <div class="card-header d-flex justify-between align-center">
@@ -1302,6 +1271,7 @@
             </div>
         </div>
 
+        <!-- Settings Tab -->
         <div id="settings" class="tab-content">
             <div class="card">
                 <div class="card-header">Wallet & Network</div>
@@ -1465,6 +1435,7 @@
             </div>
         </div>
 
+        <!-- Logs Tab -->
         <div id="logs" class="tab-content">
             <div class="card">
                 <div class="card-header d-flex justify-between align-center">
@@ -1511,6 +1482,7 @@
         </div>
     </div>
 
+    <!-- Modals -->
     <div class="modal" id="notificationModal">
         <div class="modal-content">
             <h3 id="modalTitle">Notification</h3>
@@ -1542,7 +1514,7 @@
         // ============================================
         // Configuration & Constants
         // ============================================
-        const APP_VERSION = '5.0.0-PRICE-HISTORY-UPDATED';
+        const APP_VERSION = '5.0.0-SIMPLIFIED';
         const ARBITRUM_CHAIN_ID = 42161;
         const ARBITRUM_GOERLI_CHAIN_ID = 421613;
         const MAINNET_CHAIN_ID = 1;
@@ -1639,6 +1611,9 @@
         const SWAP_INTERFACE = new ethers.Interface(["event Swap(address indexed sender,address indexed recipient,int256 amount0,int256 amount1,uint160 sqrtPriceX96,uint128 liquidity,int24 tick)"]);
         const SWAP_TOPIC = SWAP_INTERFACE.getEvent("Swap").topicHash;
 
+        // ============================================
+        // State & Settings
+        // ============================================
         let state = {
             isRunning: false,
             isConnected: false,
@@ -1657,8 +1632,8 @@
                 unrealizedPnL: 0,
                 gasSpent: 0,
                 feesPaid: 0,
-                startingEth: 1.0,
-                currentEth: 1.0,
+                startingEth: 0.5,
+                currentEth: 0.5,
                 equityHistory: [],
                 totalTrades: 0,
                 winningTrades: 0,
@@ -1668,35 +1643,31 @@
             },
             settings: {
                 executionMode: EXECUTION_MODES.SHADOW,
-                buyPatterns: '<_-0.5_150-450,<_-1.0_300-600,<_-0.3_60-120',
-                sellPatterns: '>_+0.5_60-300,>_+1.0_120-480,>_+0.3_30-90',
-                totalTradeCapital: 1.0,
-                minTradeAmount: 0.01,
-                tradeStep: 0.05,
+                buyPatterns: '<_-0.1_30-600',
+                sellPatterns: '>_+0.1_30-600',
+                startingEth: 0.5,
+                minTradeAmount: 0.0001,
+                tradeStep: 0.0001,
                 profitAddress: '',
-                maxTrades: 5,
-                stopLoss: 2,
-                takeProfit: 5,
-                trailingStop: 1,
-                tokens: ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX'],
-                priceInterval: 5000,
-                maxPriceAge: 30,
+                maxTrades: 100,
+                tradeCooldown: 60,
                 maxSlippage: 0.5,
                 maxGasPrice: 200,
                 gasLimit: 500000,
                 maxPriceImpact: 1,
-                tradeCooldown: 60,
+                tokens: ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX'],
+                priceInterval: 5000,
+                maxPriceAge: 30,
                 primaryPriceSource: 'arbitrum',
                 fallbackPriceSource: 'coingecko',
                 autoBackup: true,
                 backupInterval: 30,
                 encryptionEnabled: true,
                 debugMode: 'none',
-                latencySimulation: '150-1200',
-                startingEquity: 'ETH_1.0',
+                latencySimulation: '1000-3000',
                 priceHistoryDuration: 24,
-                // NEW SETTINGS
-                minProfitPercent: 0.5,
+                // Simplified settings
+                minProfitPercent: 2,
                 maxPositionAge: 3600,
                 enforceProfitForPatterns: true,
                 enforceAgeBasedSelling: true
@@ -1727,6 +1698,9 @@
         let equityChart = null;
         let backtestEquityChart = null;
 
+        // ============================================
+        // Initialization
+        // ============================================
         document.addEventListener('DOMContentLoaded', async function () {
             log('info', 'Initializing Uniswap Trading Bot v' + APP_VERSION);
             initializeApp();
@@ -1812,9 +1786,6 @@
                 const range = this.value;
                 document.getElementById('customRangeGroup').style.display = document.getElementById('customRangeGroup2').style.display = (range === 'custom' ? 'block' : 'none');
             });
-            document.getElementById('startingEquitySelect').addEventListener('change', function () {
-                document.getElementById('customEquityGroup').style.display = (this.value === 'custom' ? 'block' : 'none');
-            });
             document.getElementById('executionModeSelect').addEventListener('change', function () {
                 const mode = this.value;
                 if (mode === EXECUTION_MODES.LIVE && !state.isConnected) {
@@ -1826,7 +1797,21 @@
                 updateExecutionModeBadge();
                 updateConfidenceScore();
                 saveSettings();
+                // Update Starting ETH field based on mode
+                updateStartingEthField();
             });
+        }
+
+        function updateStartingEthField() {
+            const startingEthInput = document.getElementById('startingEth');
+            if (state.settings.executionMode === EXECUTION_MODES.LIVE) {
+                startingEthInput.readOnly = true;
+                startingEthInput.value = state.portfolio.startingEth.toFixed(6);
+                startingEthInput.placeholder = 'Set by wallet balance';
+            } else {
+                startingEthInput.readOnly = false;
+                startingEthInput.placeholder = 'Enter starting ETH';
+            }
         }
 
         function switchTab(tab) {
@@ -1887,6 +1872,9 @@
             equityChart.update();
         }
 
+        // ============================================
+        // Logging
+        // ============================================
         function log(level, message, data = null) {
             const timestamp = new Date().toISOString();
             const logEntry = { timestamp, level, message, data };
@@ -1947,6 +1935,9 @@
             document.querySelector('#logs .btn-warning').textContent = 'Auto-Scroll: ' + (state.autoScroll ? 'ON' : 'OFF');
         }
 
+        // ============================================
+        // Wallet & Network
+        // ============================================
         async function connectWallet() {
             if (typeof window.ethereum === 'undefined') {
                 showNotification('Error', 'MetaMask not installed.');
@@ -1966,6 +1957,7 @@
                     showNotification('Success', 'Wallet connected!');
                     await updateEthBalance();
                     updateConfidenceScore();
+                    updateStartingEthField();
                 }
             } catch (error) {
                 console.error('Wallet error:', error);
@@ -1984,6 +1976,7 @@
             log('info', 'Wallet disconnected');
             showNotification('Success', 'Wallet disconnected.');
             updateConfidenceScore();
+            updateStartingEthField();
         }
 
         async function checkWalletConnection() {
@@ -2011,6 +2004,7 @@
                         saveSettings();
                         log('info', 'Wallet account changed');
                         updateConfidenceScore();
+                        updateStartingEthField();
                     });
                     window.ethereum.on('chainChanged', async chainId => {
                         await checkNetwork();
@@ -2087,6 +2081,17 @@
                 const ethBalance = parseInt(balance) / 1e18;
                 const wi = document.getElementById('walletInfo');
                 if (wi) wi.innerHTML = `<p><strong>Address:</strong> ${state.walletAddress}</p><p><strong>ETH Balance:</strong> ${ethBalance.toFixed(6)} ETH</p><p><strong>Network:</strong> ${state.currentNetwork || 'Unknown'}</p>`;
+
+                // Update startingEth in Live mode
+                if (state.settings.executionMode === EXECUTION_MODES.LIVE) {
+                    state.settings.startingEth = ethBalance;
+                    state.portfolio.startingEth = ethBalance;
+                    state.portfolio.currentEth = ethBalance;
+                    state.portfolio.balances['ETH'] = ethBalance;
+                    document.getElementById('startingEth').value = ethBalance.toFixed(6);
+                    updatePortfolioUI();
+                }
+
                 log('info', `ETH balance: ${ethBalance.toFixed(6)}`);
             } catch (error) {
                 console.error('Balance error:', error);
@@ -2112,6 +2117,7 @@
             }
             updateConnectionStatus();
             updateConfidenceScore();
+            updateStartingEthField();
         }
 
         function shortenAddress(address) {
@@ -2120,9 +2126,8 @@
         }
 
         // ============================================
-        // PRICE HISTORY MANAGEMENT
+        // Price History Management
         // ============================================
-
         function addPriceToHistory(token, price) {
             if (!state.activeTokens.includes(token)) return;
 
@@ -2232,9 +2237,8 @@
         }
 
         // ============================================
-        // PATTERN PARSING AND MATCHING
+        // Pattern Parsing and Matching
         // ============================================
-
         function parsePattern(patternStr) {
             const match = patternStr.trim().match(/^([<>])_([+-]?\d+\.?\d*)_(\d+)-(\d+)$/);
             if (!match) {
@@ -2255,7 +2259,6 @@
             return patternString.split(/[,&;]+/).map(p => p.trim()).filter(p => p).map(parsePattern).filter(p => p !== null);
         }
 
-        // UPDATED: checkPatternsForToken with profit and age checks
         function checkPatternsForToken(token) {
             if (!state.activeTokens.includes(token)) return;
 
@@ -2327,9 +2330,6 @@
             const now = Date.now();
             const targetPercentage = Math.abs(pattern.percentage) / 100;
             const isBuy = action === 'buy';
-            const direction = pattern.direction;
-
-            const expectedSign = isBuy ? -1 : 1;
 
             for (let i = history.length - 1; i >= 0; i--) {
                 for (let j = i - 1; j >= 0; j--) {
@@ -2393,31 +2393,22 @@
         }
 
         // ============================================
-        // PORTFOLIO MANAGEMENT
+        // Portfolio Management
         // ============================================
-
         function initializePortfolio() {
-            const equitySetting = state.settings.startingEquity;
-            if (equitySetting === 'custom') {
-                const amount = parseFloat(document.getElementById('customStartingEquity').value) || 1.0;
-                state.portfolio.startingEth = amount;
-                state.portfolio.currentEth = amount;
-                state.portfolio.balances = {};
-                state.portfolio.balances['ETH'] = amount;
-            } else {
-                const [token, amount] = equitySetting.split('_');
-                state.portfolio.startingEth = parseFloat(amount);
-                state.portfolio.currentEth = parseFloat(amount);
-                state.portfolio.balances = {};
-                state.portfolio.balances['ETH'] = parseFloat(amount);
-            }
+            // Use startingEth from settings
+            const startingEth = parseFloat(state.settings.startingEth) || 0.5;
+            state.portfolio.startingEth = startingEth;
+            state.portfolio.currentEth = startingEth;
+            state.portfolio.balances = {};
+            state.portfolio.balances['ETH'] = startingEth;
 
             state.portfolio.equityHistory = [{
                 timestamp: Date.now(),
-                ethValue: state.portfolio.currentEth
+                ethValue: startingEth
             }];
 
-            log('info', `Portfolio initialized with ${state.portfolio.startingEth} ETH`);
+            log('info', `Portfolio initialized with ${startingEth} ETH`);
             updatePortfolioUI();
         }
 
@@ -2552,9 +2543,8 @@
         }
 
         // ============================================
-        // TRADE EXECUTION
+        // Trade Execution
         // ============================================
-
         async function executeTrade(token, action, pattern = 'Manual', amountETH = null) {
             if (!state.isRunning) {
                 log('warn', 'Cannot execute trade: bot is not running');
@@ -2660,7 +2650,6 @@
             };
         }
 
-        // UPDATED: simulateRealisticTrade with proper gas fees
         async function simulateRealisticTrade(token, action, tokenAmount, currentPrice, poolInfo, latency) {
             const result = {
                 success: true,
@@ -2716,7 +2705,6 @@
             }
         }
 
-        // UPDATED: estimateSwapGas with more realistic values
         function estimateSwapGas(action, token) {
             let baseGas = 150000;
             if (token === 'WBTC' || token === 'ETH') {
@@ -2733,7 +2721,6 @@
             return Math.min(baseGas, state.settings.gasLimit);
         }
 
-        // UPDATED: calculatePriceImpact with better accuracy
         function calculatePriceImpact(token, tokenAmount, poolInfo) {
             const tokenPrice = state.prices[token] || 0;
             const tokenValueETH = tokenAmount * tokenPrice;
@@ -2763,7 +2750,6 @@
             return mockData[token] || { liquidity: 10000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: token, decimals0: 18, decimals1: TOKENS[token]?.decimals || 18 };
         }
 
-        // UPDATED: updatePortfolioForTrade with gas fees in Shadow mode and duplicate position fix
         function updatePortfolioForTrade(trade, action, tradeResult) {
             const token = trade.token;
             const tokenSymbol = token;
@@ -2876,7 +2862,6 @@
             updatePortfolioEquity();
         }
 
-        // UPDATED: settleTrade with FIFO and proper PnL calculation
         async function settleTrade(trade) {
             if (trade.type !== 'sell') return;
 
@@ -2913,24 +2898,14 @@
             if (pnl > 0) state.portfolio.winningTrades++;
             else if (pnl < 0) state.portfolio.losingTrades++;
 
-            const stopLossPercent = state.settings.stopLoss || 2;
-            const takeProfitPercent = state.settings.takeProfit || 5;
-            const returnPct = (pnl / costBasis) * 100;
-
-            if (pnl < 0 && Math.abs(returnPct) >= stopLossPercent) {
-                position.stoppedOut = true;
-                trade.stopLoss = true;
-            } else if (pnl > 0 && returnPct >= takeProfitPercent) {
-                position.takeProfit = true;
-                trade.takeProfit = true;
-            }
-
             updateTrade(trade);
             updatePortfolioUI();
             updateEquityChart();
         }
 
-        // NEW: checkAgeBasedSelling function
+        // ============================================
+        // Age-Based Selling
+        // ============================================
         function checkAgeBasedSelling() {
             if (!state.settings.enforceAgeBasedSelling || !state.isRunning) return;
 
@@ -2952,9 +2927,8 @@
         }
 
         // ============================================
-        // DASHBOARD RENDERING
+        // Dashboard Rendering
         // ============================================
-
         function updateDashboard() {
             renderDashboard();
             updateActivePositions();
@@ -3162,9 +3136,8 @@
         }
 
         // ============================================
-        // TRADE HISTORY
+        // Trade History
         // ============================================
-
         function renderFullTradeHistory() {
             const fullTradeHistory = document.getElementById('fullTradeHistory');
             const trades = state.trades.slice().reverse();
@@ -3248,9 +3221,8 @@
         }
 
         // ============================================
-        // REPLAY MODE
+        // Replay Mode
         // ============================================
-
         async function startReplay(duration) {
             if (state.replayMode) {
                 showNotification('Info', 'Replay running.');
@@ -3359,37 +3331,26 @@
         }
 
         // ============================================
-        // SETTINGS MANAGEMENT
+        // Settings Management
         // ============================================
-
-        // UPDATED: saveTradingSettings with new settings
         function saveTradingSettings() {
             state.settings.buyPatterns = document.getElementById('buyPatterns').value;
             state.settings.sellPatterns = document.getElementById('sellPatterns').value;
-            state.settings.totalTradeCapital = parseFloat(document.getElementById('totalTradeCapital').value);
+            state.settings.startingEth = parseFloat(document.getElementById('startingEth').value);
             state.settings.minTradeAmount = parseFloat(document.getElementById('minTradeAmount').value);
             state.settings.tradeStep = parseFloat(document.getElementById('tradeStep').value);
             state.settings.profitAddress = document.getElementById('profitAddress').value.trim();
             state.settings.maxTrades = parseInt(document.getElementById('maxTrades').value);
-            state.settings.stopLoss = parseFloat(document.getElementById('stopLoss').value);
-            state.settings.takeProfit = parseFloat(document.getElementById('takeProfit').value);
-            state.settings.trailingStop = parseFloat(document.getElementById('trailingStop').value);
             state.settings.tradeCooldown = parseInt(document.getElementById('tradeCooldown').value);
             state.settings.tokens = Object.keys(TOKENS);
             state.settings.maxSlippage = parseFloat(document.getElementById('maxSlippage').value);
             state.settings.latencySimulation = document.getElementById('latencySimulation').value;
 
-            // NEW SETTINGS
-            state.settings.minProfitPercent = parseFloat(document.getElementById('minProfitPercent').value || 0.5);
+            // Simplified settings
+            state.settings.minProfitPercent = parseFloat(document.getElementById('minProfitPercent').value || 2);
             state.settings.maxPositionAge = parseInt(document.getElementById('maxPositionAge').value || 3600);
             state.settings.enforceProfitForPatterns = document.getElementById('enforceProfitForPatterns').checked;
             state.settings.enforceAgeBasedSelling = document.getElementById('enforceAgeBasedSelling').checked;
-
-            const equitySelect = document.getElementById('startingEquitySelect');
-            state.settings.startingEquity = equitySelect.value;
-            if (equitySelect.value === 'custom') {
-                state.settings.startingEquity = `custom_${document.getElementById('customStartingEquity').value}`;
-            }
 
             const activeTokenButtons = document.querySelectorAll('#tradeTokens .token-btn.active');
             state.activeTokens = Array.from(activeTokenButtons).map(btn => btn.dataset.token);
@@ -3478,6 +3439,7 @@
                 updateExecutionModeBadge();
                 updateConfidenceScore();
                 updatePriceHistoryCount();
+                updateStartingEthField();
                 log('info', 'Settings and data loaded');
             } catch (error) {
                 console.error('Load error:', error);
@@ -3493,9 +3455,9 @@
                 unrealizedPnL: 0,
                 gasSpent: 0,
                 feesPaid: 0,
-                startingEth: state.settings.totalTradeCapital || 1.0,
-                currentEth: state.settings.totalTradeCapital || 1.0,
-                equityHistory: [{ timestamp: Date.now(), ethValue: state.settings.totalTradeCapital || 1.0 }],
+                startingEth: state.settings.startingEth || 0.5,
+                currentEth: state.settings.startingEth || 0.5,
+                equityHistory: [{ timestamp: Date.now(), ethValue: state.settings.startingEth || 0.5 }],
                 totalTrades: state.trades.length,
                 winningTrades: state.trades.filter(t => t.pnl > 0).length,
                 losingTrades: state.trades.filter(t => t.pnl < 0).length,
@@ -3505,18 +3467,14 @@
             log('info', 'Portfolio reconstructed');
         }
 
-        // UPDATED: updateSettingsUI with new settings
         function updateSettingsUI() {
-            document.getElementById('buyPatterns').value = state.settings.buyPatterns || '<_-0.5_150-450,<_-1.0_300-600,<_-0.3_60-120';
-            document.getElementById('sellPatterns').value = state.settings.sellPatterns || '>_+0.5_60-300,>_+1.0_120-480,>_+0.3_30-90';
-            document.getElementById('totalTradeCapital').value = state.settings.totalTradeCapital || 1.0;
-            document.getElementById('minTradeAmount').value = state.settings.minTradeAmount || 0.01;
-            document.getElementById('tradeStep').value = state.settings.tradeStep || 0.05;
+            document.getElementById('buyPatterns').value = state.settings.buyPatterns || '<_-0.1_30-600';
+            document.getElementById('sellPatterns').value = state.settings.sellPatterns || '>_+0.1_30-600';
+            document.getElementById('startingEth').value = state.settings.startingEth || 0.5;
+            document.getElementById('minTradeAmount').value = state.settings.minTradeAmount || 0.0001;
+            document.getElementById('tradeStep').value = state.settings.tradeStep || 0.0001;
             document.getElementById('profitAddress').value = state.settings.profitAddress || '';
-            document.getElementById('maxTrades').value = state.settings.maxTrades || 5;
-            document.getElementById('stopLoss').value = state.settings.stopLoss || 2;
-            document.getElementById('takeProfit').value = state.settings.takeProfit || 5;
-            document.getElementById('trailingStop').value = state.settings.trailingStop || 1;
+            document.getElementById('maxTrades').value = state.settings.maxTrades || 100;
             document.getElementById('tradeCooldown').value = state.settings.tradeCooldown || 60;
             document.getElementById('maxSlippage').value = state.settings.maxSlippage || 0.5;
             document.getElementById('maxGasPrice').value = state.settings.maxGasPrice || 200;
@@ -3533,32 +3491,23 @@
             document.getElementById('maxLogEntries').value = 1000;
             document.getElementById('logToConsole').checked = true;
             document.getElementById('executionModeSelect').value = state.settings.executionMode || EXECUTION_MODES.SHADOW;
-            document.getElementById('latencySimulation').value = state.settings.latencySimulation || '150-1200';
-            document.getElementById('startingEquitySelect').value = state.settings.startingEquity || 'ETH_1.0';
+            document.getElementById('latencySimulation').value = state.settings.latencySimulation || '1000-3000';
 
-            // NEW SETTINGS
-            document.getElementById('minProfitPercent').value = state.settings.minProfitPercent || 0.5;
+            // Simplified settings
+            document.getElementById('minProfitPercent').value = state.settings.minProfitPercent || 2;
             document.getElementById('maxPositionAge').value = state.settings.maxPositionAge || 3600;
             document.getElementById('enforceProfitForPatterns').checked = state.settings.enforceProfitForPatterns !== false;
             document.getElementById('enforceAgeBasedSelling').checked = state.settings.enforceAgeBasedSelling !== false;
 
-            if (state.settings.startingEquity && state.settings.startingEquity.startsWith('custom')) {
-                document.getElementById('customEquityGroup').style.display = 'block';
-                const parts = state.settings.startingEquity.split('_');
-                if (parts.length >= 2) document.getElementById('customStartingEquity').value = parts[1];
-            } else {
-                document.getElementById('customEquityGroup').style.display = 'none';
-            }
-
             updateTokenSelectors();
             updateExecutionModeBadge();
             updateConfidenceScore();
+            updateStartingEthField();
         }
 
         // ============================================
-        // BACKUP & RESTORE
+        // Backup & Restore
         // ============================================
-
         function startBackupTimer() {
             stopBackupTimer();
             const interval = (state.settings.backupInterval || 30) * 60 * 1000;
@@ -3685,9 +3634,9 @@
                     unrealizedPnL: 0,
                     gasSpent: 0,
                     feesPaid: 0,
-                    startingEth: 1.0,
-                    currentEth: 1.0,
-                    equityHistory: [{ timestamp: Date.now(), ethValue: 1.0 }],
+                    startingEth: 0.5,
+                    currentEth: 0.5,
+                    equityHistory: [{ timestamp: Date.now(), ethValue: 0.5 }],
                     totalTrades: 0,
                     winningTrades: 0,
                     losingTrades: 0,
@@ -3717,9 +3666,8 @@
         }
 
         // ============================================
-        // DATABASE OPERATIONS
+        // Database Operations
         // ============================================
-
         async function saveToDB(storeName, data) {
             try {
                 localStorage.setItem(storeName, JSON.stringify(data));
@@ -3769,9 +3717,8 @@
         }
 
         // ============================================
-        // UTILITY FUNCTIONS
+        // Utility Functions
         // ============================================
-
         function getActiveTokens() {
             return state.activeTokens.length > 0 ? state.activeTokens : Object.keys(TOKENS);
         }
@@ -3965,7 +3912,9 @@
             }
         }
 
-        // UPDATED: startBot with age-based selling check
+        // ============================================
+        // Bot Control
+        // ============================================
         async function startBot() {
             if (state.isRunning) {
                 showNotification('Info', 'Bot is already running.');
@@ -4059,10 +4008,39 @@
             updateConnectionStatus();
         }
 
-        // ============================================
-        // UNISWAP SESSION MANAGEMENT
-        // ============================================
+        async function testConnection() {
+            log('info', 'Testing connections...');
+            showNotification('Info', 'Testing connections...');
+            if (state.settings.executionMode === EXECUTION_MODES.PAPER) {
+                log('info', 'Paper Mode: Simulating success.');
+                activeSession = { connected: true };
+                updateConnectionStatus();
+                showNotification('Success', 'Paper Mode: All connections OK!');
+                return;
+            }
+            try {
+                if (typeof window.ethereum === 'undefined') throw new Error('MetaMask not installed');
+                const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                if (accounts.length === 0) throw new Error('MetaMask not connected');
+                const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                const chainIdNum = parseInt(chainId);
+                if (state.settings.executionMode === EXECUTION_MODES.LIVE) {
+                    if (![ARBITRUM_CHAIN_ID, ARBITRUM_GOERLI_CHAIN_ID, MAINNET_CHAIN_ID, BASE_CHAIN_ID, OPTIMISM_CHAIN_ID, POLYGON_CHAIN_ID].includes(chainIdNum)) {
+                        throw new Error('Unsupported network.');
+                    }
+                }
+                log('info', 'All connections OK');
+                showNotification('Success', 'All connections working!');
+            } catch (error) {
+                console.error('Connection test:', error);
+                log('error', `Connection test failed: ${error.message}`);
+                showNotification('Error', 'Connection test failed: ' + error.message);
+            }
+        }
 
+        // ============================================
+        // Uniswap Session Management
+        // ============================================
         function createSession(key) {
             const chain = CHAINS[key];
             return {
@@ -4731,7 +4709,9 @@
             }
         }
 
-        // Close WebSockets on page unload
+        // ============================================
+        // Cleanup
+        // ============================================
         function closeWebSockets() {
             if (activeSession) destroySession(activeSession);
         }
