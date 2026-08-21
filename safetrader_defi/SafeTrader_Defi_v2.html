@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Micro-Scalping Bot</title>
+    <title>Uniswap Micro-Scalping Bot - Fixed Starting ETH</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
@@ -595,17 +595,158 @@
             color: #6c757d;
             margin-top: 5px;
         }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: white;
+            border-radius: var(--bs-border-radius);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 12px 16px;
+            min-width: 300px;
+            max-width: 400px;
+            animation: slideIn 0.3s ease-out;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--bs-success);
+        }
+
+        .toast.error {
+            border-left: 4px solid var(--bs-danger);
+        }
+
+        .toast.warning {
+            border-left: 4px solid var(--bs-warning);
+        }
+
+        .toast.info {
+            border-left: 4px solid var(--bs-info);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        .toast.hiding {
+            animation: slideOut 0.3s ease-out forwards;
+        }
+
+        .toast-icon {
+            font-size: 1.2rem;
+        }
+
+        .toast-message {
+            flex: 1;
+            font-size: 0.9rem;
+        }
+
+        .toast-close {
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: #6c757d;
+            padding: 0 0 0 10px;
+        }
+
+        .toast-close:hover {
+            color: var(--bs-dark);
+        }
+
+        .asset-allocation {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .allocation-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            font-size: 0.85rem;
+        }
+
+        .allocation-bar {
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .allocation-fill {
+            height: 100%;
+            background: var(--bs-primary);
+            border-radius: 10px;
+        }
+
+        /* Starting ETH Input Styling */
+        .starting-eth-container {
+            position: relative;
+        }
+
+        .starting-eth-container .form-control {
+            padding-right: 40px;
+        }
+
+        .eth-suffix {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+            font-size: 0.875rem;
+            pointer-events: none;
+        }
     </style>
 </head>
 
 <body>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+    
     <div class="container">
         <header class="text-center mb-2">
             <h1>Uniswap Micro-Scalping Bot</h1>
             <p class="text-secondary">
                 <span id="executionModeBadge">SHADOW MODE</span>
                 <span class="fidelity-badge fidelity-high" id="fidelityBadge">Fidelity: 95%</span>
-                - Optimized for Micro-Scalping with Real Gas Fees
+                - Fixed Starting ETH Implementation
             </p>
         </header>
 
@@ -677,7 +818,7 @@
                         <div class="d-flex justify-between">
                             <div>
                                 <p><strong>Starting ETH:</strong></p>
-                                <p class="value" id="startingEth">1.000000 ETH</p>
+                                <p class="value" id="startingEthDisplay">1.000000 ETH</p>
                             </div>
                             <div>
                                 <p><strong>Current ETH:</strong></p>
@@ -705,6 +846,9 @@
                                 <p><strong>Return:</strong></p>
                                 <p class="value" id="portfolioReturn">0.00%</p>
                             </div>
+                        </div>
+                        <div class="mt-2">
+                            <p><strong>Trade Amount:</strong> <span id="tradeAmountDisplay">0.010000 ETH</span> (<span id="tradeAmountPercentDisplay">1%</span> of starting)</p>
                         </div>
                     </div>
                 </div>
@@ -739,6 +883,8 @@
                             <p><strong>✓ Pool Fees</strong></p>
                             <p><strong>✓ Price History</strong></p>
                             <p><strong>✓ Pattern Matching</strong></p>
+                            <p><strong>✓ Asset Caps</strong></p>
+                            <p><strong>✓ Sequential Prevention</strong></p>
                             <p><strong id="walletFidelity">✗ Wallet</strong></p>
                         </div>
                     </div>
@@ -764,6 +910,9 @@
                     <div class="card-body">
                         <div id="activePositions">
                             <p class="text-secondary">No active positions</p>
+                        </div>
+                        <div class="asset-allocation" id="assetAllocation">
+                            <!-- Asset allocation bars will be inserted here -->
                         </div>
                     </div>
                 </div>
@@ -854,11 +1003,12 @@
                                     <th>Balance</th>
                                     <th>ETH Value</th>
                                     <th>Allocation</th>
+                                    <th>Cap %</th>
                                 </tr>
                             </thead>
                             <tbody id="portfolioBalances">
                                 <tr>
-                                    <td colspan="4" class="text-center text-secondary">No balances</td>
+                                    <td colspan="5" class="text-center text-secondary">No balances</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -928,7 +1078,7 @@
                 <div class="card-header">Micro-Scalping Strategy</div>
                 <div class="card-body">
                     <div class="alert alert-info mb-2">
-                        Optimized for micro-scalping: Tight patterns, small profits, fast execution.
+                        Enhanced with asset cap percentages, sequential trade prevention, and fixed starting ETH.
                     </div>
                     
                     <div class="grid-2">
@@ -969,33 +1119,34 @@
                     </div>
 
                     <div class="grid-3">
-                        <div class="form-group">
+                        <div class="form-group starting-eth-container">
                             <label class="form-label">Starting ETH</label>
-                            <input type="number" class="form-control" id="startingEth" value="1.0" min="0.01" step="0.01">
-                            <small class="setting-description">Initial ETH amount for trading. In Live mode, this will be set to your wallet balance.</small>
+                            <input type="number" class="form-control" id="startingEth" value="1.0" min="0.01" step="0.01" onchange="updateStartingEthDisplay()">
+                            <span class="eth-suffix">ETH</span>
+                            <small class="setting-description">Initial ETH amount for trading. In Live mode, this will be set to your wallet balance. All trade amounts are calculated as a percentage of this value.</small>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Trade Step (ETH)</label>
-                            <input type="number" class="form-control" id="tradeStep" value="0.005" min="0.001" step="0.001">
-                            <small class="setting-description">Fixed amount in ETH to allocate per individual trade. Smaller for micro-scalping.</small>
+                            <label class="form-label">Trade Amount (%)</label>
+                            <input type="number" class="form-control" id="tradeAmountPercent" value="1" min="0.1" max="100" step="0.1" onchange="updateTradeAmountDisplay()">
+                            <small class="setting-description">Percentage of starting ETH to use per trade. Replaces trade step and min trade amount.</small>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Min Trade Amount (ETH)</label>
-                            <input type="number" class="form-control" id="minTradeAmount" value="0.001" min="0.001" step="0.001">
-                            <small class="setting-description">Minimum ETH value required to execute a trade.</small>
+                            <label class="form-label">Max Open Trades</label>
+                            <input type="number" class="form-control" id="maxTrades" value="50" min="1" max="200">
+                            <small class="setting-description">Maximum number of simultaneous open positions allowed.</small>
                         </div>
                     </div>
 
                     <div class="grid-2">
                         <div class="form-group">
-                            <label class="form-label">Max Open Trades</label>
-                            <input type="number" class="form-control" id="maxTrades" value="50" min="1" max="200">
-                            <small class="setting-description">Maximum number of simultaneous open positions allowed. Higher for micro-scalping.</small>
-                        </div>
-                        <div class="form-group">
                             <label class="form-label">Cooldown (sec)</label>
                             <input type="number" class="form-control" id="tradeCooldown" value="10" min="0">
-                            <small class="setting-description">Waiting period between consecutive trades on the same token. Shorter for micro-scalping.</small>
+                            <small class="setting-description">Waiting period between consecutive trades on the same token.</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Prevent Sequential Trades</label>
+                            <input type="checkbox" class="form-control" id="preventSequentialTrades" checked onchange="updateStartingEthDisplay()">
+                            <small class="setting-description">Prevents buying the same asset twice in a row without selling first.</small>
                         </div>
                     </div>
 
@@ -1003,12 +1154,12 @@
                         <div class="form-group">
                             <label class="form-label">Min Profit for Selling (%)</label>
                             <input type="number" class="form-control" id="minProfitPercent" value="0.2" min="0" max="100" step="0.01">
-                            <small class="setting-description">Minimum profit % required to sell when a pattern matches. Lower for micro-scalping.</small>
+                            <small class="setting-description">Minimum profit % required to sell when a pattern matches.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Max Position Age (seconds)</label>
                             <input type="number" class="form-control" id="maxPositionAge" value="300" min="10" max="86400">
-                            <small class="setting-description">Auto-sell if position is older than this (and profitable). Shorter for micro-scalping.</small>
+                            <small class="setting-description">Auto-sell if position is older than this (and profitable).</small>
                         </div>
                     </div>
 
@@ -1026,9 +1177,30 @@
                     </div>
 
                     <div class="form-group">
+                        <label class="form-label">Asset Cap Settings</label>
+                        <div class="grid-3">
+                            <div class="form-group">
+                                <label class="form-label">ETH Cap (%)</label>
+                                <input type="number" class="form-control" id="ethCapPercent" value="100" min="0" max="100" step="1">
+                                <small class="setting-description">Max % of portfolio in ETH</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">WBTC Cap (%)</label>
+                                <input type="number" class="form-control" id="wbtcCapPercent" value="20" min="0" max="100" step="1">
+                                <small class="setting-description">Max % of portfolio in WBTC</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Other Tokens Cap (%)</label>
+                                <input type="number" class="form-control" id="otherCapPercent" value="10" min="0" max="100" step="1">
+                                <small class="setting-description">Max % of portfolio in any other single token</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
                         <label class="form-label">Tokens to Monitor</label>
                         <div class="token-selector" id="tradeTokens"></div>
-                        <small class="setting-description">Select which tokens to track and apply patterns to. Only selected tokens will have price history stored and patterns checked.</small>
+                        <small class="setting-description">Select which tokens to track and apply patterns to.</small>
                     </div>
 
                     <div class="d-flex gap-1">
@@ -1173,18 +1345,18 @@
                         <div class="form-group">
                             <label class="form-label">Price Update Interval (ms)</label>
                             <input type="number" class="form-control" id="priceInterval" value="1000" min="100" max="60000">
-                            <small class="setting-description">How often (in milliseconds) the app polls for fresh price data. Lower for micro-scalping.</small>
+                            <small class="setting-description">How often (in milliseconds) the app polls for fresh price data.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Max Price Age (sec)</label>
                             <input type="number" class="form-control" id="maxPriceAge" value="10" min="1" max="300">
-                            <small class="setting-description">Maximum allowed age of price data before considered stale. Lower for micro-scalping.</small>
+                            <small class="setting-description">Maximum allowed age of price data before considered stale.</small>
                         </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Price History Duration (hours)</label>
                         <input type="number" class="form-control" id="priceHistoryDuration" value="1" min="0.1" max="720" step="0.1">
-                        <small class="setting-description">How many hours of price history to maintain for pattern matching. Shorter for micro-scalping.</small>
+                        <small class="setting-description">How many hours of price history to maintain for pattern matching.</small>
                     </div>
                     <button class="btn btn-primary" onclick="savePriceSettings()">Save Price Settings</button>
                 </div>
@@ -1232,13 +1404,13 @@
                         <div class="form-group">
                             <label class="form-label">Gas Limit</label>
                             <input type="number" class="form-control" id="gasLimit" value="200000" min="21000">
-                            <small class="setting-description">Gas limit for each transaction. Adjusted for micro-scalping.</small>
+                            <small class="setting-description">Gas limit for each transaction.</small>
                         </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Price Impact Limit (%)</label>
                         <input type="number" class="form-control" id="maxPriceImpact" value="0.5" min="0" max="50" step="0.1">
-                        <small class="setting-description">Maximum acceptable price impact for trades. Lower for micro-scalping.</small>
+                        <small class="setting-description">Maximum acceptable price impact for trades.</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Debug Mode</label>
@@ -1300,7 +1472,7 @@
         </div>
     </div>
 
-    <!-- Modals -->
+    <!-- Notification Modal (kept for other notifications) -->
     <div class="modal" id="notificationModal">
         <div class="modal-content">
             <h3 id="modalTitle">Notification</h3>
@@ -1309,22 +1481,11 @@
         </div>
     </div>
 
-    <div class="modal" id="txModal">
-        <div class="modal-content">
-            <h3 id="txModalTitle">Transaction Confirmation</h3>
-            <div id="txModalContent"></div>
-            <div class="d-flex justify-between mt-2">
-                <button class="btn btn-secondary" onclick="closeTxModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="confirmTransaction()">Confirm</button>
-            </div>
-        </div>
-    </div>
-
     <script>
         // ============================================
         // Configuration & Constants
         // ============================================
-        const APP_VERSION = '6.0.0-MICRO-SCALPING';
+        const APP_VERSION = '7.1.0-FIXED-STARTING-ETH';
         const ARBITRUM_CHAIN_ID = 42161;
         const ARBITRUM_GOERLI_CHAIN_ID = 421613;
         const MAINNET_CHAIN_ID = 1;
@@ -1422,7 +1583,7 @@
         const SWAP_TOPIC = SWAP_INTERFACE.getEvent("Swap").topicHash;
 
         // ============================================
-        // State & Settings (Optimized for Micro-Scalping)
+        // State & Settings (Fixed Starting ETH)
         // ============================================
         let state = {
             isRunning: false,
@@ -1456,13 +1617,12 @@
                 executionMode: EXECUTION_MODES.SHADOW,
                 
                 // Patterns (optimized for micro-scalping)
-                buyPatterns: '<_-0.1_10-60,<_-0.2_30-120',
-                sellPatterns: '>_+0.1_10-60,>_+0.2_30-120',
+                buyPatterns: '<_-0.1_10-60,<_-0.2_30-120,<_-0.05_5-30',
+                sellPatterns: '>_+0.1_10-60,>_+0.2_30-120,>_+0.05_5-30',
                 
-                // Capital
+                // Capital - FIXED: Starting ETH is now properly used throughout
                 startingEth: 1.0,
-                minTradeAmount: 0.001,
-                tradeStep: 0.005,
+                tradeAmountPercent: 1, // Percentage of starting ETH per trade
                 
                 // Trade limits
                 maxTrades: 50,
@@ -1485,6 +1645,20 @@
                 maxPriceAge: 10,
                 priceHistoryDuration: 1,
                 
+                // NEW: Asset cap settings
+                assetCaps: {
+                    ETH: 100,
+                    WBTC: 20,
+                    UNI: 10,
+                    LINK: 10,
+                    ARB: 10,
+                    GMX: 10,
+                    OTHER: 10
+                },
+                
+                // NEW: Sequential trade prevention
+                preventSequentialTrades: true,
+                
                 // Micro-scalping specific
                 minProfitPercent: 0.2,
                 maxPositionAge: 300,
@@ -1498,6 +1672,8 @@
                 encryptionEnabled: true,
                 debugMode: 'none'
             },
+            // Track last trade token for sequential prevention
+            lastTradeToken: null,
             startTime: null,
             lastPriceUpdate: null,
             lastTradeTime: null,
@@ -1532,6 +1708,11 @@
             await checkWalletConnection();
             updateNetworkInfo();
             initializeCharts();
+            initializeAssetCaps();
+            
+            // FIX: Update displays after loading settings
+            updateStartingEthDisplay();
+            updateTradeAmountDisplay();
         });
 
         function initializeApp() {
@@ -1598,6 +1779,87 @@
             }
         }
 
+        // FIX: Function to update starting ETH display and recalculate dependent values
+        function updateStartingEthDisplay() {
+            const startingEthInput = document.getElementById('startingEth');
+            const startingEthDisplay = document.getElementById('startingEthDisplay');
+            
+            if (startingEthInput && startingEthDisplay) {
+                const startingEth = parseFloat(startingEthInput.value) || 1.0;
+                startingEthDisplay.textContent = startingEth.toFixed(6) + ' ETH';
+                
+                // Update state
+                state.settings.startingEth = startingEth;
+                
+                // Update trade amount display
+                updateTradeAmountDisplay();
+                
+                // If bot is not running, update portfolio starting value
+                if (!state.isRunning) {
+                    state.portfolio.startingEth = startingEth;
+                    state.portfolio.currentEth = startingEth;
+                    state.portfolio.balances['ETH'] = startingEth;
+                    
+                    // Update equity history
+                    state.portfolio.equityHistory = [{
+                        timestamp: Date.now(),
+                        ethValue: startingEth
+                    }];
+                    
+                    updatePortfolioUI();
+                    updateEquityChart();
+                }
+            }
+        }
+
+        // FIX: Function to update trade amount display
+        function updateTradeAmountDisplay() {
+            const tradeAmountPercentInput = document.getElementById('tradeAmountPercent');
+            const tradeAmountDisplay = document.getElementById('tradeAmountDisplay');
+            const tradeAmountPercentDisplay = document.getElementById('tradeAmountPercentDisplay');
+            
+            if (tradeAmountPercentInput && tradeAmountDisplay && tradeAmountPercentDisplay) {
+                const percent = parseFloat(tradeAmountPercentInput.value) || 1;
+                const startingEth = parseFloat(state.settings.startingEth) || 1.0;
+                const amountETH = startingEth * (percent / 100);
+                
+                tradeAmountDisplay.textContent = amountETH.toFixed(6) + ' ETH';
+                tradeAmountPercentDisplay.textContent = percent + '%';
+                
+                // Update state
+                state.settings.tradeAmountPercent = percent;
+            }
+        }
+
+        function initializeAssetCaps() {
+            // Initialize default asset caps if not set
+            if (!state.settings.assetCaps) {
+                state.settings.assetCaps = {
+                    ETH: 100,
+                    WBTC: 20,
+                    UNI: 10,
+                    LINK: 10,
+                    ARB: 10,
+                    GMX: 10,
+                    OTHER: 10
+                };
+            }
+            updateAssetCapUI();
+        }
+
+        function updateAssetCapUI() {
+            // Update the asset cap inputs in the UI
+            if (document.getElementById('ethCapPercent')) {
+                document.getElementById('ethCapPercent').value = state.settings.assetCaps.ETH || 100;
+            }
+            if (document.getElementById('wbtcCapPercent')) {
+                document.getElementById('wbtcCapPercent').value = state.settings.assetCaps.WBTC || 20;
+            }
+            if (document.getElementById('otherCapPercent')) {
+                document.getElementById('otherCapPercent').value = state.settings.assetCaps.OTHER || 10;
+            }
+        }
+
         function setupEventListeners() {
             document.querySelectorAll('.nav-tabs .nav-link').forEach(link => link.addEventListener('click', function () {
                 switchTab(this.getAttribute('data-tab'));
@@ -1619,7 +1881,7 @@
             document.getElementById('executionModeSelect').addEventListener('change', function () {
                 const mode = this.value;
                 if (mode === EXECUTION_MODES.LIVE && !state.isConnected) {
-                    showNotification('Warning', 'Live mode requires MetaMask.');
+                    showToast('Warning', 'Live mode requires MetaMask.');
                     this.value = state.settings.executionMode;
                     return;
                 }
@@ -1628,7 +1890,30 @@
                 updateConfidenceScore();
                 saveSettings();
                 updateStartingEthField();
+                
+                // FIX: Update displays when execution mode changes
+                updateStartingEthDisplay();
+                updateTradeAmountDisplay();
             });
+            
+            // FIX: Add event listener for startingEth input
+            const startingEthInput = document.getElementById('startingEth');
+            if (startingEthInput) {
+                startingEthInput.addEventListener('change', updateStartingEthDisplay);
+                startingEthInput.addEventListener('input', function() {
+                    // Update display as user types
+                    const value = parseFloat(this.value) || 0;
+                    document.getElementById('startingEthDisplay').textContent = value.toFixed(6) + ' ETH';
+                    updateTradeAmountDisplay();
+                });
+            }
+            
+            // FIX: Add event listener for tradeAmountPercent input
+            const tradeAmountPercentInput = document.getElementById('tradeAmountPercent');
+            if (tradeAmountPercentInput) {
+                tradeAmountPercentInput.addEventListener('change', updateTradeAmountDisplay);
+                tradeAmountPercentInput.addEventListener('input', updateTradeAmountDisplay);
+            }
         }
 
         function updateStartingEthField() {
@@ -1641,6 +1926,9 @@
                 startingEthInput.readOnly = false;
                 startingEthInput.placeholder = 'Enter starting ETH';
             }
+            
+            // FIX: Update display when field changes
+            updateStartingEthDisplay();
         }
 
         function switchTab(tab) {
@@ -1651,7 +1939,11 @@
             });
             document.getElementById(tab).classList.add('active');
             if (tab === 'history') renderFullTradeHistory();
-            else if (tab === 'dashboard') { refreshDashboard(); updateEquityChart(); }
+            else if (tab === 'dashboard') { 
+                refreshDashboard(); 
+                updateEquityChart(); 
+                updateStartingEthDisplay();
+            }
             else if (tab === 'portfolio') updatePortfolioUI();
             else if (tab === 'logs') scrollToBottom('logContainer');
         }
@@ -1666,11 +1958,13 @@
         function updateConfidenceScore() {
             const mode = state.settings.executionMode;
             let checks = [
-                { name: 'Gas Modeling', enabled: true }, // Always enabled with real gas fees
+                { name: 'Gas Modeling', enabled: true },
                 { name: 'Liquidity', enabled: true },
                 { name: 'Pool Fees', enabled: true },
                 { name: 'Price History', enabled: true },
                 { name: 'Pattern Matching', enabled: true },
+                { name: 'Asset Caps', enabled: true },
+                { name: 'Sequential Prevention', enabled: true },
                 { name: 'Wallet', enabled: mode === EXECUTION_MODES.LIVE && state.isConnected }
             ];
             const passed = checks.filter(c => c.enabled).length;
@@ -1699,6 +1993,40 @@
             equityChart.options.scales.y.type = (currentType === 'linear' ? 'logarithmic' : 'linear');
             equityChart.options.scales.y.title.text = (currentType === 'linear' ? 'ETH Value (Log)' : 'ETH Value');
             equityChart.update();
+        }
+
+        // ============================================
+        // Toast Notifications (Replaces Modals for Trades)
+        // ============================================
+        function showToast(type, message, duration = 3000) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            const icons = {
+                success: '✓',
+                error: '✗',
+                warning: '⚠',
+                info: 'ℹ'
+            };
+            
+            const icon = icons[type] || 'ℹ';
+            
+            toast.innerHTML = `
+                <span class="toast-icon">${icon}</span>
+                <span class="toast-message">${message}</span>
+                <span class="toast-close" onclick="this.parentElement.remove()">&times;</span>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Auto-remove after duration
+            setTimeout(() => {
+                toast.classList.add('hiding');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+            
+            log('info', `Toast: [${type.toUpperCase()}] ${message}`);
         }
 
         // ============================================
@@ -1769,7 +2097,7 @@
         // ============================================
         async function connectWallet() {
             if (typeof window.ethereum === 'undefined') {
-                showNotification('Error', 'MetaMask not installed.');
+                showToast('Error', 'MetaMask not installed.');
                 log('error', 'MetaMask not installed');
                 return;
             }
@@ -1783,15 +2111,19 @@
                     updateWalletUI();
                     saveSettings();
                     log('info', `Wallet connected: ${shortenAddress(state.walletAddress)}`);
-                    showNotification('Success', 'Wallet connected!');
+                    showToast('Success', 'Wallet connected!');
                     await updateEthBalance();
                     updateConfidenceScore();
                     updateStartingEthField();
+                    
+                    // FIX: Update displays after connecting wallet
+                    updateStartingEthDisplay();
+                    updateTradeAmountDisplay();
                 }
             } catch (error) {
                 console.error('Wallet error:', error);
                 log('error', `Wallet connection failed: ${error.message}`);
-                showNotification('Error', 'Failed to connect: ' + error.message);
+                showToast('Error', 'Failed to connect: ' + error.message);
             } finally {
                 hideLoading('walletConnectSpinner');
             }
@@ -1803,7 +2135,7 @@
             updateWalletUI();
             saveSettings();
             log('info', 'Wallet disconnected');
-            showNotification('Success', 'Wallet disconnected.');
+            showToast('Success', 'Wallet disconnected.');
             updateConfidenceScore();
             updateStartingEthField();
         }
@@ -1834,6 +2166,7 @@
                         log('info', 'Wallet account changed');
                         updateConfidenceScore();
                         updateStartingEthField();
+                        updateStartingEthDisplay();
                     });
                     window.ethereum.on('chainChanged', async chainId => {
                         await checkNetwork();
@@ -1918,7 +2251,13 @@
                     state.portfolio.currentEth = ethBalance;
                     state.portfolio.balances['ETH'] = ethBalance;
                     document.getElementById('startingEth').value = ethBalance.toFixed(6);
+                    
+                    // FIX: Update all dependent displays
+                    updateStartingEthDisplay();
+                    updateTradeAmountDisplay();
                     updatePortfolioUI();
+                    updateEquityChart();
+                    
                     log('info', `Live mode: Starting ETH set to wallet balance: ${ethBalance.toFixed(6)}`);
                 }
                 
@@ -2067,25 +2406,83 @@
         }
 
         // ============================================
-        // Gas Price Management (Real Network Data)
+        // Asset Cap Management
         // ============================================
-        async function getCurrentGasPrice() {
-            // Try to get real gas price from active session first
-            if (activeSession?.gasPrice) {
-                return activeSession.gasPrice;
+        function getAssetCap(token) {
+            // Get the cap percentage for a token
+            if (state.settings.assetCaps && state.settings.assetCaps[token] !== undefined) {
+                return state.settings.assetCaps[token];
             }
-            
-            // Fallback to settings
-            return state.settings.maxGasPrice || 200;
+            // Default cap for other tokens
+            return state.settings.assetCaps?.OTHER || 10;
         }
 
-        async function updateGasPriceDisplay() {
-            const gasPrice = await getCurrentGasPrice();
-            const gasPriceEl = document.getElementById('currentGasPrice');
-            if (gasPriceEl) {
-                gasPriceEl.textContent = gasPrice.toFixed(2) + ' gwei';
+        function getCurrentAllocation(token) {
+            // Calculate current allocation percentage for a token
+            const totalPortfolioValue = state.portfolio.currentEth;
+            if (totalPortfolioValue <= 0) return 0;
+            
+            const tokenBalance = state.portfolio.balances[token] || 0;
+            const tokenPrice = state.prices[token] || (token === 'ETH' ? 1 : 0);
+            const tokenValue = tokenBalance * tokenPrice;
+            
+            return (tokenValue / totalPortfolioValue) * 100;
+        }
+
+        function checkAssetCap(token, amountETH) {
+            // Check if adding this trade would exceed the asset cap
+            const capPercent = getAssetCap(token);
+            if (capPercent === 0) {
+                return { allowed: false, reason: `Asset ${token} has 0% cap` };
             }
-            return gasPrice;
+            
+            const totalPortfolioValue = state.portfolio.currentEth;
+            if (totalPortfolioValue <= 0) {
+                return { allowed: true };
+            }
+            
+            const currentAllocation = getCurrentAllocation(token);
+            const newAllocation = currentAllocation + ((amountETH / totalPortfolioValue) * 100);
+            
+            if (newAllocation > capPercent) {
+                return { 
+                    allowed: false, 
+                    reason: `Adding ${amountETH.toFixed(6)} ETH would exceed ${token} cap (${capPercent}%). Current: ${currentAllocation.toFixed(2)}%, New: ${newAllocation.toFixed(2)}%` 
+                };
+            }
+            
+            return { allowed: true };
+        }
+
+        function updateAssetAllocationDisplay() {
+            const container = document.getElementById('assetAllocation');
+            if (!container) return;
+            
+            const totalPortfolioValue = state.portfolio.currentEth;
+            if (totalPortfolioValue <= 0) {
+                container.innerHTML = '<p class="text-secondary">No allocation data</p>';
+                return;
+            }
+            
+            let html = '';
+            const activeTokens = Object.keys(state.portfolio.balances).filter(t => state.portfolio.balances[t] > 0);
+            
+            activeTokens.forEach(token => {
+                const allocation = getCurrentAllocation(token);
+                const cap = getAssetCap(token);
+                const isNearCap = allocation >= cap * 0.9;
+                const isAtCap = allocation >= cap;
+                
+                html += `
+                    <div class="allocation-item">
+                        <strong>${token}:</strong>
+                        <span>${allocation.toFixed(2)}% / ${cap}%</span>
+                        ${isAtCap ? '<span class="badge badge-danger">AT CAP</span>' : isNearCap ? '<span class="badge badge-warning">NEAR CAP</span>' : ''}
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html || '<p class="text-secondary">No active allocations</p>';
         }
 
         // ============================================
@@ -2131,6 +2528,13 @@
                 buyPatterns.forEach(pattern => {
                     if (checkPatternForToken(token, pattern, 'buy')) {
                         log('info', `Buy pattern matched for ${token}: ${pattern.direction}_${Math.abs(pattern.percentage)}_${pattern.minSeconds}-${pattern.maxSeconds}`);
+                        
+                        // Check sequential trade prevention
+                        if (state.settings.preventSequentialTrades && state.lastTradeToken === token) {
+                            log('debug', `Skipping buy for ${token}: Sequential trade prevention enabled`);
+                            return;
+                        }
+                        
                         executeTrade(token, 'buy', `Pattern: ${pattern.direction}_${Math.abs(pattern.percentage)}_${pattern.minSeconds}-${pattern.maxSeconds}`);
                     }
                 });
@@ -2154,6 +2558,12 @@
                         }
 
                         log('info', `Sell pattern matched for ${token} (Profit: ${profitPercent.toFixed(2)}%): ${pattern.direction}_${Math.abs(pattern.percentage)}_${pattern.minSeconds}-${pattern.maxSeconds}`);
+                        
+                        // Reset last trade token when selling
+                        if (state.lastTradeToken === token) {
+                            state.lastTradeToken = null;
+                        }
+                        
                         executeTrade(token, 'sell', `Pattern: ${pattern.direction}_${Math.abs(pattern.percentage)}_${pattern.minSeconds}-${pattern.maxSeconds}`);
                     }
                 });
@@ -2170,6 +2580,12 @@
 
                 if (positionAgeSeconds > state.settings.maxPositionAge && profit > 0) {
                     log('info', `Age-based sell for ${token}: Position age (${positionAgeSeconds}s) > max (${state.settings.maxPositionAge}s) AND profit (${profitPercent.toFixed(2)}%) > 0%`);
+                    
+                    // Reset last trade token when selling
+                    if (state.lastTradeToken === token) {
+                        state.lastTradeToken = null;
+                    }
+                    
                     executeTrade(token, 'sell', `Age-based sell (${positionAgeSeconds}s old, ${profitPercent.toFixed(2)}% profit)`);
                 }
             }
@@ -2242,12 +2658,13 @@
             state.settings.sellPatterns = document.getElementById('sellPatterns').value;
             saveSettings();
             validatePatterns();
-            showNotification('Success', 'Default micro-scalping patterns loaded!');
+            showToast('Success', 'Default micro-scalping patterns loaded!');
         }
 
         // ============================================
         // Portfolio Management
         // ============================================
+        // FIX: Updated initializePortfolio to properly use startingEth from settings
         function initializePortfolio() {
             // Use startingEth from settings
             const startingEth = parseFloat(state.settings.startingEth) || 1.0;
@@ -2263,9 +2680,18 @@
 
             // Initialize gas history
             state.gasHistory = [];
+            
+            // Reset last trade token
+            state.lastTradeToken = null;
 
             log('info', `Portfolio initialized with ${startingEth} ETH`);
             updatePortfolioUI();
+            updateAssetAllocationDisplay();
+            
+            // FIX: Update displays after initializing portfolio
+            updateStartingEthDisplay();
+            updateTradeAmountDisplay();
+            updateEquityChart();
         }
 
         function updatePortfolioEquity() {
@@ -2298,13 +2724,14 @@
             }
             
             updatePortfolioUI();
+            updateAssetAllocationDisplay();
         }
 
         function updatePortfolioUI() {
             // Format to 6 decimal places for micro-scalping
             const format6 = (value) => (value || 0).toFixed(6);
             
-            document.getElementById('startingEth').textContent = format6(state.portfolio.startingEth) + ' ETH';
+            document.getElementById('startingEthDisplay').textContent = format6(state.portfolio.startingEth) + ' ETH';
             document.getElementById('currentEth').textContent = format6(state.portfolio.currentEth) + ' ETH';
             
             const realizedPnL = state.portfolio.realizedPnL;
@@ -2351,18 +2778,33 @@
             const ethBalance = state.portfolio.balances['ETH'] || 0;
             const totalEquity = state.portfolio.currentEth;
             const ethAllocation = totalEquity > 0 ? (ethBalance / totalEquity) * 100 : 0;
+            const ethCap = getAssetCap('ETH');
             
-            html += `<tr><td><strong>ETH</strong></td><td>${ethBalance.toFixed(6)}</td><td>${ethBalance.toFixed(6)}</td><td>${ethAllocation.toFixed(2)}%</td></tr>`;
+            html += `<tr>
+                <td><strong>ETH</strong></td>
+                <td>${ethBalance.toFixed(6)}</td>
+                <td>${ethBalance.toFixed(6)}</td>
+                <td>${ethAllocation.toFixed(2)}%</td>
+                <td>${ethCap}%</td>
+            </tr>`;
             
             for (const [tokenSymbol, amount] of Object.entries(state.portfolio.balances)) {
                 if (tokenSymbol === 'ETH') continue;
                 const priceInEth = state.prices[tokenSymbol] || 0;
                 const ethValue = amount * priceInEth;
                 const allocation = totalEquity > 0 ? (ethValue / totalEquity) * 100 : 0;
-                html += `<tr><td><strong>${tokenSymbol}</strong></td><td>${amount.toFixed(6)}</td><td>${ethValue.toFixed(6)}</td><td>${allocation.toFixed(2)}%</td></tr>`;
+                const cap = getAssetCap(tokenSymbol);
+                
+                html += `<tr>
+                    <td><strong>${tokenSymbol}</strong></td>
+                    <td>${amount.toFixed(6)}</td>
+                    <td>${ethValue.toFixed(6)}</td>
+                    <td>${allocation.toFixed(2)}%</td>
+                    <td>${cap}%</td>
+                </tr>`;
             }
             
-            if (html === '') html = '<tr><td colspan="4" class="text-center text-secondary">No balances</td></tr>';
+            if (html === '') html = '<tr><td colspan="5" class="text-center text-secondary">No balances</td></tr>';
             balancesTable.innerHTML = html;
         }
 
@@ -2377,7 +2819,6 @@
                 const currentValue = position.amount * currentPrice;
                 const unrealizedPnL = currentValue - (position.amount * position.entryPrice) - position.feesPaid;
                 const returnPct = ((unrealizedPnL) / (position.amount * position.entryPrice)) * 100;
-                
                 const trade = state.trades.find(t => t.id === position.tradeId);
                 const pattern = trade?.pattern || 'Manual';
                 
@@ -2479,25 +2920,37 @@
             const mode = state.settings.executionMode;
             if (mode === EXECUTION_MODES.LIVE && !state.isConnected) {
                 log('error', 'Cannot execute live trade: wallet not connected');
-                showNotification('Error', 'Wallet not connected');
+                showToast('Error', 'Wallet not connected');
                 return null;
             }
             
-            // Use tradeStep if amount not specified
+            // FIX: Calculate trade amount as percentage of starting ETH from settings
             if (amountETH === null) {
-                amountETH = state.settings.tradeStep;
+                amountETH = state.portfolio.startingEth * (state.settings.tradeAmountPercent / 100);
             }
             
-            // Validate minimum trade amount
-            if (amountETH < state.settings.minTradeAmount) {
-                log('warn', `Trade amount ${amountETH} below minimum ${state.settings.minTradeAmount}`);
+            // Validate minimum trade amount (now derived from percentage)
+            const minTradeAmount = state.portfolio.startingEth * 0.001; // 0.1% of starting ETH
+            if (amountETH < minTradeAmount) {
+                log('warn', `Trade amount ${amountETH.toFixed(6)} below minimum ${minTradeAmount.toFixed(6)}`);
+                showToast('Warning', `Trade amount too small: ${amountETH.toFixed(6)} ETH`);
                 return null;
+            }
+            
+            // Check asset cap for buy trades
+            if (action === 'buy') {
+                const capCheck = checkAssetCap(token, amountETH);
+                if (!capCheck.allowed) {
+                    log('warn', `Asset cap exceeded: ${capCheck.reason}`);
+                    return null;
+                }
             }
             
             // Check max open trades
             const openPositions = state.portfolio.positions.filter(p => p.status === 'open' && p.token === token);
             if (openPositions.length >= state.settings.maxTrades) {
                 log('warn', `Max open trades (${state.settings.maxTrades}) reached for ${token}`);
+                showToast('Warning', `Max open trades reached for ${token}`);
                 return null;
             }
             
@@ -2505,6 +2958,7 @@
             const lastTradeTime = state.lastTradeTime;
             if (lastTradeTime && (Date.now() - lastTradeTime) < (state.settings.tradeCooldown * 1000)) {
                 log('warn', `Trade cooldown active for ${token}`);
+                showToast('Warning', `Trade cooldown active for ${token}`);
                 return null;
             }
             
@@ -2512,12 +2966,14 @@
             const tokenInfo = TOKENS[tokenSymbol];
             if (!tokenInfo) {
                 log('error', `Unknown token: ${tokenSymbol}`);
+                showToast('Error', `Unknown token: ${tokenSymbol}`);
                 return null;
             }
             
             const currentPrice = state.prices[tokenSymbol];
             if (!currentPrice) {
                 log('error', `No price available for ${tokenSymbol}`);
+                showToast('Error', `No price for ${tokenSymbol}`);
                 return null;
             }
             
@@ -2536,6 +2992,7 @@
             const poolInfo = await getEnhancedPoolInfo(tokenSymbol);
             if (!poolInfo) {
                 log('error', `Could not get pool info for ${tokenSymbol}`);
+                showToast('Error', `No pool info for ${tokenSymbol}`);
                 return null;
             }
             
@@ -2557,7 +3014,7 @@
                 state.portfolio.failedTrades++;
                 state.portfolio.totalTrades++;
                 log('warn', `Trade failed: ${tradeResult.reason}`);
-                showNotification('Warning', `Trade failed: ${tradeResult.reason}`);
+                showToast('Error', `Trade failed: ${tradeResult.reason}`);
                 updateDashboard();
                 return failedTrade;
             }
@@ -2568,6 +3025,16 @@
                 tradeResult.amountETH, pattern, 'open', null, tradeResult.gasUsed,
                 tradeResult.gasPrice, tradeResult.feeAmount, tradeResult.priceImpact, tradeResult.slippage
             );
+            
+            // Update last trade token for sequential prevention
+            if (action === 'buy') {
+                state.lastTradeToken = tokenSymbol;
+            } else if (action === 'sell') {
+                // Only reset if we're selling the last traded token
+                if (state.lastTradeToken === tokenSymbol) {
+                    state.lastTradeToken = null;
+                }
+            }
             
             // Update portfolio
             updatePortfolioForTrade(trade, action, tradeResult);
@@ -2582,8 +3049,12 @@
                 await settleTrade(trade);
             }
             
-            log('info', `Executed ${action} ${tradeResult.tokenAmount.toFixed(6)} ${tokenSymbol} at ${tradeResult.executionPrice.toFixed(6)} ETH | Gas: ${tradeResult.gasUsed} @ ${tradeResult.gasPrice} gwei`);
-            showNotification('Success', `Executed ${action.toUpperCase()} ${tradeResult.tokenAmount.toFixed(6)} ${tokenSymbol} at ${tradeResult.executionPrice.toFixed(6)} ETH`);
+            // Show toast notification (replaces modal)
+            const toastMessage = `Executed ${action.toUpperCase()} ${tradeResult.tokenAmount.toFixed(6)} ${tokenSymbol} at ${tradeResult.executionPrice.toFixed(6)} ETH`;
+            const toastType = tradeResult.success ? 'success' : 'error';
+            showToast(toastType, toastMessage);
+            
+            log('info', `${toastMessage} | Gas: ${tradeResult.gasUsed} @ ${tradeResult.gasPrice} gwei`);
             
             updateDashboard();
             updatePortfolioUI();
@@ -2752,6 +3223,7 @@
             return mockData[token] || { liquidity: 75000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: token, decimals0: 18, decimals1: TOKENS[token]?.decimals || 18 };
         }
 
+        // FIX: Updated updatePortfolioForTrade to use startingEth from settings
         function updatePortfolioForTrade(trade, action, tradeResult) {
             const token = trade.token;
             const tokenSymbol = token;
@@ -2771,6 +3243,7 @@
                         trade.reason = 'Insufficient ETH (including fees)';
                         state.portfolio.failedTrades++;
                         log('warn', `Insufficient ETH: Need ${totalTradeCost.toFixed(6)}, have ${ethBalance.toFixed(6)}`);
+                        showToast('Error', `Insufficient ETH: Need ${totalTradeCost.toFixed(6)}`);
                         return;
                     }
 
@@ -2828,6 +3301,7 @@
                         trade.reason = 'No open position to sell';
                         state.portfolio.failedTrades++;
                         log('warn', `No open position for ${tokenSymbol} to sell`);
+                        showToast('Error', `No open position for ${tokenSymbol}`);
                         return;
                     }
 
@@ -2967,6 +3441,11 @@
             updateStatistics();
             updatePortfolioUI();
             updateEquityChart();
+            updateAssetAllocationDisplay();
+            
+            // FIX: Update starting ETH and trade amount displays
+            updateStartingEthDisplay();
+            updateTradeAmountDisplay();
         }
 
         function renderDashboard() {
@@ -3002,8 +3481,17 @@
                 const lastUpdate = state.priceHistory[t.symbol] && state.priceHistory[t.symbol].length > 0 ? 
                     new Date(state.priceHistory[t.symbol][state.priceHistory[t.symbol].length - 1].timestamp).toLocaleTimeString() : 'Never';
                 
+                // Check if token is at or near cap
+                const currentAllocation = getCurrentAllocation(t.symbol);
+                const cap = getAssetCap(t.symbol);
+                const isNearCap = currentAllocation >= cap * 0.9;
+                const isAtCap = currentAllocation >= cap;
+                
+                const capIndicator = isAtCap ? '<span class="badge badge-danger">AT CAP</span>' : 
+                                   isNearCap ? '<span class="badge badge-warning">NEAR CAP</span>' : '';
+                
                 html += `<tr>
-                    <td><strong>${esc(t.symbol)}</strong></td>
+                    <td><strong>${esc(t.symbol)}</strong> ${capIndicator}</td>
                     <td>${displayPrice}</td>
                     <td class="price-change ${changeClass}">${changeSymbol} ${Math.abs(change15m || 0).toFixed(4)}%</td>
                     <td>${historyCount}</td>
@@ -3097,7 +3585,7 @@
                     <td>${position.entryPrice.toFixed(6)}</td>
                     <td>${position.amount.toFixed(6)}</td>
                     <td>${currentValue.toFixed(6)}</td>
-                    <td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">${unrealizedPnL.toFixed(6)} (${((unrealizedPnL / (position.amount * position.entryPrice)) * 100).toFixed(2)}%)</td>
+                    <td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">${unrealizedPnL.toFixed(6)}</td>
                     <td><small>${pattern}</small></td>
                 </tr>`;
             });
@@ -3315,7 +3803,7 @@
             document.body.removeChild(link);
             
             log('info', 'Trade history exported');
-            showNotification('Success', 'Trade history exported!');
+            showToast('Success', 'Trade history exported!');
         }
 
         function clearTradeHistory() {
@@ -3339,18 +3827,22 @@
             updateEquityChart();
             
             log('info', 'Trade history cleared');
-            showNotification('Success', 'Trade history cleared!');
+            showToast('Success', 'Trade history cleared!');
         }
 
         // ============================================
         // Settings Management
         // ============================================
         function saveTradingSettings() {
+            // FIX: Update startingEth from input before saving
+            const startingEthInput = document.getElementById('startingEth');
+            if (startingEthInput) {
+                state.settings.startingEth = parseFloat(startingEthInput.value) || 1.0;
+            }
+            
             state.settings.buyPatterns = document.getElementById('buyPatterns').value;
             state.settings.sellPatterns = document.getElementById('sellPatterns').value;
-            state.settings.startingEth = parseFloat(document.getElementById('startingEth').value);
-            state.settings.minTradeAmount = parseFloat(document.getElementById('minTradeAmount').value);
-            state.settings.tradeStep = parseFloat(document.getElementById('tradeStep').value);
+            state.settings.tradeAmountPercent = parseFloat(document.getElementById('tradeAmountPercent').value);
             state.settings.profitAddress = document.getElementById('profitAddress').value.trim();
             state.settings.maxTrades = parseInt(document.getElementById('maxTrades').value);
             state.settings.tradeCooldown = parseInt(document.getElementById('tradeCooldown').value);
@@ -3363,6 +3855,18 @@
             state.settings.maxPositionAge = parseInt(document.getElementById('maxPositionAge').value);
             state.settings.enforceProfitForPatterns = document.getElementById('enforceProfitForPatterns').checked;
             state.settings.enforceAgeBasedSelling = document.getElementById('enforceAgeBasedSelling').checked;
+            state.settings.preventSequentialTrades = document.getElementById('preventSequentialTrades').checked;
+            
+            // Asset caps
+            state.settings.assetCaps = {
+                ETH: parseFloat(document.getElementById('ethCapPercent').value) || 100,
+                WBTC: parseFloat(document.getElementById('wbtcCapPercent').value) || 20,
+                UNI: parseFloat(document.getElementById('otherCapPercent').value) || 10,
+                LINK: parseFloat(document.getElementById('otherCapPercent').value) || 10,
+                ARB: parseFloat(document.getElementById('otherCapPercent').value) || 10,
+                GMX: parseFloat(document.getElementById('otherCapPercent').value) || 10,
+                OTHER: parseFloat(document.getElementById('otherCapPercent').value) || 10
+            };
             
             // Update active tokens
             const activeTokenButtons = document.querySelectorAll('#tradeTokens .token-btn.active');
@@ -3373,8 +3877,13 @@
             
             saveSettings();
             log('info', 'Trading settings saved');
-            showNotification('Success', 'Trading settings saved!');
+            showToast('Success', 'Trading settings saved!');
             initializePriceHistoryForActiveTokens();
+            updateAssetCapUI();
+            
+            // FIX: Update displays after saving settings
+            updateStartingEthDisplay();
+            updateTradeAmountDisplay();
         }
 
         function initializePriceHistoryForActiveTokens() {
@@ -3394,7 +3903,7 @@
             
             saveSettings();
             log('info', 'Price settings saved');
-            showNotification('Success', 'Price settings saved!');
+            showToast('Success', 'Price settings saved!');
             
             if (state.isRunning) {
                 restartUniswapSession();
@@ -3409,7 +3918,7 @@
             
             saveSettings();
             log('info', 'Advanced settings saved');
-            showNotification('Success', 'Advanced settings saved!');
+            showToast('Success', 'Advanced settings saved!');
         }
 
         function saveSettings() {
@@ -3433,6 +3942,15 @@
 
                 if (savedSettings) {
                     state.settings = { ...state.settings, ...savedSettings };
+                    
+                    // Ensure asset caps are initialized
+                    if (!state.settings.assetCaps) {
+                        state.settings.assetCaps = {
+                            ETH: 100,
+                            WBTC: 20,
+                            OTHER: 10
+                        };
+                    }
                 }
                 
                 if (savedState) {
@@ -3468,6 +3986,11 @@
                 updateConfidenceScore();
                 updatePriceHistoryCount();
                 updateStartingEthField();
+                initializeAssetCaps();
+                
+                // FIX: Update displays after loading settings
+                updateStartingEthDisplay();
+                updateTradeAmountDisplay();
                 
                 log('info', 'Settings and data loaded');
             } catch (error) {
@@ -3476,7 +3999,10 @@
             }
         }
 
+        // FIX: Updated reconstructPortfolioFromTrades to use startingEth from settings
         function reconstructPortfolioFromTrades() {
+            const startingEth = parseFloat(state.settings.startingEth) || 1.0;
+            
             state.portfolio = {
                 balances: {},
                 positions: [],
@@ -3484,9 +4010,9 @@
                 unrealizedPnL: 0,
                 gasSpent: 0,
                 feesPaid: 0,
-                startingEth: state.settings.startingEth || 1.0,
-                currentEth: state.settings.startingEth || 1.0,
-                equityHistory: [{ timestamp: Date.now(), ethValue: state.settings.startingEth || 1.0 }],
+                startingEth: startingEth,
+                currentEth: startingEth,
+                equityHistory: [{ timestamp: Date.now(), ethValue: startingEth }],
                 totalTrades: state.trades.length,
                 winningTrades: state.trades.filter(t => t.pnl > 0).length,
                 losingTrades: state.trades.filter(t => t.pnl < 0).length,
@@ -3494,15 +4020,18 @@
                 totalFees: 0
             };
             
-            log('info', 'Portfolio reconstructed');
+            // FIX: Update displays after reconstructing portfolio
+            updateStartingEthDisplay();
+            updateTradeAmountDisplay();
+            
+            log('info', `Portfolio reconstructed with starting ETH: ${startingEth}`);
         }
 
         function updateSettingsUI() {
             document.getElementById('buyPatterns').value = state.settings.buyPatterns || '<_-0.1_10-60,<_-0.2_30-120,<_-0.05_5-30';
             document.getElementById('sellPatterns').value = state.settings.sellPatterns || '>_+0.1_10-60,>_+0.2_30-120,>_+0.05_5-30';
             document.getElementById('startingEth').value = state.settings.startingEth || 1.0;
-            document.getElementById('minTradeAmount').value = state.settings.minTradeAmount || 0.001;
-            document.getElementById('tradeStep').value = state.settings.tradeStep || 0.005;
+            document.getElementById('tradeAmountPercent').value = state.settings.tradeAmountPercent || 1;
             document.getElementById('profitAddress').value = state.settings.profitAddress || '';
             document.getElementById('maxTrades').value = state.settings.maxTrades || 50;
             document.getElementById('tradeCooldown').value = state.settings.tradeCooldown || 10;
@@ -3528,11 +4057,21 @@
             document.getElementById('maxPositionAge').value = state.settings.maxPositionAge || 300;
             document.getElementById('enforceProfitForPatterns').checked = state.settings.enforceProfitForPatterns !== false;
             document.getElementById('enforceAgeBasedSelling').checked = state.settings.enforceAgeBasedSelling !== false;
+            document.getElementById('preventSequentialTrades').checked = state.settings.preventSequentialTrades !== false;
+            
+            // Asset caps
+            document.getElementById('ethCapPercent').value = state.settings.assetCaps?.ETH || 100;
+            document.getElementById('wbtcCapPercent').value = state.settings.assetCaps?.WBTC || 20;
+            document.getElementById('otherCapPercent').value = state.settings.assetCaps?.OTHER || 10;
 
             updateTokenSelectors();
             updateExecutionModeBadge();
             updateConfidenceScore();
             updateStartingEthField();
+            
+            // FIX: Update displays after updating settings UI
+            updateStartingEthDisplay();
+            updateTradeAmountDisplay();
         }
 
         // ============================================
@@ -3599,10 +4138,10 @@
                 link.click();
                 document.body.removeChild(link);
                 log('info', 'Backup created');
-                showNotification('Success', 'Backup created!');
+                showToast('Success', 'Backup created!');
             } catch (error) {
                 log('error', `Backup failed: ${error.message}`);
-                showNotification('Error', 'Backup failed: ' + error.message);
+                showToast('Error', 'Backup failed: ' + error.message);
             } finally {
                 hideLoading('backupSpinner');
             }
@@ -3638,18 +4177,23 @@
                         updateWalletUI();
                         updatePortfolioUI();
                         updateEquityChart();
+                        
+                        // FIX: Update displays after restoring backup
+                        updateStartingEthDisplay();
+                        updateTradeAmountDisplay();
+                        
                         log('info', 'Backup restored');
-                        showNotification('Success', 'Backup restored! Reloading...');
+                        showToast('Success', 'Backup restored! Reloading...');
                         setTimeout(() => location.reload(), 1500);
                     } catch (error) {
                         log('error', `Backup parse failed: ${error.message}`);
-                        showNotification('Error', 'Failed to parse backup: ' + error.message);
+                        showToast('Error', 'Failed to parse backup: ' + error.message);
                     }
                 };
                 reader.readAsText(file);
             } catch (error) {
                 log('error', `Restore failed: ${error.message}`);
-                showNotification('Error', 'Restore failed: ' + error.message);
+                showToast('Error', 'Restore failed: ' + error.message);
             }
         }
 
@@ -3683,17 +4227,23 @@
                 state.currentNetwork = 'Arbitrum One';
                 state.logs = [];
                 state.activeTokens = ['ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX'];
+                state.lastTradeToken = null;
 
                 updateUI();
                 updateWalletUI();
                 updateSettingsUI();
                 updatePortfolioUI();
                 updateEquityChart();
+                
+                // FIX: Update displays after clearing all data
+                updateStartingEthDisplay();
+                updateTradeAmountDisplay();
+                
                 log('info', 'All data cleared');
-                showNotification('Success', 'All data cleared!');
+                showToast('Success', 'All data cleared!');
             } catch (error) {
                 log('error', `Clear failed: ${error.message}`);
-                showNotification('Error', 'Clear failed: ' + error.message);
+                showToast('Error', 'Clear failed: ' + error.message);
             }
         }
 
@@ -3804,6 +4354,16 @@
             return gasPrice;
         }
 
+        async function getCurrentGasPrice() {
+            // Try to get real gas price from active session first
+            if (activeSession?.gasPrice) {
+                return activeSession.gasPrice;
+            }
+            
+            // Fallback to settings
+            return state.settings.maxGasPrice || 200;
+        }
+
         async function refreshPrices() {
             showLoading('priceRefreshSpinner');
             log('info', 'Manual price refresh...');
@@ -3811,16 +4371,16 @@
                 if (activeSession?.connected) {
                     updatePriceUI();
                     log('info', 'Prices refreshed');
-                    showNotification('Success', 'Prices refreshed!');
+                    showToast('Success', 'Prices refreshed!');
                 } else {
                     log('warn', 'Not connected to price feed');
-                    showNotification('Warning', 'Not connected. Start bot first.');
+                    showToast('Warning', 'Not connected. Start bot first.');
                 }
                 updatePriceUpdateStatus(activeSession?.connected ? 'success' : 'error');
             } catch (error) {
                 console.error('Refresh error:', error);
                 log('error', `Refresh failed: ${error.message}`);
-                showNotification('Error', 'Refresh failed: ' + error.message);
+                showToast('Error', 'Refresh failed: ' + error.message);
                 updatePriceUpdateStatus('error');
             } finally {
                 hideLoading('priceRefreshSpinner');
@@ -3852,6 +4412,11 @@
             updateDashboard();
             updatePortfolioUI();
             updateEquityChart();
+            updateAssetAllocationDisplay();
+            
+            // FIX: Update starting ETH and trade amount displays
+            updateStartingEthDisplay();
+            updateTradeAmountDisplay();
         }
 
         function startUptimeTimer() {
@@ -3878,18 +4443,8 @@
             modal.classList.add('active');
         }
 
-        function showTxModal(content) {
-            const modal = document.getElementById('txModal');
-            document.getElementById('txModalContent').innerHTML = '<p>' + content + '</p>';
-            modal.classList.add('active');
-        }
-
         function closeModal() {
             document.getElementById('notificationModal').classList.remove('active');
-        }
-
-        function closeTxModal() {
-            document.getElementById('txModal').classList.remove('active');
         }
 
         function showLoading(elementId) {
@@ -3943,11 +4498,13 @@
         // ============================================
         async function startBot() {
             if (state.isRunning) {
-                showNotification('Info', 'Bot is already running.');
+                showToast('Info', 'Bot is already running.');
                 return;
             }
             
+            // FIX: Initialize portfolio with current startingEth from settings
             initializePortfolio();
+            
             showLoading('startSpinner');
             document.getElementById('startBotBtn').disabled = true;
             log('info', 'Starting bot...');
@@ -3967,10 +4524,11 @@
                 state.isRunning = true;
                 state.startTime = new Date();
                 state.priceUpdateErrors = 0;
+                state.lastTradeToken = null;
 
                 updateBotStatus();
-                log('info', `Bot started in ${state.settings.executionMode} mode`);
-                showNotification('Success', `Bot started in ${state.settings.executionMode.toUpperCase()} mode!`);
+                log('info', `Bot started in ${state.settings.executionMode} mode with starting ETH: ${state.portfolio.startingEth}`);
+                showToast('Success', `Bot started in ${state.settings.executionMode.toUpperCase()} mode!`);
 
                 await updateGasPrice();
                 startPricePolling();
@@ -3981,7 +4539,7 @@
             } catch (error) {
                 console.error('Start error:', error);
                 log('error', `Failed to start bot: ${error.message}`);
-                showNotification('Error', 'Failed to start: ' + error.message);
+                showToast('Error', 'Failed to start: ' + error.message);
                 document.getElementById('startSpinner').style.display = 'none';
                 document.getElementById('startBotBtn').disabled = false;
             }
@@ -3989,7 +4547,7 @@
 
         async function stopBot() {
             if (!state.isRunning) {
-                showNotification('Info', 'Bot is not running.');
+                showToast('Info', 'Bot is not running.');
                 return;
             }
             
@@ -4002,10 +4560,11 @@
                 stopBackupTimer();
                 stopPricePolling();
                 state.isRunning = false;
+                state.lastTradeToken = null;
                 
                 updateBotStatus();
                 log('info', 'Bot stopped successfully');
-                showNotification('Success', 'Bot stopped!');
+                showToast('Success', 'Bot stopped!');
                 updatePriceUpdateStatus('');
             } catch (error) {
                 console.error('Stop error:', error);
@@ -4041,13 +4600,13 @@
 
         async function testConnection() {
             log('info', 'Testing connections...');
-            showNotification('Info', 'Testing connections...');
+            showToast('Info', 'Testing connections...');
             
             if (state.settings.executionMode === EXECUTION_MODES.PAPER) {
                 log('info', 'Paper Mode: Simulating success.');
                 activeSession = { connected: true };
                 updateConnectionStatus();
-                showNotification('Success', 'Paper Mode: All connections OK!');
+                showToast('Success', 'Paper Mode: All connections OK!');
                 return;
             }
             
@@ -4066,11 +4625,11 @@
                 }
                 
                 log('info', 'All connections OK');
-                showNotification('Success', 'All connections working!');
+                showToast('Success', 'All connections working!');
             } catch (error) {
                 console.error('Connection test:', error);
                 log('error', `Connection test failed: ${error.message}`);
-                showNotification('Error', 'Connection test failed: ' + error.message);
+                showToast('Error', 'Connection test failed: ' + error.message);
             }
         }
 
