@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Micro-Scalping Bot - Dynamic Tokens</title>
+    <title>Uniswap Micro-Scalping Bot</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script
         src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.umd.min.js"></script>
@@ -679,7 +679,6 @@
             <p class="text-secondary">
                 <span id="executionModeBadge">SHADOW MODE</span>
                 <span class="fidelity-badge fidelity-high" id="fidelityBadge">Fidelity: 95%</span>
-                - Fixed Starting ETH Implementation
             </p>
         </header>
 
@@ -877,7 +876,7 @@
                     </div>
                     <div class="card-body">
                         <div class="alert alert-info mb-2">
-                            FIXED: Now monitors ALL tokens observed on the blockchain. No manual selection required.
+                            Monitors ALL tokens observed on the blockchain. No manual selection required.
                         </div>
                         <div id="priceTable">
                             <table class="table">
@@ -1022,8 +1021,8 @@
                 <div class="card-header">Micro-Scalping Strategy</div>
                 <div class="card-body">
                     <div class="alert alert-info mb-2">
-                        FIXED: Monitors ALL tokens observed on the blockchain. Only sells at profit. Proper sequential
-                        trade prevention.
+                        Monitors ALL tokens observed on the blockchain. Only sells at profit. Prevents sequential trades
+                        on the same asset.
                     </div>
 
                     <div class="grid-2">
@@ -1075,8 +1074,8 @@
                     <div class="grid-3">
                         <div class="form-group starting-eth-container">
                             <label class="form-label">Starting ETH</label>
-                            <input type="number" class="form-control" id="startingEth" value="1.0" min="0.01"
-                                step="0.01" onchange="updateStartingEthDisplay()">
+                            <input type="number" class="form-control" id="startingEth" value="0.0041" min="0.0001"
+                                step="0.0001" onchange="updateStartingEthDisplay()">
                             <span class="eth-suffix">ETH</span>
                             <small class="setting-description">Initial ETH amount for trading. In Live mode, this will
                                 be set to your wallet balance.</small>
@@ -1105,17 +1104,17 @@
                         <div class="form-group">
                             <label class="form-label">Prevent Sequential Same-Asset Trades</label>
                             <input type="checkbox" class="form-control" id="preventSequentialTrades" checked>
-                            <small class="setting-description">FIXED: Prevents ANY two consecutive trades (buy or sell)
-                                on the same asset.</small>
+                            <small class="setting-description">Prevents ANY two consecutive trades (buy or sell) on the
+                                same asset.</small>
                         </div>
                     </div>
 
                     <div class="grid-2">
                         <div class="form-group">
                             <label class="form-label">Min Profit for Selling (%)</label>
-                            <input type="number" class="form-control" id="minProfitPercent" value="0.1" min="0"
+                            <input type="number" class="form-control" id="minProfitPercent" value="2" min="0"
                                 max="100" step="0.01">
-                            <small class="setting-description">FIXED: Minimum profit % required to sell. Now always
+                            <small class="setting-description">Minimum profit % required to sell. Always
                                 enforced.</small>
                         </div>
                         <div class="form-group">
@@ -1442,42 +1441,9 @@
 
     <script>
         // ============================================
-        // FIX: Global log function
-        // ============================================
-        window.log = function (level, message, data = null) {
-            const timestamp = new Date().toISOString();
-            const logEntry = { timestamp, level, message, data };
-            if (!window.state) window.state = { logs: [] };
-            window.state.logs.push(logEntry);
-            if (window.state.logs.length > (document.getElementById('maxLogEntries')?.value || 1000)) {
-                window.state.logs.shift();
-            }
-            const formatted = `[${level.toUpperCase()}] ${message}` + (data ? ` - ${JSON.stringify(data)}` : '');
-            const logContainer = document.getElementById('logContainer');
-            if (logContainer) {
-                const entry = document.createElement('div');
-                entry.className = `log-entry log-${level}`;
-                entry.textContent = formatted;
-                logContainer.appendChild(entry);
-                if (window.state?.autoScroll) scrollToBottom('logContainer');
-            }
-            const debugMode = document.getElementById('debugMode')?.value || (window.state?.settings?.debugMode || 'none');
-            const logToConsole = document.getElementById('logToConsole')?.checked ?? true;
-            if (logToConsole) {
-                const levels = { error: 0, warn: 1, info: 2, debug: 3 };
-                const currentLevel = levels[debugMode] || 2;
-                const messageLevel = levels[level] || 2;
-                if (messageLevel <= currentLevel) {
-                    console[level === 'error' ? 'error' : level](formatted);
-                }
-            }
-            if (window.state?.logs?.length % 10 === 0) saveLogs();
-        };
-
-        // ============================================
         // Configuration & Constants
         // ============================================
-        const APP_VERSION = '8.1.0-DYNAMIC-TOKENS';
+        const APP_VERSION = '8.1.0';
         const ARBITRUM_CHAIN_ID = 42161;
         const ARBITRUM_GOERLI_CHAIN_ID = 421613;
         const MAINNET_CHAIN_ID = 1;
@@ -1575,7 +1541,7 @@
         const SWAP_TOPIC = SWAP_INTERFACE.getEvent("Swap").topicHash;
 
         // ============================================
-        // FIXED: State & Settings
+        // State & Settings
         // ============================================
         let state = window.state = {
             isRunning: false,
@@ -1622,14 +1588,10 @@
                 priceInterval: 1000,
                 maxPriceAge: 10,
                 priceHistoryDuration: 1,
-                assetCaps: {
-                    ETH: 100,
-                    OTHER: 10
-                },
+                assetCaps: { ETH: 100, OTHER: 10 },
                 preventSequentialTrades: true,
                 minProfitPercent: 0.1,
                 maxPositionAge: 300,
-                enforceProfitForPatterns: true,
                 enforceAgeBasedSelling: true,
                 latencySimulation: '0',
                 autoBackup: true,
@@ -1665,6 +1627,36 @@
         // Initialization
         // ============================================
         document.addEventListener('DOMContentLoaded', async function () {
+            window.log = function (level, message, data = null) {
+                const timestamp = new Date().toISOString();
+                const logEntry = { timestamp, level, message, data };
+                if (!window.state) window.state = { logs: [] };
+                window.state.logs.push(logEntry);
+                if (window.state.logs.length > (document.getElementById('maxLogEntries')?.value || 1000)) {
+                    window.state.logs.shift();
+                }
+                const formatted = `[${level.toUpperCase()}] ${message}` + (data ? ` - ${JSON.stringify(data)}` : '');
+                const logContainer = document.getElementById('logContainer');
+                if (logContainer) {
+                    const entry = document.createElement('div');
+                    entry.className = `log-entry log-${level}`;
+                    entry.textContent = formatted;
+                    logContainer.appendChild(entry);
+                    if (window.state?.autoScroll) scrollToBottom('logContainer');
+                }
+                const debugMode = document.getElementById('debugMode')?.value || (window.state?.settings?.debugMode || 'none');
+                const logToConsole = document.getElementById('logToConsole')?.checked ?? true;
+                if (logToConsole) {
+                    const levels = { error: 0, warn: 1, info: 2, debug: 3 };
+                    const currentLevel = levels[debugMode] || 2;
+                    const messageLevel = levels[level] || 2;
+                    if (messageLevel <= currentLevel) {
+                        console[level === 'error' ? 'error' : level](formatted);
+                    }
+                }
+                if (window.state?.logs?.length % 10 === 0) saveLogs();
+            };
+
             window.log('info', 'Initializing Uniswap Micro-Scalping Bot v' + APP_VERSION);
             initializeApp();
             await fetchAvailableTokens();
@@ -1736,13 +1728,11 @@
         function updateStartingEthDisplay() {
             const startingEthInput = document.getElementById('startingEth');
             const startingEthDisplay = document.getElementById('startingEthDisplay');
-
             if (startingEthInput && startingEthDisplay) {
                 const startingEth = parseFloat(startingEthInput.value) || 1.0;
                 startingEthDisplay.textContent = startingEth.toFixed(6) + ' ETH';
                 state.settings.startingEth = startingEth;
                 updateTradeAmountDisplay();
-
                 if (!state.isRunning) {
                     state.portfolio.startingEth = startingEth;
                     state.portfolio.currentEth = startingEth;
@@ -1761,12 +1751,10 @@
             const tradeAmountPercentInput = document.getElementById('tradeAmountPercent');
             const tradeAmountDisplay = document.getElementById('tradeAmountDisplay');
             const tradeAmountPercentDisplay = document.getElementById('tradeAmountPercentDisplay');
-
             if (tradeAmountPercentInput && tradeAmountDisplay && tradeAmountPercentDisplay) {
                 const percent = parseFloat(tradeAmountPercentInput.value) || 1;
                 const startingEth = parseFloat(state.settings.startingEth) || 1.0;
                 const amountETH = startingEth * (percent / 100);
-
                 tradeAmountDisplay.textContent = amountETH.toFixed(6) + ' ETH';
                 tradeAmountPercentDisplay.textContent = percent + '%';
                 state.settings.tradeAmountPercent = percent;
@@ -1775,10 +1763,7 @@
 
         function initializeAssetCaps() {
             if (!state.settings.assetCaps) {
-                state.settings.assetCaps = {
-                    ETH: 100,
-                    OTHER: 10
-                };
+                state.settings.assetCaps = { ETH: 100, OTHER: 10 };
             }
             updateAssetCapUI();
         }
@@ -1882,7 +1867,7 @@
 
         function updateConfidenceScore() {
             const mode = state.settings.executionMode;
-            let checks = [
+            const checks = [
                 { name: 'Gas Modeling', enabled: true },
                 { name: 'Liquidity', enabled: true },
                 { name: 'Pool Fees', enabled: true },
@@ -1901,7 +1886,7 @@
             badge.className = 'fidelity-badge fidelity-' + (score >= 80 ? 'high' : score >= 50 ? 'medium' : 'low');
             checks.forEach(c => {
                 const el = document.getElementById(c.name.toLowerCase().replace(' ', '') + 'Fidelity');
-                if (el) el.innerHTML = (c.enabled ? '✓' : '✗') + ' ' + c.name;
+                if (el) el.innerHTML = (c.enabled ? '\u2713' : '\u2717') + ' ' + c.name;
             });
         }
 
@@ -1920,12 +1905,12 @@
             equityChart.update();
         }
 
-        function showToast(type, message, duration = 3000) {
+        function showToast(type, message, duration = 5000) {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
-            const icons = { success: '✓', error: '✗', warning: '⚠', info: 'ℹ' };
-            const icon = icons[type] || 'ℹ';
+            const icons = { success: '\u2713', error: '\u2717', warning: '\u26A0', info: '\u2139' };
+            const icon = icons[type] || '\u2139';
             toast.innerHTML = `
                 <span class="toast-icon">${icon}</span>
                 <span class="toast-message">${message}</span>
@@ -1936,7 +1921,6 @@
                 toast.classList.add('hiding');
                 setTimeout(() => toast.remove(), 300);
             }, duration);
-            window.log('info', `Toast: [${type.toUpperCase()}] ${message}`);
         }
 
         function scrollToBottom(elementId) {
@@ -1948,7 +1932,6 @@
             state.logs = [];
             const lc = document.getElementById('logContainer');
             if (lc) lc.innerHTML = '<div class="log-entry log-info">[INFO] Logs cleared</div>';
-            window.log('info', 'Logs cleared by user');
         }
 
         function downloadLogs() {
@@ -1961,12 +1944,10 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            window.log('info', 'Logs downloaded');
         }
 
         function updateLogLevel() {
             const level = document.getElementById('logLevel').value;
-            window.log('info', `Log level changed to: ${level}`);
         }
 
         function toggleAutoScroll() {
@@ -1980,7 +1961,6 @@
         async function connectWallet() {
             if (typeof window.ethereum === 'undefined') {
                 showToast('Error', 'MetaMask not installed.');
-                window.log('error', 'MetaMask not installed');
                 return;
             }
             showLoading('walletConnectSpinner');
@@ -1992,17 +1972,15 @@
                     await checkNetwork();
                     updateWalletUI();
                     saveSettings();
-                    window.log('info', `Wallet connected: ${shortenAddress(state.walletAddress)}`);
-                    showToast('Success', 'Wallet connected!');
                     await updateEthBalance();
                     updateConfidenceScore();
                     updateStartingEthField();
                     updateStartingEthDisplay();
                     updateTradeAmountDisplay();
+                    showToast('Success', 'Wallet connected!');
                 }
             } catch (error) {
                 console.error('Wallet error:', error);
-                window.log('error', `Wallet connection failed: ${error.message}`);
                 showToast('Error', 'Failed to connect: ' + error.message);
             } finally {
                 hideLoading('walletConnectSpinner');
@@ -2014,10 +1992,9 @@
             state.isConnected = false;
             updateWalletUI();
             saveSettings();
-            window.log('info', 'Wallet disconnected');
-            showToast('Success', 'Wallet disconnected.');
             updateConfidenceScore();
             updateStartingEthField();
+            showToast('Success', 'Wallet disconnected.');
         }
 
         async function checkWalletConnection() {
@@ -2030,7 +2007,6 @@
                         await checkNetwork();
                         updateWalletUI();
                         await updateEthBalance();
-                        window.log('info', `Existing wallet: ${shortenAddress(state.walletAddress)}`);
                     }
                     window.ethereum.on('accountsChanged', async accounts => {
                         if (accounts.length > 0) {
@@ -2043,7 +2019,6 @@
                         }
                         updateWalletUI();
                         saveSettings();
-                        window.log('info', 'Wallet account changed');
                         updateConfidenceScore();
                         updateStartingEthField();
                         updateStartingEthDisplay();
@@ -2051,11 +2026,9 @@
                     window.ethereum.on('chainChanged', async chainId => {
                         await checkNetwork();
                         updateNetworkInfo();
-                        window.log('info', `Network changed: ${chainId}`);
                     });
                 } catch (error) {
                     console.error('Wallet check error:', error);
-                    window.log('error', `Wallet check failed: ${error.message}`);
                 }
             }
         }
@@ -2086,13 +2059,11 @@
                 } else {
                     state.network = null;
                     state.currentNetwork = 'Unknown (' + chainId + ')';
-                    window.log('warn', `Unsupported network: ${chainId}`);
                 }
                 updateTokenAddresses();
                 updateNetworkInfo();
             } catch (error) {
                 console.error('Network error:', error);
-                window.log('error', `Network check failed: ${error.message}`);
             }
         }
 
@@ -2122,7 +2093,7 @@
                 const balance = await window.ethereum.request({ method: 'eth_getBalance', params: [state.walletAddress, 'latest'] });
                 const ethBalance = parseInt(balance) / 1e18;
                 const wi = document.getElementById('walletInfo');
-                if (wi) wi.innerHTML = `<p><strong>Address:</strong> ${state.walletAddress}</p><p><strong>ETH Balance:</strong> ${ethBalance.toFixed(6)} ETH</p><p><strong>Network:</strong> ${state.currentNetwork || 'Unknown'}</p>`;
+                if (wi) wi.innerHTML = `<p><strong>Address:</strong> ${shortenAddress(state.walletAddress)}</p><p><strong>ETH Balance:</strong> ${ethBalance.toFixed(6)} ETH</p><p><strong>Network:</strong> ${state.currentNetwork || 'Unknown'}</p>`;
 
                 if (state.settings.executionMode === EXECUTION_MODES.LIVE) {
                     state.settings.startingEth = ethBalance;
@@ -2134,12 +2105,9 @@
                     updateTradeAmountDisplay();
                     updatePortfolioUI();
                     updateEquityChart();
-                    window.log('info', `Live mode: Starting ETH set to wallet balance: ${ethBalance.toFixed(6)}`);
                 }
-                window.log('info', `ETH balance: ${ethBalance.toFixed(6)}`);
             } catch (error) {
                 console.error('Balance error:', error);
-                window.log('error', `Failed to get ETH balance: ${error.message}`);
             }
         }
 
@@ -2254,18 +2222,13 @@
             return patternString.split(/[,&;]+/).map(p => p.trim()).filter(p => p).map(parsePattern).filter(p => p !== null);
         }
 
-        // ============================================
-        // FIXED: Pattern Matching with Profit Enforcement and Dynamic Tokens
-        // ============================================
         function checkPatternsForToken(token) {
-            // Only check tokens that we have price data for
             if (!state.prices[token] || !state.priceHistory[token] || state.priceHistory[token].length < 2) {
                 return;
             }
 
             const history = getPriceHistory(token);
             if (!history || history.length < 2) {
-                window.log('debug', `Not enough price history for ${token} (${history ? history.length : 0} points)`);
                 return;
             }
 
@@ -2273,60 +2236,45 @@
                 p => p.token === token && p.status === 'open'
             );
 
-            // Check buy patterns for ALL tokens with sufficient history
             if (state.settings.buyPatterns) {
                 const buyPatterns = parsePatterns(state.settings.buyPatterns);
                 buyPatterns.forEach(pattern => {
                     if (checkPatternForToken(token, pattern, 'buy')) {
-                        window.log('info', `Buy pattern matched for ${token}: ${pattern.direction}_${Math.abs(pattern.percentage)}_${pattern.minSeconds}-${pattern.maxSeconds}`);
-
-                        // FIXED: Prevent ANY sequential trade on same token (buy or sell)
                         if (state.settings.preventSequentialTrades && state.lastTradedToken === token) {
-                            window.log('debug', `Skipping trade for ${token}: Sequential trade prevention enabled (last traded: ${state.lastTradedToken})`);
                             return;
                         }
-
                         executeTrade(token, 'buy', `Pattern: ${pattern.direction}_${Math.abs(pattern.percentage)}_${pattern.minSeconds}-${pattern.maxSeconds}`);
                     }
                 });
             }
 
-            // Check sell patterns (only if we have an open position AND will sell at profit)
             if (openPosition && state.settings.sellPatterns) {
                 const sellPatterns = parsePatterns(state.settings.sellPatterns);
                 sellPatterns.forEach(pattern => {
                     if (checkPatternForToken(token, pattern, 'sell')) {
                         const currentPrice = state.prices[token] || openPosition.entryPrice;
                         const currentValue = openPosition.amount * currentPrice;
-                        // FIXED: Always include gasPaid and feesPaid in cost basis
                         const costBasis = (openPosition.amount * openPosition.entryPrice) + openPosition.feesPaid + openPosition.gasPaid;
                         const profitPercent = ((currentValue - costBasis) / costBasis) * 100;
 
-                        // FIXED: Always enforce minimum profit for sells
                         if (profitPercent < state.settings.minProfitPercent) {
-                            window.log('debug', `Sell pattern matched for ${token}, but profit (${profitPercent.toFixed(2)}%) < min (${state.settings.minProfitPercent}%)`);
                             return;
                         }
 
-                        window.log('info', `Sell pattern matched for ${token} (Profit: ${profitPercent.toFixed(2)}%): ${pattern.direction}_${Math.abs(pattern.percentage)}_${pattern.minSeconds}-${pattern.maxSeconds}`);
                         executeTrade(token, 'sell', `Pattern: ${pattern.direction}_${Math.abs(pattern.percentage)}_${pattern.minSeconds}-${pattern.maxSeconds}`);
                     }
                 });
             }
 
-            // FIXED: Age-based selling only if profitable
             if (openPosition && state.settings.enforceAgeBasedSelling) {
                 const positionAgeSeconds = (Date.now() - openPosition.entryTime) / 1000;
                 const currentPrice = state.prices[token] || openPosition.entryPrice;
                 const currentValue = openPosition.amount * currentPrice;
-                // FIXED: Always include gasPaid and feesPaid in cost basis
                 const costBasis = (openPosition.amount * openPosition.entryPrice) + openPosition.feesPaid + openPosition.gasPaid;
                 const profit = currentValue - costBasis;
-                const profitPercent = (profit / costBasis) * 100;
 
                 if (positionAgeSeconds > state.settings.maxPositionAge && profit > 0) {
-                    window.log('info', `Age-based sell for ${token}: Position age (${positionAgeSeconds}s) > max (${state.settings.maxPositionAge}s) AND profit (${profitPercent.toFixed(2)}%) > 0%`);
-                    executeTrade(token, 'sell', `Age-based sell (${positionAgeSeconds}s old, ${profitPercent.toFixed(2)}% profit)`);
+                    executeTrade(token, 'sell', `Age-based sell (${positionAgeSeconds}s old, ${(profit / costBasis * 100).toFixed(2)}% profit)`);
                 }
             }
         }
@@ -2353,7 +2301,6 @@
                             (priceChange >= targetPercentage);
 
                         if (changeMatches) {
-                            window.log('debug', `Pattern match for ${token}: ${priceChange.toFixed(4)}% change over ${timeDiffSeconds.toFixed(1)}s (${pattern.minSeconds}-${pattern.maxSeconds}s window)`);
                             return true;
                         }
                     }
@@ -2398,7 +2345,7 @@
             state.settings.sellPatterns = document.getElementById('sellPatterns').value;
             saveSettings();
             validatePatterns();
-            showToast('Success', 'Default micro-scalping patterns loaded!');
+            showToast('Success', 'Default patterns loaded!');
         }
 
         // ============================================
@@ -2420,7 +2367,6 @@
             state.lastTradedToken = null;
             state.lastTradeTimes = {};
 
-            window.log('info', `Portfolio initialized with ${startingEth} ETH`);
             updatePortfolioUI();
             updateAssetAllocationDisplay();
             updateStartingEthDisplay();
@@ -2548,8 +2494,6 @@
                 const currentValue = position.amount * currentPrice;
                 const unrealizedPnL = currentValue - (position.amount * position.entryPrice) - position.feesPaid - position.gasPaid;
                 const returnPct = ((unrealizedPnL) / (position.amount * position.entryPrice + position.feesPaid + position.gasPaid)) * 100;
-                const trade = state.trades.find(t => t.id === position.tradeId);
-                const pattern = trade?.pattern || 'Manual';
 
                 html += `<tr>
                     <td><strong>${position.token}</strong></td>
@@ -2601,10 +2545,8 @@
 
             let maxDrawdown = 0;
             let runningMax = state.portfolio.startingEth;
-            let runningEquity = state.portfolio.startingEth;
-
             state.portfolio.equityHistory.forEach(point => {
-                runningEquity = point.ethValue;
+                const runningEquity = point.ethValue;
                 if (runningEquity > runningMax) runningMax = runningEquity;
                 const drawdown = runningMax - runningEquity;
                 if (drawdown > maxDrawdown) maxDrawdown = drawdown;
@@ -2630,95 +2572,72 @@
 
             const grossProfit = winningTrades.reduce((sum, p) => sum + p.pnl, 0);
             const grossLoss = Math.abs(losingTrades.reduce((sum, p) => sum + p.pnl, 0));
-            const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss).toFixed(2) : '∞';
+            const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss).toFixed(2) : '\u221E';
             document.getElementById('portfolioProfitFactor').textContent = profitFactor;
         }
 
         // ============================================
-        // FIXED: Trade Execution with Proper Sequential Prevention
+        // Trade Execution
         // ============================================
         async function executeTrade(token, action, pattern = 'Manual', amountETH = null) {
             if (!state.isRunning) {
-                window.log('warn', 'Cannot execute trade: bot is not running');
                 return null;
             }
 
             const mode = state.settings.executionMode;
             if (mode === EXECUTION_MODES.LIVE && !state.isConnected) {
-                window.log('error', 'Cannot execute live trade: wallet not connected');
                 showToast('Error', 'Wallet not connected');
                 return null;
             }
 
-            // Calculate trade amount as percentage of starting ETH from settings
             if (amountETH === null) {
                 amountETH = state.portfolio.startingEth * (state.settings.tradeAmountPercent / 100);
             }
 
-            // Validate minimum trade amount (now derived from percentage)
-            const minTradeAmount = state.portfolio.startingEth * 0.001; // 0.1% of starting ETH
+            const minTradeAmount = state.portfolio.startingEth * 0.001;
             if (amountETH < minTradeAmount) {
-                window.log('warn', `Trade amount ${amountETH.toFixed(6)} below minimum ${minTradeAmount.toFixed(6)}`);
-                showToast('Warning', `Trade amount too small: ${amountETH.toFixed(6)} ETH`);
                 return null;
             }
 
-            // Check asset cap for buy trades
             if (action === 'buy') {
                 const capCheck = checkAssetCap(token, amountETH);
                 if (!capCheck.allowed) {
-                    window.log('warn', `Asset cap exceeded: ${capCheck.reason}`);
                     return null;
                 }
             }
 
-            // FIXED: Global max open trades check (not per-token)
             const totalOpenPositions = state.portfolio.positions.filter(p => p.status === 'open').length;
             if (totalOpenPositions >= state.settings.maxTrades) {
-                window.log('warn', `Max open trades (${state.settings.maxTrades}) reached`);
-                showToast('Warning', `Max open trades reached`);
                 return null;
             }
 
-            // FIXED: Per-token cooldown
             const lastTradeTime = state.lastTradeTimes[token];
             if (lastTradeTime && (Date.now() - lastTradeTime) < (state.settings.tradeCooldown * 1000)) {
-                window.log('warn', `Trade cooldown active for ${token}`);
-                showToast('Warning', `Trade cooldown active for ${token}`);
                 return null;
             }
 
             const tokenSymbol = token;
-
             const currentPrice = state.prices[tokenSymbol];
             if (!currentPrice) {
-                window.log('error', `No price available for ${tokenSymbol}`);
-                showToast('Error', `No price for ${tokenSymbol}`);
                 return null;
             }
 
-            // Simulate latency if enabled
             const latencyRange = document.getElementById('latencySimulation').value;
             let latency = 0;
             if (latencyRange !== '0') {
                 const [min, max] = latencyRange.split('-').map(Number);
                 latency = Math.random() * (max - min) + min;
                 await sleep(latency);
-                window.log('debug', `Simulated latency: ${latency.toFixed(0)}ms`);
                 document.getElementById('avgLatency').textContent = `${latency.toFixed(0)}ms`;
             }
 
             const tokenAmount = amountETH / currentPrice;
             const poolInfo = await getEnhancedPoolInfo(tokenSymbol);
             if (!poolInfo) {
-                window.log('error', `Could not get pool info for ${tokenSymbol}`);
-                showToast('Error', `No pool info for ${tokenSymbol}`);
                 return null;
             }
 
-            // Get current gas price (real network data)
             const currentGasPrice = await getCurrentGasPrice();
-
             const tradeResult = await simulateRealisticTrade(
                 tokenSymbol, action, tokenAmount, currentPrice, poolInfo, latency, currentGasPrice
             );
@@ -2733,50 +2652,29 @@
                 state.trades.push(failedTrade);
                 state.portfolio.failedTrades++;
                 state.portfolio.totalTrades++;
-                window.log('warn', `Trade failed: ${tradeResult.reason}`);
-                showToast('Error', `Trade failed: ${tradeResult.reason}`);
                 updateDashboard();
                 return failedTrade;
             }
 
-            // FIXED: Sequential trade prevention for ANY trade on same token
             if (state.settings.preventSequentialTrades && state.lastTradedToken === tokenSymbol) {
-                window.log('debug', `Skipping trade for ${tokenSymbol}: Sequential trade prevention enabled (last traded: ${state.lastTradedToken})`);
-                showToast('Warning', `Sequential trade prevention: Last trade was ${tokenSymbol}`);
                 return null;
             }
 
-            // Create trade object
             const trade = createTradeObject(
                 tokenSymbol, action, tradeResult.executionPrice, tradeResult.tokenAmount,
                 tradeResult.amountETH, pattern, 'open', null, tradeResult.gasUsed,
                 tradeResult.gasPrice, tradeResult.feeAmount, tradeResult.priceImpact, tradeResult.slippage
             );
 
-            // Update portfolio
             updatePortfolioForTrade(trade, action, tradeResult);
-
-            // Store trade
             state.trades.push(trade);
             state.portfolio.totalTrades++;
-
-            // FIXED: Update last traded token for ANY trade
             state.lastTradedToken = tokenSymbol;
-
-            // FIXED: Update per-token cooldown
             state.lastTradeTimes[tokenSymbol] = Date.now();
 
-            // For sell trades, settle immediately
             if (action === 'sell') {
                 await settleTrade(trade);
             }
-
-            // Show toast notification
-            const toastMessage = `Executed ${action.toUpperCase()} ${tradeResult.tokenAmount.toFixed(6)} ${tokenSymbol} at ${tradeResult.executionPrice.toFixed(6)} ETH`;
-            const toastType = tradeResult.success ? 'success' : 'error';
-            showToast(toastType, toastMessage);
-
-            window.log('info', `${toastMessage} | Gas: ${tradeResult.gasUsed} @ ${tradeResult.gasPrice} gwei`);
 
             updateDashboard();
             updatePortfolioUI();
@@ -2833,7 +2731,6 @@
                 result.feeAmount = result.amountETH * feePercent;
 
                 result.priceImpact = calculatePriceImpact(token, tokenAmount, poolInfo);
-
                 const baseSlippage = result.priceImpact;
                 const latencySlippage = latency > 0 ? (latency / 1000) * 0.02 : 0;
                 result.slippage = baseSlippage + latencySlippage;
@@ -2883,8 +2780,6 @@
         }
 
         async function getEnhancedPoolInfo(token) {
-            // For dynamic tokens, we need to create reasonable defaults
-            // If we have pool info from the session, use it
             if (activeSession) {
                 for (const [addr, pool] of activeSession.pools) {
                     if (pool.token0Meta && pool.token0Meta.symbol === token) {
@@ -2910,7 +2805,6 @@
                 }
             }
 
-            // Fallback to reasonable defaults for known tokens
             const defaults = {
                 ETH: { liquidity: 1000000, feeTier: POOL_FEES.LOW, token0: 'ETH', token1: 'WETH', decimals0: 18, decimals1: 18 },
                 WETH: { liquidity: 1000000, feeTier: POOL_FEES.LOW, token0: 'ETH', token1: 'WETH', decimals0: 18, decimals1: 18 },
@@ -2947,8 +2841,6 @@
                         trade.status = 'failed';
                         trade.reason = 'Insufficient ETH (including fees)';
                         state.portfolio.failedTrades++;
-                        window.log('warn', `Insufficient ETH: Need ${totalTradeCost.toFixed(6)}, have ${ethBalance.toFixed(6)}`);
-                        showToast('Error', `Insufficient ETH: Need ${totalTradeCost.toFixed(6)}`);
                         return;
                     }
 
@@ -2988,8 +2880,6 @@
                     state.portfolio.feesPaid += feeCostETH;
                     state.portfolio.totalFees += totalCostETH;
 
-                    window.log('debug', `Buy: ${tradeResult.tokenAmount.toFixed(6)} ${tokenSymbol} @ ${tradeResult.executionPrice.toFixed(6)} ETH | Gas: ${gasCostETH.toFixed(6)} ETH | Fee: ${feeCostETH.toFixed(6)} ETH`);
-
                 } else if (action === 'sell') {
                     const openPositions = state.portfolio.positions
                         .filter(p => p.token === tokenSymbol && p.status === 'open')
@@ -2999,16 +2889,12 @@
                         trade.status = 'failed';
                         trade.reason = 'No open position to sell';
                         state.portfolio.failedTrades++;
-                        window.log('warn', `No open position for ${tokenSymbol} to sell`);
-                        showToast('Error', `No open position for ${tokenSymbol}`);
                         return;
                     }
 
                     const position = openPositions[0];
                     const amountToSell = Math.min(tradeResult.tokenAmount, position.amount);
                     const sellValueETH = amountToSell * tradeResult.executionPrice;
-
-                    // FIXED: Always include gasPaid and feesPaid in cost basis
                     const costBasis = (amountToSell * position.entryPrice) +
                         (amountToSell / position.amount) * (position.feesPaid + position.gasPaid);
                     const pnl = sellValueETH - costBasis - totalCostETH;
@@ -3045,8 +2931,6 @@
                     state.portfolio.gasSpent += gasCostETH;
                     state.portfolio.feesPaid += feeCostETH;
                     state.portfolio.totalFees += totalCostETH;
-
-                    window.log('debug', `Sell: ${amountToSell.toFixed(6)} ${tokenSymbol} @ ${tradeResult.executionPrice.toFixed(6)} ETH | PnL: ${pnl.toFixed(6)} ETH | Gas: ${gasCostETH.toFixed(6)} ETH | Fee: ${feeCostETH.toFixed(6)} ETH`);
                 }
             }
 
@@ -3061,15 +2945,12 @@
                 .sort((a, b) => a.entryTime - b.entryTime);
 
             if (openPositions.length === 0) {
-                window.log('warn', `No open position for ${trade.token} to settle`);
                 return;
             }
 
             const position = openPositions[0];
             const amountToSell = Math.min(trade.tokenAmount, position.amount);
             const sellValueETH = amountToSell * trade.price;
-
-            // FIXED: Always include gasPaid and feesPaid in cost basis
             const costBasis = (amountToSell * position.entryPrice) +
                 (amountToSell / position.amount) * (position.feesPaid + position.gasPaid);
             const pnl = sellValueETH - costBasis - (trade.fee || 0) - (trade.gasUsed * trade.gasPrice / 1e9 / 1e18);
@@ -3095,9 +2976,6 @@
             updateEquityChart();
         }
 
-        // ============================================
-        // FIXED: Age-Based Selling
-        // ============================================
         function checkAgeBasedSelling() {
             if (!state.settings.enforceAgeBasedSelling || !state.isRunning) return;
 
@@ -3108,19 +2986,17 @@
                 const positionAgeSeconds = (now - position.entryTime) / 1000;
                 const currentPrice = state.prices[position.token] || position.entryPrice;
                 const currentValue = position.amount * currentPrice;
-                // FIXED: Always include gasPaid and feesPaid in cost basis
                 const costBasis = (position.amount * position.entryPrice) + position.feesPaid + position.gasPaid;
                 const profit = currentValue - costBasis;
 
                 if (positionAgeSeconds > state.settings.maxPositionAge && profit > 0) {
-                    window.log('info', `Age-based sell triggered for ${position.token}: ${positionAgeSeconds}s old, ${(profit / costBasis * 100).toFixed(4)}% profit`);
                     executeTrade(position.token, 'sell', `Age-based sell (${positionAgeSeconds}s old)`);
                 }
             });
         }
 
         // ============================================
-        // FIXED: Dashboard Rendering - Show ALL Observed Tokens
+        // Dashboard Rendering
         // ============================================
         function updateDashboard() {
             renderDashboard();
@@ -3136,26 +3012,21 @@
         }
 
         function renderDashboard() {
-            const s = activeSession;
-
-            // FIXED: Get ALL observed tokens from price data
             const observedTokens = Object.keys(state.prices);
 
-            if (!s || observedTokens.length === 0) {
+            if (!activeSession || observedTokens.length === 0) {
                 document.getElementById('priceRows').innerHTML = '<tr><td colspan="6" class="text-center text-secondary">Press Start to begin</td></tr>';
                 document.getElementById('trackedTokensCount').textContent = '0';
                 return;
             }
 
-            // Update tracked tokens count
             document.getElementById('trackedTokensCount').textContent = observedTokens.length;
 
             let html = '';
-            observedTokens.forEach((tokenSymbol, i) => {
+            observedTokens.forEach(tokenSymbol => {
                 const price = state.prices[tokenSymbol];
                 if (price === undefined || price === null) return;
 
-                // Calculate change percentage
                 let changePct = 0;
                 const history = state.priceHistory[tokenSymbol];
                 if (history && history.length >= 2) {
@@ -3167,7 +3038,7 @@
                 }
 
                 const changeClass = changePct >= 0 ? 'price-up' : 'price-down';
-                const changeSymbol = changePct > 0 ? '&#9650;' : changePct < 0 ? '&#9660;' : '';
+                const changeSymbol = changePct > 0 ? '\u25B2' : changePct < 0 ? '\u25BC' : '';
                 const displayPrice = price != null ? price.toFixed(6) : '<span class="text-secondary">No quote</span>';
 
                 const historyCount = history ? history.length : 0;
@@ -3298,10 +3169,8 @@
 
             let maxDrawdown = 0;
             let runningMax = state.portfolio.startingEth;
-            let runningEquity = state.portfolio.startingEth;
-
             state.portfolio.equityHistory.forEach(point => {
-                runningEquity = point.ethValue;
+                const runningEquity = point.ethValue;
                 if (runningEquity > runningMax) runningMax = runningEquity;
                 const drawdown = runningMax - runningEquity;
                 if (drawdown > maxDrawdown) maxDrawdown = drawdown;
@@ -3311,7 +3180,7 @@
 
             const grossProfit = winningTrades.reduce((sum, t) => sum + t.pnl, 0);
             const grossLoss = Math.abs(losingTrades.reduce((sum, t) => sum + t.pnl, 0));
-            const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss).toFixed(2) : '∞';
+            const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss).toFixed(2) : '\u221E';
             document.getElementById('profitFactor').textContent = profitFactor;
 
             const sessionStart = state.startTime ? state.startTime.toISOString() : '-';
@@ -3444,8 +3313,6 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-
-            window.log('info', 'Trade history exported');
             showToast('Success', 'Trade history exported!');
         }
 
@@ -3468,13 +3335,11 @@
             updateDashboard();
             updatePortfolioUI();
             updateEquityChart();
-
-            window.log('info', 'Trade history cleared');
             showToast('Success', 'Trade history cleared!');
         }
 
         // ============================================
-        // FIXED: Settings Management
+        // Settings Management
         // ============================================
         function saveTradingSettings() {
             const startingEthInput = document.getElementById('startingEth');
@@ -3490,21 +3355,16 @@
             state.settings.tradeCooldown = parseInt(document.getElementById('tradeCooldown').value);
             state.settings.maxSlippage = parseFloat(document.getElementById('maxSlippage').value);
             state.settings.latencySimulation = document.getElementById('latencySimulation').value;
-
             state.settings.minProfitPercent = parseFloat(document.getElementById('minProfitPercent').value);
             state.settings.maxPositionAge = parseInt(document.getElementById('maxPositionAge').value);
-            state.settings.enforceProfitForPatterns = true; // FIXED: Always enforce
-            state.settings.enforceAgeBasedSelling = document.getElementById('enforceAgeBasedSelling').checked;
+            state.settings.enforceAgeBasedSelling = document.getElementById('enforceAgeBasedSelling')?.checked || false;
             state.settings.preventSequentialTrades = document.getElementById('preventSequentialTrades').checked;
-
-            // FIXED: Asset caps
             state.settings.assetCaps = {
                 ETH: parseFloat(document.getElementById('ethCapPercent').value) || 100,
                 OTHER: parseFloat(document.getElementById('otherCapPercent').value) || 10
             };
 
             saveSettings();
-            window.log('info', 'Trading settings saved');
             showToast('Success', 'Trading settings saved!');
             updateAssetCapUI();
             updateStartingEthDisplay();
@@ -3518,7 +3378,6 @@
             state.settings.priceHistoryDuration = parseInt(document.getElementById('priceHistoryDuration').value);
 
             saveSettings();
-            window.log('info', 'Price settings saved');
             showToast('Success', 'Price settings saved!');
 
             if (state.isRunning) {
@@ -3533,7 +3392,6 @@
             state.settings.debugMode = document.getElementById('debugMode').value;
 
             saveSettings();
-            window.log('info', 'Advanced settings saved');
             showToast('Success', 'Advanced settings saved!');
         }
 
@@ -3559,13 +3417,8 @@
                 if (savedSettings) {
                     state.settings = { ...state.settings, ...savedSettings };
                     if (!state.settings.assetCaps) {
-                        state.settings.assetCaps = {
-                            ETH: 100,
-                            OTHER: 10
-                        };
+                        state.settings.assetCaps = { ETH: 100, OTHER: 10 };
                     }
-                    // FIXED: Always enforce profit for patterns
-                    state.settings.enforceProfitForPatterns = true;
                 }
 
                 if (savedState) {
@@ -3596,14 +3449,11 @@
                 updatePriceHistoryCount();
                 updateStartingEthField();
                 initializeAssetCaps();
-
                 updateStartingEthDisplay();
                 updateTradeAmountDisplay();
 
-                window.log('info', 'Settings and data loaded');
             } catch (error) {
                 console.error('Load error:', error);
-                window.log('error', `Failed to load: ${error.message}`);
             }
         }
 
@@ -3629,8 +3479,6 @@
 
             updateStartingEthDisplay();
             updateTradeAmountDisplay();
-
-            window.log('info', `Portfolio reconstructed with starting ETH: ${startingEth}`);
         }
 
         function updateSettingsUI() {
@@ -3657,13 +3505,10 @@
             document.getElementById('logToConsole').checked = true;
             document.getElementById('executionModeSelect').value = state.settings.executionMode || EXECUTION_MODES.SHADOW;
             document.getElementById('latencySimulation').value = state.settings.latencySimulation || '0';
-
             document.getElementById('minProfitPercent').value = state.settings.minProfitPercent || 0.1;
             document.getElementById('maxPositionAge').value = state.settings.maxPositionAge || 300;
-            document.getElementById('enforceProfitForPatterns').checked = true; // FIXED: Always checked
             document.getElementById('enforceAgeBasedSelling').checked = state.settings.enforceAgeBasedSelling !== false;
             document.getElementById('preventSequentialTrades').checked = state.settings.preventSequentialTrades !== false;
-
             document.getElementById('ethCapPercent').value = state.settings.assetCaps?.ETH || 100;
             document.getElementById('otherCapPercent').value = state.settings.assetCaps?.OTHER || 10;
 
@@ -3697,9 +3542,8 @@
                         priceHistory: state.priceHistory
                     };
                     localStorage.setItem('tradingBotBackup', JSON.stringify(backupData));
-                    window.log('info', 'Auto-backup saved');
                 } catch (e) {
-                    window.log('error', 'Auto-backup failed: ' + e.message);
+                    console.error('Auto-backup failed:', e);
                 }
             }, interval);
         }
@@ -3708,7 +3552,6 @@
             if (state.backupTimer) {
                 clearInterval(state.backupTimer);
                 state.backupTimer = null;
-                window.log('info', 'Auto-backup stopped');
             }
         }
 
@@ -3737,10 +3580,8 @@
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                window.log('info', 'Backup created');
                 showToast('Success', 'Backup created!');
             } catch (error) {
-                window.log('error', `Backup failed: ${error.message}`);
                 showToast('Error', 'Backup failed: ' + error.message);
             } finally {
                 hideLoading('backupSpinner');
@@ -3778,17 +3619,14 @@
                         updateStartingEthDisplay();
                         updateTradeAmountDisplay();
 
-                        window.log('info', 'Backup restored');
                         showToast('Success', 'Backup restored! Reloading...');
                         setTimeout(() => location.reload(), 1500);
                     } catch (error) {
-                        window.log('error', `Backup parse failed: ${error.message}`);
                         showToast('Error', 'Failed to parse backup: ' + error.message);
                     }
                 };
                 reader.readAsText(file);
             } catch (error) {
-                window.log('error', `Restore failed: ${error.message}`);
                 showToast('Error', 'Restore failed: ' + error.message);
             }
         }
@@ -3834,10 +3672,8 @@
                 updateStartingEthDisplay();
                 updateTradeAmountDisplay();
 
-                window.log('info', 'All data cleared');
                 showToast('Success', 'All data cleared!');
             } catch (error) {
-                window.log('error', `Clear failed: ${error.message}`);
                 showToast('Error', 'Clear failed: ' + error.message);
             }
         }
@@ -3894,19 +3730,15 @@
         }
 
         // ============================================
-        // FIXED: Token Management - Dynamic Observation
+        // Token Management
         // ============================================
         async function fetchAvailableTokens() {
             try {
-                window.log('info', 'Initializing token tracking...');
-
-                // Start with known tokens for the current network
                 TOKENS = {
                     ETH: { address: null, decimals: 18, symbol: 'ETH', isNative: true, name: 'Ethereum' },
                     WETH: { address: null, decimals: 18, symbol: 'WETH', name: 'Wrapped ETH' }
                 };
 
-                // Add network-specific tokens
                 if (CONTRACTS[currentChainKey]) {
                     for (const [symbol, address] of Object.entries(CONTRACTS[currentChainKey])) {
                         if (symbol === 'weth') {
@@ -3923,15 +3755,13 @@
                 }
 
                 updateTokenAddresses();
-                window.log('info', `Initialized with ${Object.keys(TOKENS).length} known tokens`);
             } catch (error) {
                 console.error('Token initialization error:', error);
-                window.log('warn', `Token initialization failed: ${error.message}`);
             }
         }
 
         // ============================================
-        // FIXED: Price Management - Track ALL Observed Tokens
+        // Price Management
         // ============================================
         async function updateGasPrice() {
             const gasPrice = await getCurrentGasPrice();
@@ -3951,21 +3781,16 @@
 
         async function refreshPrices() {
             showLoading('priceRefreshSpinner');
-            window.log('info', 'Manual price refresh...');
             try {
                 if (activeSession?.connected) {
                     updatePriceUI();
-                    window.log('info', 'Prices refreshed');
                     showToast('Success', 'Prices refreshed!');
                 } else {
-                    window.log('warn', 'Not connected to price feed');
                     showToast('Warning', 'Not connected. Start bot first.');
                 }
                 updatePriceUpdateStatus(activeSession?.connected ? 'success' : 'error');
             } catch (error) {
                 console.error('Refresh error:', error);
-                window.log('error', `Refresh failed: ${error.message}`);
-                showToast('Error', 'Refresh failed: ' + error.message);
                 updatePriceUpdateStatus('error');
             } finally {
                 hideLoading('priceRefreshSpinner');
@@ -4015,13 +3840,6 @@
             document.getElementById('uptime').textContent = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
         }
 
-        function showNotification(title, message) {
-            const modal = document.getElementById('notificationModal');
-            document.getElementById('modalTitle').textContent = title;
-            document.getElementById('modalMessage').textContent = message;
-            modal.classList.add('active');
-        }
-
         function closeModal() {
             document.getElementById('notificationModal').classList.remove('active');
         }
@@ -4056,24 +3874,24 @@
             if (us) {
                 const uc = activeSession?.connected || false;
                 us.className = `status-item ${uc ? 'status-connected' : 'status-disconnected'}`;
-                us.innerHTML = uc ? 'Uniswap &check;' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Uniswap';
+                us.innerHTML = uc ? 'Uniswap \u2713' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Uniswap';
             }
 
             if (ws) {
                 const wc = state.isConnected;
                 ws.className = `status-item ${wc ? 'status-connected' : 'status-disconnected'}`;
-                ws.innerHTML = wc ? 'Wallet &check;' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Wallet';
+                ws.innerHTML = wc ? 'Wallet \u2713' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Wallet';
             }
 
             if (ps) {
                 const pc = activeSession?.connected || false;
                 ps.className = `status-item ${pc ? 'status-connected' : 'status-disconnected'}`;
-                ps.innerHTML = pc ? 'Price Feed &check;' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Price Feed';
+                ps.innerHTML = pc ? 'Price Feed \u2713' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Price Feed';
             }
         }
 
         // ============================================
-        // FIXED: Bot Control
+        // Bot Control
         // ============================================
         async function startBot() {
             if (state.isRunning) {
@@ -4082,10 +3900,8 @@
             }
 
             initializePortfolio();
-
             showLoading('startSpinner');
             document.getElementById('startBotBtn').disabled = true;
-            window.log('info', 'Starting bot...');
 
             try {
                 const buyValid = validatePatternString(state.settings.buyPatterns);
@@ -4105,17 +3921,14 @@
                 state.lastTradedToken = null;
 
                 updateBotStatus();
-                window.log('info', `Bot started in ${state.settings.executionMode} mode with starting ETH: ${state.portfolio.startingEth}`);
-                showToast('Success', `Bot started in ${state.settings.executionMode.toUpperCase()} mode!`);
-
                 await updateGasPrice();
                 startPricePolling();
-
                 setInterval(checkAgeBasedSelling, 30000);
+
+                showToast('Success', `Bot started in ${state.settings.executionMode.toUpperCase()} mode!`);
 
             } catch (error) {
                 console.error('Start error:', error);
-                window.log('error', `Failed to start bot: ${error.message}`);
                 showToast('Error', 'Failed to start: ' + error.message);
                 document.getElementById('startSpinner').style.display = 'none';
                 document.getElementById('startBotBtn').disabled = false;
@@ -4130,7 +3943,6 @@
 
             showLoading('stopSpinner');
             document.getElementById('stopBotBtn').disabled = true;
-            window.log('info', 'Stopping bot...');
 
             try {
                 stopUniswapSession();
@@ -4140,12 +3952,11 @@
                 state.lastTradedToken = null;
 
                 updateBotStatus();
-                window.log('info', 'Bot stopped successfully');
-                showToast('Success', 'Bot stopped!');
                 updatePriceUpdateStatus('');
+                showToast('Success', 'Bot stopped!');
             } catch (error) {
                 console.error('Stop error:', error);
-                window.log('error', `Failed to stop: ${error.message}`);
+                showToast('Error', 'Failed to stop: ' + error.message);
             } finally {
                 document.getElementById('stopSpinner').style.display = 'none';
                 document.getElementById('stopBotBtn').disabled = false;
@@ -4176,18 +3987,14 @@
         }
 
         async function testConnection() {
-            window.log('info', 'Testing connections...');
-            showToast('Info', 'Testing connections...');
-
-            if (state.settings.executionMode === EXECUTION_MODES.PAPER) {
-                window.log('info', 'Paper Mode: Simulating success.');
-                activeSession = { connected: true };
-                updateConnectionStatus();
-                showToast('Success', 'Paper Mode: All connections OK!');
-                return;
-            }
-
             try {
+                if (state.settings.executionMode === EXECUTION_MODES.PAPER) {
+                    activeSession = { connected: true };
+                    updateConnectionStatus();
+                    showToast('Success', 'Paper Mode: All connections OK!');
+                    return;
+                }
+
                 if (typeof window.ethereum === 'undefined') throw new Error('MetaMask not installed');
                 const accounts = await window.ethereum.request({ method: 'eth_accounts' });
                 if (accounts.length === 0) throw new Error('MetaMask not connected');
@@ -4201,17 +4008,15 @@
                     }
                 }
 
-                window.log('info', 'All connections OK');
                 showToast('Success', 'All connections working!');
             } catch (error) {
                 console.error('Connection test:', error);
-                window.log('error', `Connection test failed: ${error.message}`);
                 showToast('Error', 'Connection test failed: ' + error.message);
             }
         }
 
         // ============================================
-        // FIXED: Uniswap Session Management - Dynamic Token Discovery
+        // Uniswap Session Management
         // ============================================
         function createSession(key) {
             const chain = CHAINS[key];
@@ -4263,7 +4068,7 @@
                 document.getElementById('chainStat').textContent = CHAINS[currentChainKey]?.name || 'Unknown';
             }
             if (document.getElementById('blocksStat') != null) {
-                document.getElementById('blocksStat').textContent = '—';
+                document.getElementById('blocksStat').textContent = '\u2014';
             }
             if (document.getElementById('poolsStat') != null) {
                 document.getElementById('poolsStat').textContent = '0';
@@ -4323,7 +4128,6 @@
                         s.connected = true;
                         setStatus("Connected", "connected");
                         updateButton();
-                        window.log('info', `Connected to ${s.chain.name} WebSocket`);
                         updatePriceUpdateStatus('success');
                         updateGasPrice();
                     });
@@ -4331,9 +4135,8 @@
                     s.ws.addEventListener("close", () => {
                         if (!current(s)) return;
                         s.connected = false;
-                        setStatus("Disconnected — reconnecting...", "error");
+                        setStatus("Disconnected \u2014 reconnecting...", "error");
                         updateButton();
-                        window.log('warn', `Disconnected from ${s.chain.name}`);
                         updatePriceUpdateStatus('error');
                         scheduleReconnect(s);
                     });
@@ -4344,7 +4147,6 @@
                         s.connected = false;
                         setStatus("Connection error", "error");
                         updateButton();
-                        window.log('error', `WS error on ${s.chain.name}: ${e.message}`);
                         updatePriceUpdateStatus('error');
                     });
                 }
@@ -4367,7 +4169,6 @@
                 setStatus("Connected", "connected");
                 updateButton();
                 updateStats(s);
-                window.log('info', `Connected to ${s.chain.name}`);
                 updatePriceUpdateStatus('success');
                 updateGasPrice();
 
@@ -4376,7 +4177,6 @@
                 console.error("Connection failed", e);
                 s.connected = false;
                 setStatus("Connection failed", "error");
-                window.log('error', `Connection failed to ${s.chain.name}: ${e?.shortMessage || e?.message || e}`);
                 updateButton();
                 updatePriceUpdateStatus('error');
                 scheduleReconnect(s);
@@ -4388,7 +4188,6 @@
             s.reconnectTimer = setTimeout(() => {
                 s.reconnectTimer = null;
                 if (current(s)) {
-                    window.log('info', `Reconnecting to ${s.chain.name}...`);
                     startUniswapSession();
                 }
             }, 5000);
@@ -4456,7 +4255,6 @@
                         continue;
                     }
                     console.warn("Block log error", e);
-                    window.log('error', `Block processing error: ${e.message}`);
                     return;
                 }
             }
@@ -4470,7 +4268,6 @@
                         await processSwapLog(s, log);
                     } catch (e) {
                         console.debug("Swap error", e);
-                        window.log('error', `Swap processing error: ${e.message}`);
                     }
                 }
             }
@@ -4502,11 +4299,8 @@
                         gasPriceEl.textContent = s.gasPrice.toFixed(2) + ' gwei';
                     }
                 }
-
-                window.log('debug', `Gas price updated: ${s.gasPrice || 'N/A'} gwei`);
             } catch (error) {
                 console.error('Gas price error:', error);
-                window.log('error', `Gas price failed: ${error.message}`);
             }
         }
 
@@ -4527,7 +4321,6 @@
                     t.decimals = Number(decimals);
                     t.name = String(name);
 
-                    // Track this token in our observed tokens set
                     state.observedTokens.add(t.symbol);
                     state.prices[t.symbol] = t.priceQuote;
 
@@ -4539,14 +4332,11 @@
                     }
                 } catch (e) {
                     console.debug("Token metadata unavailable", address, e);
-                    // Try to match with known tokens
                     for (const [symbol, token] of Object.entries(TOKENS)) {
                         if (norm(token.address) === norm(address)) {
                             t.symbol = symbol;
                             t.name = token.name || symbol;
                             t.decimals = token.decimals || 18;
-
-                            // Track this token
                             state.observedTokens.add(symbol);
                             state.prices[symbol] = t.priceQuote;
                             break;
@@ -4669,7 +4459,6 @@
             while (t.history.length && t.history[0].t < cut) t.history.shift();
             if (t.history.length > 180) t.history.splice(0, t.history.length - 180);
 
-            // Also add to our global price history
             if (t.symbol) {
                 addPriceToHistory(t.symbol, p);
             }
@@ -4706,16 +4495,7 @@
         }
 
         function fp(v) {
-            if (v == null || !Number.isFinite(v)) return "—";
-            if (Math.abs(v) >= 1000) return v.toLocaleString("en-US", { maximumFractionDigits: 2 });
-            if (Math.abs(v) >= 1) return v.toLocaleString("en-US", { maximumFractionDigits: 6 });
-            if (Math.abs(v) >= 0.01) return v.toFixed(5);
-            if (Math.abs(v) >= 0.0001) return v.toFixed(7);
-            return v.toExponential(4);
-        }
-
-        function compact(v) {
-            if (!Number.isFinite(v)) return "—";
+            if (v == null || !Number.isFinite(v)) return "\u2014";
             const a = Math.abs(v);
             if (a >= 1e12) return (v / 1e12).toFixed(2) + "T";
             if (a >= 1e9) return (v / 1e9).toFixed(2) + "B";
@@ -4727,7 +4507,7 @@
         }
 
         function fpc(v) {
-            return (v == null || !Number.isFinite(v)) ? "—" : (v > 0 ? "+" : "") + v.toFixed(2) + "%";
+            return (v == null || !Number.isFinite(v)) ? "\u2014" : (v > 0 ? "+" : "") + v.toFixed(2) + "%";
         }
 
         function cls(v) {
@@ -4750,10 +4530,6 @@
             return a ? `${a.slice(0, 6)}...${a.slice(-4)}` : "";
         }
 
-        function esc(v) {
-            return String(v).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
-        }
-
         function current(s) {
             return !!s && activeSession === s && s.id === sessionSerial && s.active && !manuallyStopped;
         }
@@ -4771,7 +4547,7 @@
             if (st) st.textContent = t;
             if (us) {
                 us.className = `status-item ${type === 'connected' ? 'status-connected' : 'status-disconnected'}`;
-                us.innerHTML = type === 'connected' ? 'Uniswap &check;' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Uniswap';
+                us.innerHTML = type === 'connected' ? 'Uniswap \u2713' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Uniswap';
             }
         }
 
@@ -4813,7 +4589,7 @@
                 document.getElementById('lastPriceUpdate').textContent = s.lastProcessedBlock ? new Date().toLocaleTimeString() : 'Never';
             }
             if (document.getElementById('blocksStat') != null) {
-                document.getElementById('blocksStat').textContent = s.blockCount ? s.blockCount.toLocaleString() : '—';
+                document.getElementById('blocksStat').textContent = s.blockCount ? s.blockCount.toLocaleString() : '\u2014';
             }
             if (document.getElementById('poolsStat') != null) {
                 document.getElementById('poolsStat').textContent = s.pools.size.toLocaleString();
@@ -4872,7 +4648,6 @@
                 countEl.textContent = `${totalCount} entries`;
             }
 
-            // Update tracked tokens count
             const trackedEl = document.getElementById('trackedTokensCount');
             if (trackedEl) {
                 trackedEl.textContent = Object.keys(state.prices).length;
@@ -4896,8 +4671,6 @@
 
                 try {
                     const s = activeSession;
-
-                    // FIXED: Check patterns for ALL tokens with price data
                     const tokensWithPrices = Object.keys(state.prices);
                     for (const tokenSymbol of tokensWithPrices) {
                         checkPatternsForToken(tokenSymbol);
@@ -4909,26 +4682,21 @@
                     state.priceUpdateErrors = 0;
 
                     updatePriceUI();
-                    window.log('debug', `Price poll: Checking ${tokensWithPrices.length} tokens for patterns`);
 
                 } catch (error) {
                     console.error('Price polling error:', error);
-                    window.log('error', `Price polling failed: ${error.message}`);
                     state.priceUpdateErrors++;
                     if (state.priceUpdateErrors > 3) {
                         updatePriceUpdateStatus('error');
                     }
                 }
             }, interval);
-
-            window.log('info', `Price polling started at ${interval}ms interval`);
         }
 
         function stopPricePolling() {
             if (state.pricePollInterval) {
                 clearInterval(state.pricePollInterval);
                 state.pricePollInterval = null;
-                window.log('info', 'Price polling stopped');
             }
         }
 
@@ -4938,8 +4706,6 @@
                     if (t.priceQuote != null) {
                         state.prices[t.symbol] = t.priceQuote;
                         addPriceToHistory(t.symbol, t.priceQuote);
-
-                        // Also track in observedTokens
                         state.observedTokens.add(t.symbol);
 
                         if (!state.priceHistory[t.symbol]) state.priceHistory[t.symbol] = [];
@@ -4972,7 +4738,6 @@
                 try {
                     parsed = SWAP_INTERFACE.parseLog({ topics: log.topics, data: log.data });
                 } catch (e) {
-                    window.log('error', `Failed to parse swap log: ${e.message}`);
                     return;
                 }
                 if (!parsed) return;
@@ -4998,9 +4763,7 @@
                 try {
                     n0 = Math.abs(Number(ethers.formatUnits(amount0, t0.decimals)));
                     n1 = Math.abs(Number(ethers.formatUnits(amount1, t1.decimals)));
-                } catch (e) {
-                    window.log('error', `Failed to format amounts: ${e.message}`);
-                }
+                } catch (e) { }
                 const p0 = quotePrice(s, t0.address);
                 const p1 = quotePrice(s, t1.address);
                 if (p0 != null) {
@@ -5020,7 +4783,6 @@
                     t1.volumeQuote += volume;
                 }
 
-                // Track these tokens in our global state
                 if (t0.symbol) {
                     state.prices[t0.symbol] = p0;
                     state.observedTokens.add(t0.symbol);
@@ -5035,18 +4797,15 @@
                 updatePriceUpdateStatus('success');
                 state.priceUpdateErrors = 0;
 
-                // FIXED: Check patterns for these dynamically discovered tokens
                 if (state.isRunning) {
                     if (t0.symbol) checkPatternsForToken(t0.symbol);
                     if (t1.symbol) checkPatternsForToken(t1.symbol);
                 }
             } catch (error) {
                 console.error('Swap log error:', error);
-                window.log('error', `Swap log error: ${error.message}`);
                 state.priceUpdateErrors++;
                 if (state.priceUpdateErrors > 5) {
                     updatePriceUpdateStatus('error');
-                    window.log('error', 'Multiple price update errors. Price feed may be unstable.');
                 }
             }
         }
