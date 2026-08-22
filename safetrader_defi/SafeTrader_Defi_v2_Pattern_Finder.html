@@ -1,0 +1,2920 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Price Pattern Finder</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #0d6efd;
+            --success: #198754;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --dark: #212529;
+            --light: #f8f9fa;
+            --border-radius: 0.375rem;
+            --box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--light);
+            color: var(--dark);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: var(--dark);
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 5px;
+            border-bottom: 1px solid #dee2e6;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .nav-link {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+            background: #f8f9fa;
+            color: #6c757d;
+        }
+
+        .nav-link.active {
+            background: white;
+            border-color: #dee2e6 #dee2e6 white;
+            color: var(--primary);
+            margin-bottom: -1px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            margin-bottom: 20px;
+            padding: 20px;
+        }
+
+        .card-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #dee2e6;
+            margin: -20px -20px 20px -20px;
+            background: #f8f9fa;
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0a58ca;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-running {
+            background: var(--success);
+        }
+
+        .status-stopped {
+            background: var(--danger);
+        }
+
+        .status-disconnected {
+            background: #6c757d;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .loading-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s ease-in-out infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-spinner-dark {
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-top-color: var(--primary);
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+        }
+
+        .table th,
+        .table td {
+            padding: 0.75rem;
+            border: 1px solid #dee2e6;
+            text-align: left;
+        }
+
+        .table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .table th:hover {
+            background: #e9ecef;
+        }
+
+        .table-striped tbody tr:nth-child(even) {
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        .table-striped tbody tr:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .price-up {
+            color: var(--success);
+        }
+
+        .price-down {
+            color: var(--danger);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .badge-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .badge-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .badge-warning {
+            background: var(--warning);
+            color: var(--dark);
+        }
+
+        .badge-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+
+            .grid-2,
+            .grid-3,
+            .grid-4 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s;
+        }
+
+        .log-container {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+        }
+
+        .log-info {
+            color: #569cd6;
+        }
+
+        .log-success {
+            color: #4ec9b0;
+        }
+
+        .log-warning {
+            color: #dcdcaa;
+        }
+
+        .log-error {
+            color: #f44747;
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 12px 16px;
+            min-width: 300px;
+            max-width: 400px;
+            animation: slideIn 0.3s ease-out;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast.hiding {
+            animation: slideOut 0.3s ease-out forwards;
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .toast.error {
+            border-left: 4px solid var(--danger);
+        }
+
+        .toast.warning {
+            border-left: 4px solid var(--warning);
+        }
+
+        .toast.info {
+            border-left: 4px solid var(--primary);
+        }
+
+        .toast-message {
+            flex: 1;
+            font-size: 0.9rem;
+        }
+
+        .toast-close {
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: #6c757d;
+            padding: 0 0 0 10px;
+        }
+
+        .toast-close:hover {
+            color: var(--dark);
+        }
+
+        .connection-status {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.85rem;
+        }
+
+        .status-connected {
+            background: rgba(25, 135, 84, 0.1);
+            color: var(--success);
+        }
+
+        .status-disconnected {
+            background: rgba(220, 53, 69, 0.1);
+            color: var(--danger);
+        }
+
+        .chart-container {
+            height: 300px;
+            background: white;
+            border-radius: var(--border-radius);
+            border: 1px solid #dee2e6;
+            padding: 15px;
+        }
+
+        .pattern-details {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .pattern-card {
+            border: 1px solid #dee2e6;
+            border-radius: var(--border-radius);
+            padding: 15px;
+            margin-bottom: 10px;
+            background: white;
+        }
+
+        .pattern-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .pattern-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        .metric {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="container">
+        <header>
+            <h1>Blockchain Price Pattern Finder</h1>
+            <p>Observes real blockchain prices, detects profitable patterns, and ranks them by performance</p>
+        </header>
+
+        <div class="nav-tabs">
+            <div class="nav-link active" data-tab="dashboard">Dashboard</div>
+            <div class="nav-link" data-tab="patterns">Patterns</div>
+            <div class="nav-link" data-tab="leaderboard">Leaderboard</div>
+            <div class="nav-link" data-tab="settings">Settings</div>
+            <div class="nav-link" data-tab="logs">Logs</div>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active">
+            <div class="grid-4">
+                <div class="card">
+                    <div class="card-header">
+                        <span>Connection Status</span>
+                        <span id="botStatusIndicator"></span>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex align-center gap-1 mb-1">
+                            <span class="status-indicator status-disconnected" id="statusIndicator"></span>
+                            <span id="botStatusText">Disconnected</span>
+                        </div>
+                        <div class="connection-status" id="connectionStatus">
+                            <div class="status-item status-disconnected" id="blockchainStatus">
+                                <span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span>
+                                Blockchain
+                            </div>
+                            <div class="status-item status-disconnected" id="priceFeedStatus">
+                                <span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span>
+                                Price Feed
+                            </div>
+                        </div>
+                        <div class="d-flex gap-1 mt-2">
+                            <button class="btn btn-success btn-sm" id="startBtn" onclick="startObserver()">
+                                <span class="loading-spinner" id="startSpinner" style="display:none;"></span>Start
+                            </button>
+                            <button class="btn btn-danger btn-sm" id="stopBtn" onclick="stopObserver()" disabled>
+                                <span class="loading-spinner" id="stopSpinner" style="display:none;"></span>Stop
+                            </button>
+                            <button class="btn btn-secondary btn-sm" onclick="testConnection()">Test Connection</button>
+                        </div>
+                        <div class="mt-2">
+                            <p><strong>Uptime:</strong> <span id="uptime">00:00:00</span></p>
+                            <p><strong>Last Update:</strong> <span id="lastPriceUpdate">Never</span></p>
+                            <p><strong>Tracked Tokens:</strong> <span id="trackedTokensCount">0</span></p>
+                            <p><strong>Detected Patterns:</strong> <span id="detectedPatternsCount">0</span></p>
+                            <p><strong>Network:</strong> <span id="currentNetwork">Arbitrum</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">Price Monitoring</div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-2">
+                            Observes ALL tokens traded on Uniswap pools. No manual selection required.
+                        </div>
+                        <div id="priceMonitor">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Token</th>
+                                        <th>Price (ETH)</th>
+                                        <th>Change</th>
+                                        <th>History Points</th>
+                                        <th>Last Update</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="priceRows">
+                                    <tr>
+                                        <td colspan="5" class="text-center text-secondary">Press Start to begin</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">Pattern Detection Stats</div>
+                    <div class="card-body">
+                        <p><strong>Patterns Analyzed:</strong> <span id="patternsAnalyzed">0</span></p>
+                        <p><strong>Profitable Patterns:</strong> <span id="profitablePatterns">0</span></p>
+                        <p><strong>Best Pattern Profit:</strong> <span id="bestPatternProfit">0.000000 ETH</span></p>
+                        <p><strong>Total Opportunities:</strong> <span id="totalOpportunities">0</span></p>
+                        <div class="progress-bar mt-2">
+                            <div class="progress-fill" id="patternSuccessRate" style="width: 0%;"></div>
+                        </div>
+                        <p class="text-secondary mt-1">Pattern Success Rate</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">Top Pattern This Session</div>
+                    <div class="card-body">
+                        <div id="topPatternDisplay">
+                            <p class="text-secondary">No patterns detected yet</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <span>Price History Chart</span>
+                        <select class="form-control btn-xs" id="chartTokenSelect" onchange="updateChart()"
+                            style="padding:2px 5px;height:auto;">
+                            <option value="">Select Token</option>
+                        </select>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="priceChartCanvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">Recent Price Movements</div>
+                    <div class="card-body">
+                        <div id="recentMovements">
+                            <p class="text-secondary">No recent movements</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Patterns Tab -->
+        <div id="patterns" class="tab-content">
+            <div class="card">
+                <div class="card-header d-flex justify-between align-center">
+                    <span>Detected Patterns</span>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-secondary btn-sm" onclick="exportPatterns()">Export CSV</button>
+                        <button class="btn btn-danger btn-sm" onclick="clearPatterns()">Clear All</button>
+                    </div>
+                </div>
+                <div class="card-body pattern-details">
+                    <div id="patternsList">
+                        <p class="text-secondary">No patterns detected yet. Start the observer to begin analysis.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leaderboard Tab -->
+        <div id="leaderboard" class="tab-content">
+            <div class="card">
+                <div class="card-header d-flex justify-between align-center">
+                    <span>Pattern Leaderboard</span>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-secondary btn-sm" onclick="exportLeaderboard()">Export CSV</button>
+                        <button class="btn btn-warning btn-sm" onclick="resetLeaderboard()">Reset</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th onclick="sortLeaderboard('rank')">Rank ▼</th>
+                                <th onclick="sortLeaderboard('pattern')">Pattern ▼</th>
+                                <th onclick="sortLeaderboard('token')">Token ▼</th>
+                                <th onclick="sortLeaderboard('profit')">Total Profit (ETH) ▼</th>
+                                <th onclick="sortLeaderboard('winRate')">Win Rate ▼</th>
+                                <th onclick="sortLeaderboard('trades')">Trades ▼</th>
+                                <th onclick="sortLeaderboard('avgProfit')">Avg Profit (ETH) ▼</th>
+                                <th onclick="sortLeaderboard('lastSeen')">Last Seen ▼</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboardBody">
+                            <tr>
+                                <td colspan="8" class="text-center text-secondary">No patterns ranked yet</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="grid-3">
+                <div class="card">
+                    <div class="card-header">Leaderboard Stats</div>
+                    <div class="card-body">
+                        <p><strong>Total Patterns:</strong> <span id="lbTotalPatterns">0</span></p>
+                        <p><strong>Profitable Patterns:</strong> <span id="lbProfitablePatterns">0</span></p>
+                        <p><strong>Highest Win Rate:</strong> <span id="lbHighestWinRate">0%</span></p>
+                        <p><strong>Most Trades:</strong> <span id="lbMostTrades">0</span></p>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">Performance Metrics</div>
+                    <div class="card-body">
+                        <p><strong>Avg Win Rate:</strong> <span id="lbAvgWinRate">0%</span></p>
+                        <p><strong>Avg Profit:</strong> <span id="lbAvgProfit">0.000000 ETH</span></p>
+                        <p><strong>Total Opportunities:</strong> <span id="lbTotalOpportunities">0</span></p>
+                        <p><strong>Success Rate:</strong> <span id="lbSuccessRate">0%</span></p>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">Time-Based Stats</div>
+                    <div class="card-body">
+                        <p><strong>Newest Pattern:</strong> <span id="lbNewestPattern">-</span></p>
+                        <p><strong>Oldest Pattern:</strong> <span id="lbOldestPattern">-</span></p>
+                        <p><strong>Session Start:</strong> <span id="lbSessionStart">-</span></p>
+                        <p><strong>Patterns/Hour:</strong> <span id="lbPatternsPerHour">0</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings" class="tab-content">
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-header">Blockchain Network</div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="form-label">Network</label>
+                            <select class="form-control" id="networkSelect" onchange="updateNetworkSettings()">
+                                <option value="arbitrum">Arbitrum One</option>
+                                <option value="ethereum">Ethereum Mainnet</option>
+                                <option value="base">Base</option>
+                                <option value="optimism">Optimism</option>
+                                <option value="polygon">Polygon</option>
+                            </select>
+                            <small class="setting-description">Select the blockchain network to monitor.</small>
+                        </div>
+                        <div class="form-group mt-2">
+                            <label class="form-label">Uniswap Version</label>
+                            <select class="form-control" id="uniswapVersion">
+                                <option value="v3">Uniswap V3</option>
+                                <option value="v2">Uniswap V2</option>
+                            </select>
+                            <small class="setting-description">Version of Uniswap to monitor.</small>
+                        </div>
+                        <div class="form-group mt-2">
+                            <label class="form-label">Factory Address</label>
+                            <input type="text" class="form-control" id="factoryAddress"
+                                value="0x1F98431c8aD98523631AE4a59f267346ea31F984" readonly>
+                            <small class="setting-description">Uniswap factory contract address.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">Pattern Detection</div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="form-label">Minimum Price Change (%)</label>
+                            <input type="number" class="form-control" id="minPriceChange" value="0.1" min="0.01"
+                                max="10" step="0.01">
+                            <small class="setting-description">Minimum percentage change to consider for pattern
+                                detection.</small>
+                        </div>
+                        <div class="form-group mt-2">
+                            <label class="form-label">Minimum Time Window (seconds)</label>
+                            <input type="number" class="form-control" id="minTimeWindow" value="5" min="1" max="300">
+                            <small class="setting-description">Minimum time between price points for pattern
+                                detection.</small>
+                        </div>
+                        <div class="form-group mt-2">
+                            <label class="form-label">Maximum Time Window (seconds)</label>
+                            <input type="number" class="form-control" id="maxTimeWindow" value="300" min="10"
+                                max="3600">
+                            <small class="setting-description">Maximum time window for pattern detection.</small>
+                        </div>
+                        <div class="form-group mt-2">
+                            <label class="form-label">Minimum Occurrences</label>
+                            <input type="number" class="form-control" id="minOccurrences" value="3" min="1" max="20">
+                            <small class="setting-description">Minimum number of occurrences to consider a valid
+                                pattern.</small>
+                        </div>
+                        <button class="btn btn-primary mt-2" onclick="saveDetectionSettings()">
+                            <span class="loading-spinner loading-spinner-dark" id="saveSettingsSpinner"
+                                style="display:none;"></span>Save Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">Data Storage</div>
+                <div class="card-body">
+                    <div class="grid-2">
+                        <div>
+                            <div class="form-group">
+                                <label class="form-label">Price History Duration (hours)</label>
+                                <input type="number" class="form-control" id="priceHistoryDuration" value="24" min="1"
+                                    max="720" step="1">
+                                <small class="setting-description">How many hours of price history to maintain.</small>
+                            </div>
+                            <div class="form-group mt-2">
+                                <label class="form-label">Max Price History Points</label>
+                                <input type="number" class="form-control" id="maxPriceHistory" value="10000" min="100"
+                                    max="100000">
+                                <small class="setting-description">Maximum number of price points to store per
+                                    token.</small>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="form-group">
+                                <label class="form-label">Pattern History Duration (days)</label>
+                                <input type="number" class="form-control" id="patternHistoryDuration" value="7" min="1"
+                                    max="30">
+                                <small class="setting-description">How many days of pattern history to maintain.</small>
+                            </div>
+                            <div class="form-group mt-2">
+                                <label class="form-label">Max Patterns to Track</label>
+                                <input type="number" class="form-control" id="maxPatterns" value="500" min="10"
+                                    max="5000">
+                                <small class="setting-description">Maximum number of patterns to track.</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-1 mt-2">
+                        <button class="btn btn-primary btn-sm" onclick="saveStorageSettings()">Save Storage
+                            Settings</button>
+                        <button class="btn btn-danger btn-sm" onclick="clearAllData()">Clear All Data</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">Advanced</div>
+                <div class="card-body">
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Price Update Interval (ms)</label>
+                            <input type="number" class="form-control" id="priceUpdateInterval" value="1000" min="100"
+                                max="60000">
+                            <small class="setting-description">How often to check for new price data.</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Pattern Detection Interval (ms)</label>
+                            <input type="number" class="form-control" id="patternDetectionInterval" value="5000"
+                                min="1000" max="60000">
+                            <small class="setting-description">How often to run pattern detection.</small>
+                        </div>
+                    </div>
+                    <div class="form-group mt-2">
+                        <label><input type="checkbox" id="enableDebug" checked> Enable Debug Logging</label>
+                        <small class="setting-description">Output detailed logs for debugging.</small>
+                    </div>
+                    <button class="btn btn-primary mt-2" onclick="saveAdvancedSettings()">Save Advanced
+                        Settings</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Tab -->
+        <div id="logs" class="tab-content">
+            <div class="card">
+                <div class="card-header d-flex justify-between align-center">
+                    <span>Application Logs</span>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-secondary btn-sm" onclick="clearLogs()">Clear</button>
+                        <button class="btn btn-primary btn-sm" onclick="downloadLogs()">Download</button>
+                        <button class="btn btn-warning btn-sm" onclick="toggleAutoScroll()">Auto-Scroll: ON</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="log-container" id="logContainer">
+                        <div class="log-entry log-info">[INFO] Application initialized. Press Start to begin observing.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Modal -->
+    <div class="modal" id="notificationModal"
+        style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center;">
+        <div class="modal-content"
+            style="background: white; padding: 30px; border-radius: var(--border-radius); max-width: 800px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <h3 id="modalTitle">Notification</h3>
+            <p id="modalMessage"></p>
+            <button class="btn btn-primary" onclick="closeModal()">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // Configuration & Constants
+        // ============================================
+        const APP_VERSION = '1.0.0';
+
+        // Chain configurations
+        const CHAINS = {
+            arbitrum: {
+                name: "Arbitrum One",
+                chainId: 42161,
+                ws: "wss://arbitrum-one-rpc.publicnode.com",
+                factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+                wrappedNative: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+                quoteMode: "native",
+                quoteLabel: "ETH",
+                stables: [
+                    "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", // USDC
+                    "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"  // USDT
+                ]
+            },
+            ethereum: {
+                name: "Ethereum Mainnet",
+                chainId: 1,
+                ws: "wss://ethereum-rpc.publicnode.com",
+                factory: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f", // Uniswap V2
+                wrappedNative: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                quoteMode: "native",
+                quoteLabel: "ETH",
+                stables: [
+                    "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", // USDC
+                    "0xdAC17F958D2ee523a2206206994597C13D831ec7"   // USDT
+                ]
+            },
+            base: {
+                name: "Base",
+                chainId: 8453,
+                ws: "wss://base-rpc.publicnode.com",
+                factory: "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
+                wrappedNative: "0x4200000000000000000000000000000000000006",
+                quoteMode: "native",
+                quoteLabel: "ETH",
+                stables: [
+                    "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
+                    "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42"  // USDT
+                ]
+            },
+            optimism: {
+                name: "Optimism",
+                chainId: 10,
+                ws: "wss://optimism-rpc.publicnode.com",
+                factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+                wrappedNative: "0x4200000000000000000000000000000000000006",
+                quoteMode: "native",
+                quoteLabel: "ETH",
+                stables: [
+                    "0x0b2C639c533813f4AaA9D7837CAf62653d097Ff85", // USDC
+                    "0x7F5c764cBc14f9669B88837ca1490cCa17c31607"   // USDT
+                ]
+            },
+            polygon: {
+                name: "Polygon",
+                chainId: 137,
+                ws: "wss://polygon-bor-rpc.publicnode.com",
+                factory: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f", // Uniswap V2
+                wrappedNative: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+                quoteMode: "native",
+                quoteLabel: "WPOL",
+                stables: [
+                    "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", // USDC
+                    "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"   // USDT
+                ]
+            }
+        };
+
+        const ERC20_ABI = [
+            "function symbol() view returns (string)",
+            "function decimals() view returns (uint8)",
+            "function name() view returns (string)",
+            "function balanceOf(address) view returns (uint256)"
+        ];
+
+        const POOL_ABI = [
+            "function token0() view returns (address)",
+            "function token1() view returns (address)",
+            "function fee() view returns (uint24)",
+            "function factory() view returns (address)",
+            "function liquidity() view returns (uint128)",
+            "function slot0() view returns (uint160, int24, uint16, uint16, uint16, uint16, bool)"
+        ];
+
+        const SWAP_INTERFACE = new ethers.Interface([
+            "event Swap(address indexed sender,address indexed recipient,int256 amount0,int256 amount1,uint160 sqrtPriceX96,uint128 liquidity,int24 tick)"
+        ]);
+        const SWAP_TOPIC = SWAP_INTERFACE.getEvent("Swap").topicHash;
+
+        // ============================================
+        // State & Settings
+        // ============================================
+        let state = {
+            isRunning: false,
+            isConnected: false,
+            currentNetwork: 'arbitrum',
+            prices: {},
+            priceHistory: {},
+            patterns: new Map(),
+            leaderboard: [],
+            observedTokens: new Set(),
+            startTime: null,
+            lastPriceUpdate: null,
+            logs: [],
+            autoScroll: true,
+            sessionSerial: 0,
+            activeSession: null,
+            manuallyStopped: true,
+            settings: {
+                network: 'arbitrum',
+                uniswapVersion: 'v3',
+                minPriceChange: 0.1,    // %
+                minTimeWindow: 5,      // seconds
+                maxTimeWindow: 300,    // seconds
+                minOccurrences: 3,
+                priceHistoryDuration: 24, // hours
+                maxPriceHistory: 10000,
+                patternHistoryDuration: 7, // days
+                maxPatterns: 500,
+                priceUpdateInterval: 1000, // ms
+                patternDetectionInterval: 5000, // ms
+                enableDebug: true
+            }
+        };
+
+        let priceChart = null;
+        let currentChainKey = 'arbitrum';
+
+        // ============================================
+        // Initialization
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function () {
+            window.log = function (level, message, data = null) {
+                const timestamp = new Date().toISOString();
+                const logEntry = { timestamp, level, message, data };
+                state.logs.push(logEntry);
+                if (state.logs.length > 1000) {
+                    state.logs.shift();
+                }
+                const formatted = `[${level.toUpperCase()}] ${message}` + (data ? ` - ${JSON.stringify(data)}` : '');
+                const logContainer = document.getElementById('logContainer');
+                if (logContainer) {
+                    const entry = document.createElement('div');
+                    entry.className = `log-entry log-${level}`;
+                    entry.textContent = formatted;
+                    logContainer.appendChild(entry);
+                    if (state.autoScroll) scrollToBottom('logContainer');
+                }
+                if (state.settings.enableDebug) {
+                    console[level === 'error' ? 'error' : level](formatted);
+                }
+            };
+
+            log('info', 'Initializing Blockchain Price Pattern Finder v' + APP_VERSION);
+            initializeApp();
+            setupEventListeners();
+            updateNetworkInfo();
+            initializeChart();
+            loadSettings();
+        });
+
+        function initializeApp() {
+            updateUI();
+            startUptimeTimer();
+            log('info', 'Application initialized. Ready to observe blockchain.');
+        }
+
+        function initializeChart() {
+            const ctx = document.getElementById('priceChartCanvas');
+            if (ctx) {
+                priceChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Price (ETH)',
+                            data: [],
+                            borderColor: '#0d6efd',
+                            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1,
+                            pointRadius: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                type: 'linear',
+                                title: { display: true, text: 'Price (ETH)' }
+                            },
+                            x: {
+                                type: 'linear',
+                                title: { display: true, text: 'Time' }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        return context.parsed.y.toFixed(6) + ' ETH';
+                                    }
+                                }
+                            },
+                            legend: { display: true }
+                        }
+                    }
+                });
+            }
+        }
+
+        function setupEventListeners() {
+            // Tab switching
+            document.querySelectorAll('.nav-tabs .nav-link').forEach(link => {
+                link.addEventListener('click', function () {
+                    switchTab(this.getAttribute('data-tab'));
+                });
+            });
+
+            // Auto-scroll toggle
+            document.querySelector('#logs .btn-warning').addEventListener('click', function () {
+                state.autoScroll = !state.autoScroll;
+                this.textContent = 'Auto-Scroll: ' + (state.autoScroll ? 'ON' : 'OFF');
+            });
+
+            // Network select
+            document.getElementById('networkSelect').addEventListener('change', function () {
+                currentChainKey = this.value;
+                state.settings.network = this.value;
+                updateNetworkInfo();
+                saveSettings();
+            });
+
+            // Chart token select
+            document.getElementById('chartTokenSelect').addEventListener('change', function () {
+                updateChart();
+            });
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(l => {
+                l.classList.remove('active');
+                if (l.getAttribute('data-tab') === tab) l.classList.add('active');
+            });
+            document.getElementById(tab).classList.add('active');
+
+            if (tab === 'leaderboard') {
+                renderLeaderboard();
+            } else if (tab === 'patterns') {
+                renderPatterns();
+            } else if (tab === 'logs') {
+                scrollToBottom('logContainer');
+            }
+        }
+
+        function scrollToBottom(elementId) {
+            const el = document.getElementById(elementId);
+            if (el) el.scrollTop = el.scrollHeight;
+        }
+
+        function updateNetworkInfo() {
+            const network = CHAINS[currentChainKey];
+            if (network) {
+                document.getElementById('currentNetwork').textContent = network.name;
+                document.getElementById('factoryAddress').value = network.factory;
+            }
+        }
+
+        function startUptimeTimer() {
+            setInterval(updateUptime, 1000);
+        }
+
+        function updateUptime() {
+            if (!state.startTime) {
+                document.getElementById('uptime').textContent = '00:00:00';
+                return;
+            }
+            const now = new Date();
+            const diff = now - state.startTime;
+            const h = Math.floor(diff / (1000 * 60 * 60));
+            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((diff % (1000 * 60)) / 1000);
+            document.getElementById('uptime').textContent =
+                `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        // ============================================
+        // Connection & Session Management
+        // ============================================
+        function createSession(key) {
+            const chain = CHAINS[key];
+            return {
+                id: ++state.sessionSerial,
+                chainKey: key,
+                chain: chain,
+                provider: null,
+                ws: null,
+                active: true,
+                connected: false,
+                blockCount: 0,
+                rpcHead: 0,
+                lastProcessedBlock: null,
+                pendingBlock: null,
+                processingBlocks: false,
+                reconnectTimer: null,
+                pools: new Map(),
+                tokens: new Map(),
+                pairPrices: new Map(),
+                metadataInFlight: new Map(),
+                swaps: [],
+                gasPrice: null,
+                gasPriceHistory: []
+            };
+        }
+
+        function current(s) {
+            return !!s && state.activeSession === s && s.id === state.sessionSerial && s.active && !state.manuallyStopped;
+        }
+
+        function clearTimer(s) {
+            if (s?.reconnectTimer) {
+                clearTimeout(s.reconnectTimer);
+                s.reconnectTimer = null;
+            }
+        }
+
+        async function destroySession(s) {
+            if (!s) return;
+            s.active = false;
+            clearTimer(s);
+            try { s.provider?.removeAllListeners(); } catch { }
+            try { s.ws?.close(); } catch { }
+            try { s.provider?.destroy(); } catch { }
+            s.provider = null;
+            s.ws = null;
+            s.connected = false;
+        }
+
+        async function stopUniswapSession() {
+            state.manuallyStopped = true;
+            state.sessionSerial++;
+            const old = state.activeSession;
+            state.activeSession = null;
+            if (old) await destroySession(old);
+            setStatus("Stopped");
+            updateButton();
+            resetView();
+            renderDashboard();
+        }
+
+        async function startUniswapSession() {
+            state.manuallyStopped = false;
+            state.sessionSerial++;
+            const old = state.activeSession;
+            state.activeSession = null;
+            if (old) await destroySession(old);
+
+            const s = createSession(currentChainKey);
+            state.activeSession = s;
+            updateButton();
+            resetView();
+            renderDashboard();
+
+            log('info', `Connecting to ${s.chain.name}...`);
+            setStatus(`Connecting to ${s.chain.name}...`);
+
+            try {
+                const p = new ethers.WebSocketProvider(s.chain.ws, s.chain.chainId);
+                if (!current(s)) {
+                    try { p.destroy(); } catch { }
+                    return;
+                }
+                s.provider = p;
+                s.ws = p.websocket;
+
+                if (s.ws) {
+                    s.ws.addEventListener("open", () => {
+                        if (!current(s)) return;
+                        s.connected = true;
+                        setStatus("Connected", "connected");
+                        updateButton();
+                        updateConnectionStatus();
+                        log('success', `Connected to ${s.chain.name}`);
+                    });
+
+                    s.ws.addEventListener("close", () => {
+                        if (!current(s)) return;
+                        s.connected = false;
+                        setStatus("Disconnected - reconnecting...", "error");
+                        updateButton();
+                        updateConnectionStatus();
+                        log('warning', `Disconnected from ${s.chain.name}`);
+                        scheduleReconnect(s);
+                    });
+
+                    s.ws.addEventListener("error", e => {
+                        if (!current(s)) return;
+                        log('error', `WebSocket error: ${e.message}`);
+                        s.connected = false;
+                        setStatus("Connection error", "error");
+                        updateButton();
+                        updateConnectionStatus();
+                        scheduleReconnect(s);
+                    });
+                }
+
+                p.on("block", n => {
+                    if (current(s)) queueBlock(s, Number(n));
+                });
+
+                const head = await p.getBlockNumber();
+                if (!current(s)) return;
+                s.rpcHead = head;
+                s.blockCount = head;
+
+                // Load initial tokens
+                if (s.chain.quoteMode === "native") {
+                    await loadToken(s, s.chain.wrappedNative);
+                }
+
+                startGasMonitoring(s);
+
+                if (!current(s)) return;
+                s.connected = true;
+                setStatus("Connected", "connected");
+                updateButton();
+                updateConnectionStatus();
+                log('success', `Fully connected to ${s.chain.name}. Starting observation...`);
+
+                // Start pattern detection interval
+                startPatternDetection();
+
+            } catch (e) {
+                if (!current(s)) return;
+                log('error', `Connection failed: ${e.message}`);
+                s.connected = false;
+                setStatus("Connection failed", "error");
+                updateButton();
+                updateConnectionStatus();
+                scheduleReconnect(s);
+            }
+        }
+
+        function scheduleReconnect(s) {
+            if (!current(s) || s.reconnectTimer) return;
+            s.reconnectTimer = setTimeout(() => {
+                s.reconnectTimer = null;
+                if (current(s)) {
+                    log('info', `Reconnecting to ${s.chain.name}...`);
+                    startUniswapSession();
+                }
+            }, 5000);
+        }
+
+        function queueBlock(s, n) {
+            if (!current(s)) return;
+            if (s.lastProcessedBlock !== null && n <= s.lastProcessedBlock) return;
+            s.pendingBlock = Math.max(s.pendingBlock ?? 0, n);
+            processPending(s);
+        }
+
+        async function processPending(s) {
+            if (s.processingBlocks || !current(s)) return;
+            s.processingBlocks = true;
+            try {
+                while (s.pendingBlock !== null && current(s)) {
+                    const target = s.pendingBlock;
+                    s.pendingBlock = null;
+                    let head;
+                    try {
+                        head = await s.provider.getBlockNumber();
+                    } catch {
+                        s.pendingBlock = target;
+                        await sleep(1000);
+                        continue;
+                    }
+                    if (!current(s)) break;
+                    s.rpcHead = head;
+                    s.blockCount = Math.max(s.blockCount, head);
+                    if (target > head) {
+                        s.pendingBlock = target;
+                        await sleep(1000);
+                        continue;
+                    }
+                    if (s.lastProcessedBlock !== null && target <= s.lastProcessedBlock) continue;
+                    await processBlock(s, target);
+                    if (!current(s)) break;
+                    s.lastProcessedBlock = target;
+                }
+            } finally {
+                s.processingBlocks = false;
+                updateStats(s);
+            }
+        }
+
+        async function processBlock(s, n) {
+            if (!current(s)) return;
+            let logs = null;
+            for (let i = 0; i < 5; i++) {
+                if (!current(s)) return;
+                try {
+                    const head = await s.provider.getBlockNumber();
+                    s.rpcHead = head;
+                    if (n > head) {
+                        await sleep(1000);
+                        continue;
+                    }
+                    logs = await s.provider.getLogs({ fromBlock: n, toBlock: n, topics: [SWAP_TOPIC] });
+                    break;
+                } catch (e) {
+                    const m = String(e?.message || "");
+                    if (m.includes("block range") || m.includes("header not found") || m.includes("unknown block")) {
+                        await sleep(1000);
+                        continue;
+                    }
+                    log('warning', `Block log error: ${e.message}`);
+                    return;
+                }
+            }
+            if (!logs || !current(s) || !logs.length) return;
+
+            let i = 0;
+            async function worker() {
+                while (i < logs.length && current(s)) {
+                    const log = logs[i++];
+                    try {
+                        await processSwapLog(s, log);
+                    } catch (e) {
+                        log('debug', `Swap error: ${e.message}`);
+                    }
+                }
+            }
+            await Promise.all(Array.from({ length: Math.min(4, logs.length) }, worker));
+        }
+
+        async function startGasMonitoring(s) {
+            if (!s || !s.provider) return;
+            await updateGasPriceForSession(s);
+            setInterval(async () => {
+                if (current(s)) await updateGasPriceForSession(s);
+            }, 15000);
+        }
+
+        async function updateGasPriceForSession(s) {
+            if (!s || !s.provider) return;
+            try {
+                const gasPrice = await s.provider.getFeeData();
+                s.gasPrice = gasPrice.gasPrice ? parseInt(gasPrice.gasPrice) / 1e9 : null;
+
+                if (s.gasPrice) {
+                    s.gasPriceHistory.push({ timestamp: Date.now(), gasPrice: s.gasPrice });
+                    if (s.gasPriceHistory.length > 100) s.gasPriceHistory.shift();
+                }
+            } catch (error) {
+                log('error', `Gas price error: ${error.message}`);
+            }
+        }
+
+        // ============================================
+        // Swap Log Processing
+        // ============================================
+        async function processSwapLog(s, log) {
+            if (!current(s)) return;
+            try {
+                const pool = await loadPool(s, log.address);
+                if (!current(s) || !pool?.initialized) return;
+
+                let parsed;
+                try {
+                    parsed = SWAP_INTERFACE.parseLog({ topics: log.topics, data: log.data });
+                } catch (e) {
+                    return;
+                }
+                if (!parsed) return;
+
+                const amount0 = parsed.args.amount0;
+                const amount1 = parsed.args.amount1;
+                const sqrt = parsed.args.sqrtPriceX96;
+                const pair = poolPrice(sqrt, pool.token0Meta.decimals, pool.token1Meta.decimals);
+                if (pair == null) return;
+
+                setPair(s, pool.token0, pool.token1, pair);
+                const ts = Date.now();
+                const cut = ts - 15 * 60 * 1000;
+                const t0 = pool.token0Meta;
+                const t1 = pool.token1Meta;
+
+                s.swaps.push(ts);
+                while (s.swaps.length && s.swaps[0] < cut) s.swaps.shift();
+
+                t0.swaps.push(ts);
+                t1.swaps.push(ts);
+                t0.lastSeen = ts;
+                t1.lastSeen = ts;
+                while (t0.swaps.length && t0.swaps[0] < cut) t0.swaps.shift();
+                while (t1.swaps.length && t1.swaps[0] < cut) t1.swaps.shift();
+
+                let n0 = 0, n1 = 0;
+                try {
+                    n0 = Math.abs(Number(ethers.formatUnits(amount0, t0.decimals)));
+                    n1 = Math.abs(Number(ethers.formatUnits(amount1, t1.decimals)));
+                } catch (e) { }
+
+                const p0 = quotePrice(s, t0.address);
+                const p1 = quotePrice(s, t1.address);
+
+                if (p0 != null) {
+                    t0.priceQuote = p0;
+                    addPoint(t0, p0, ts);
+                }
+                if (p1 != null) {
+                    t1.priceQuote = p1;
+                    addPoint(t1, p1, ts);
+                }
+
+                let volume = null;
+                if (p0 != null && p1 != null) volume = (n0 * p0 + n1 * p1) / 2;
+                else if (p0 != null) volume = n0 * p0;
+                else if (p1 != null) volume = n1 * p1;
+                if (volume != null && Number.isFinite(volume)) {
+                    t0.volumeQuote += volume;
+                    t1.volumeQuote += volume;
+                }
+
+                // Update global state
+                if (t0.symbol) {
+                    state.prices[t0.symbol] = p0;
+                    state.observedTokens.add(t0.symbol);
+                }
+                if (t1.symbol) {
+                    state.prices[t1.symbol] = p1;
+                    state.observedTokens.add(t1.symbol);
+                }
+
+                state.lastPriceUpdate = new Date();
+                document.getElementById('lastPriceUpdate').textContent = new Date().toLocaleTimeString();
+                updatePriceUpdateStatus('success');
+
+                // Update price history for UI
+                if (t0.symbol) {
+                    updatePriceHistory(t0.symbol, p0, ts);
+                }
+                if (t1.symbol) {
+                    updatePriceHistory(t1.symbol, p1, ts);
+                }
+
+                // Trigger pattern detection with new data
+                if (state.isRunning) {
+                    detectPatternsForToken(t0.symbol);
+                    detectPatternsForToken(t1.symbol);
+                }
+
+            } catch (error) {
+                log('error', `Swap log error: ${error.message}`);
+            }
+        }
+
+        function setPair(s, a, b, p) {
+            if (!Number.isFinite(p) || p <= 0) return;
+            a = norm(a);
+            b = norm(b);
+            if (!s.pairPrices.has(a)) s.pairPrices.set(a, new Map());
+            if (!s.pairPrices.has(b)) s.pairPrices.set(b, new Map());
+            const ts = Date.now();
+            s.pairPrices.get(a).set(b, { price: p, updatedAt: ts });
+            s.pairPrices.get(b).set(a, { price: 1 / p, updatedAt: ts });
+        }
+
+        function isStable(s, address) {
+            address = norm(address);
+            return s.chain.stables.some(x => norm(x) === address);
+        }
+
+        function isQuoteToken(s, address) {
+            return s.chain.quoteMode === "native" && norm(address) === norm(s.chain.wrappedNative);
+        }
+
+        function quotePrice(s, address) {
+            address = norm(address);
+            if (s.chain.quoteMode === "usd" && isStable(s, address)) return 1;
+            if (s.chain.quoteMode === "native" && isQuoteToken(s, address)) return 1;
+            const queue = [{ token: address, value: 1, depth: 0 }];
+            const seen = new Set([address]);
+            while (queue.length) {
+                const x = queue.shift();
+                if (x.depth >= 4) continue;
+                const neighbors = s.pairPrices.get(x.token);
+                if (!neighbors) continue;
+                for (const [neighbor, edge] of neighbors) {
+                    if (!edge || !Number.isFinite(edge.price) || edge.price <= 0) continue;
+                    const value = x.value * edge.price;
+                    if (s.chain.quoteMode === "usd" && isStable(s, neighbor)) return value;
+                    if (s.chain.quoteMode === "native" && isQuoteToken(s, neighbor)) return value;
+                    if (!seen.has(neighbor)) {
+                        seen.add(neighbor);
+                        queue.push({ token: neighbor, value, depth: x.depth + 1 });
+                    }
+                }
+            }
+            return null;
+        }
+
+        function poolPrice(sqrtPriceX96, decimals0, decimals1) {
+            const sqrt = Number(sqrtPriceX96);
+            if (!Number.isFinite(sqrt) || sqrt <= 0) return null;
+            const normalized = sqrt / Math.pow(2, 96);
+            const rawPrice = normalized * normalized;
+            const decimalAdjustment = Math.pow(10, decimals0 - decimals1);
+            const price = rawPrice * decimalAdjustment;
+            return Number.isFinite(price) && price > 0 ? price : null;
+        }
+
+        function addPoint(t, p, timestamp = null) {
+            if (!Number.isFinite(p) || p <= 0) return;
+            const ts = timestamp || Date.now();
+            t.history.push({ t: ts, price: p });
+            const cut = ts - (state.settings.priceHistoryDuration || 24) * 60 * 60 * 1000;
+            while (t.history.length && t.history[0].t < cut) t.history.shift();
+            if (t.history.length > (state.settings.maxPriceHistory || 10000)) {
+                t.history.splice(0, t.history.length - (state.settings.maxPriceHistory || 10000));
+            }
+
+            if (t.symbol) {
+                updatePriceHistory(t.symbol, p, ts);
+            }
+        }
+
+        function updatePriceHistory(token, price, timestamp = null) {
+            if (!state.priceHistory[token]) {
+                state.priceHistory[token] = [];
+            }
+
+            const ts = timestamp || Date.now();
+            const newEntry = { price, timestamp: ts };
+            state.priceHistory[token].push(newEntry);
+
+            // Enforce max history
+            const maxHistory = state.settings.maxPriceHistory || 10000;
+            if (state.priceHistory[token].length > maxHistory) {
+                state.priceHistory[token].shift();
+            }
+
+            // Enforce time-based history
+            const durationHours = state.settings.priceHistoryDuration || 24;
+            const durationMs = durationHours * 60 * 60 * 1000;
+            const cutoff = ts - durationMs;
+            while (state.priceHistory[token].length && state.priceHistory[token][0].timestamp < cutoff) {
+                state.priceHistory[token].shift();
+            }
+
+            updatePriceHistoryCount();
+            updateChartIfSelected(token);
+        }
+
+        function updatePriceHistoryCount() {
+            let totalCount = 0;
+            for (const token in state.priceHistory) {
+                totalCount += state.priceHistory[token].length;
+            }
+            const countEl = document.getElementById('priceHistoryCount');
+            if (countEl) {
+                countEl.textContent = `${totalCount} entries`;
+            }
+
+            const trackedEl = document.getElementById('trackedTokensCount');
+            if (trackedEl) {
+                trackedEl.textContent = Object.keys(state.priceHistory).length;
+            }
+        }
+
+        function updateChartIfSelected(token) {
+            const selectEl = document.getElementById('chartTokenSelect');
+            if (selectEl && selectEl.value === token) {
+                updateChart();
+            }
+        }
+
+        function updateChart() {
+            if (!priceChart) return;
+
+            const selectEl = document.getElementById('chartTokenSelect');
+            const token = selectEl.value;
+
+            if (!token || !state.priceHistory[token]) {
+                priceChart.data.labels = [];
+                priceChart.data.datasets[0].data = [];
+                priceChart.update();
+                return;
+            }
+
+            const history = state.priceHistory[token];
+            priceChart.data.labels = history.map((p, i) => i);
+            priceChart.data.datasets[0].data = history.map(p => p.price);
+            priceChart.options.plugins.title.text = `Price History: ${token}`;
+            priceChart.update();
+        }
+
+        async function loadToken(s, address) {
+            if (!current(s)) return null;
+            address = norm(address);
+            if (s.tokens.has(address)) return s.tokens.get(address);
+            const key = `token:${address}`;
+            if (s.metadataInFlight.has(key)) return s.metadataInFlight.get(key);
+
+            const promise = (async () => {
+                const t = {
+                    address,
+                    symbol: short(address),
+                    name: short(address),
+                    decimals: 18,
+                    swaps: [],
+                    volumeQuote: 0,
+                    priceQuote: null,
+                    history: [],
+                    lastSeen: 0,
+                    liquidity: 0,
+                    feeTier: 3000
+                };
+                s.tokens.set(address, t);
+
+                try {
+                    const c = new ethers.Contract(address, ERC20_ABI, s.provider);
+                    const [symbol, decimals, name] = await Promise.all([
+                        c.symbol(),
+                        c.decimals(),
+                        c.name()
+                    ]);
+                    if (!current(s)) return null;
+                    t.symbol = String(symbol);
+                    t.decimals = Number(decimals);
+                    t.name = String(name);
+
+                    state.observedTokens.add(t.symbol);
+
+                    // Add to price history
+                    if (!state.priceHistory[t.symbol]) {
+                        state.priceHistory[t.symbol] = [];
+                    }
+
+                    for (const [pa, pool] of s.pools) {
+                        if (pool.token0 === address || pool.token1 === address) {
+                            t.liquidity += 1;
+                            t.feeTier = pool.fee || 3000;
+                        }
+                    }
+                } catch (e) {
+                    log('debug', `Token metadata unavailable: ${address}`);
+                    // Try to match with known tokens
+                    for (const [symbol, token] of Object.entries(KNOWN_TOKENS)) {
+                        if (norm(token.address) === norm(address)) {
+                            t.symbol = symbol;
+                            t.name = token.name || symbol;
+                            t.decimals = token.decimals || 18;
+                            state.observedTokens.add(symbol);
+                            break;
+                        }
+                    }
+                } finally {
+                    s.metadataInFlight.delete(key);
+                }
+                return current(s) ? t : null;
+            })();
+            s.metadataInFlight.set(key, promise);
+            return promise;
+        }
+
+        async function loadPool(s, address) {
+            if (!current(s)) return null;
+            address = norm(address);
+            if (s.pools.has(address)) return s.pools.get(address);
+            const key = `pool:${address}`;
+            if (s.metadataInFlight.has(key)) return s.metadataInFlight.get(key);
+
+            const promise = (async () => {
+                const pool = {
+                    address,
+                    token0: null,
+                    token1: null,
+                    fee: null,
+                    token0Meta: null,
+                    token1Meta: null,
+                    initialized: false,
+                    liquidity: 0
+                };
+                s.pools.set(address, pool);
+
+                try {
+                    const c = new ethers.Contract(address, POOL_ABI, s.provider);
+                    const [t0, t1, fee, factory, liquidity] = await Promise.all([
+                        c.token0(),
+                        c.token1(),
+                        c.fee(),
+                        c.factory(),
+                        c.liquidity()
+                    ]);
+                    if (!current(s)) return null;
+                    if (norm(factory) !== norm(s.chain.factory)) {
+                        s.pools.delete(address);
+                        return null;
+                    }
+                    pool.token0 = norm(t0);
+                    pool.token1 = norm(t1);
+                    pool.fee = Number(fee);
+                    pool.liquidity = parseInt(liquidity);
+
+                    [pool.token0Meta, pool.token1Meta] = await Promise.all([
+                        loadToken(s, pool.token0),
+                        loadToken(s, pool.token1)
+                    ]);
+
+                    if (!current(s) || !pool.token0Meta || !pool.token1Meta) return null;
+
+                    pool.token0Meta.liquidity += pool.liquidity;
+                    pool.token0Meta.feeTier = pool.fee;
+                    pool.token1Meta.liquidity += pool.liquidity;
+                    pool.token1Meta.feeTier = pool.fee;
+                    pool.initialized = true;
+
+                    return pool;
+                } catch (e) {
+                    log('debug', `Pool metadata unavailable: ${address}`);
+                    s.pools.delete(address);
+                    return null;
+                } finally {
+                    s.metadataInFlight.delete(key);
+                }
+            })();
+            s.metadataInFlight.set(key, promise);
+            return promise;
+        }
+
+        // ============================================
+        // Pattern Detection
+        // ============================================
+        function startPatternDetection() {
+            // Initial detection
+            detectAllPatterns();
+
+            // Set up interval
+            state.patternDetectionInterval = setInterval(() => {
+                if (state.isRunning) {
+                    detectAllPatterns();
+                }
+            }, state.settings.patternDetectionInterval || 5000);
+        }
+
+        function stopPatternDetection() {
+            if (state.patternDetectionInterval) {
+                clearInterval(state.patternDetectionInterval);
+                state.patternDetectionInterval = null;
+            }
+        }
+
+        function detectAllPatterns() {
+            const tokens = Array.from(state.observedTokens);
+            tokens.forEach(token => detectPatternsForToken(token));
+            updateLeaderboard();
+            renderPatterns();
+            renderLeaderboard();
+            updateDashboardStats();
+        }
+
+        function detectPatternsForToken(token) {
+            if (!state.priceHistory[token] || state.priceHistory[token].length < 10) {
+                return;
+            }
+
+            const history = state.priceHistory[token];
+            const minChange = state.settings.minPriceChange / 100;
+            const minTime = state.settings.minTimeWindow * 1000;
+            const maxTime = state.settings.maxTimeWindow * 1000;
+
+            // Look for local minima (potential buy points)
+            for (let i = 5; i < history.length - 5; i++) {
+                const current = history[i];
+
+                // Check if this is a local minima
+                let isMinima = true;
+                for (let j = i - 5; j <= i + 5; j++) {
+                    if (j === i) continue;
+                    if (j >= 0 && j < history.length) {
+                        if (history[j].price < current.price) {
+                            isMinima = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (isMinima) {
+                    // Look backward to find the drop
+                    for (let j = i - 1; j >= Math.max(0, i - 20); j--) {
+                        const prev = history[j];
+                        const dropPct = (current.price - prev.price) / prev.price;
+                        const timeDiff = current.timestamp - prev.timestamp;
+
+                        if (dropPct <= -minChange && timeDiff >= minTime && timeDiff <= maxTime) {
+                            // Found a drop, now look forward for a rise
+                            for (let k = i + 1; k < Math.min(history.length, i + 20); k++) {
+                                const next = history[k];
+                                const risePct = (next.price - current.price) / current.price;
+                                const riseTime = next.timestamp - current.timestamp;
+
+                                if (risePct >= minChange && riseTime >= minTime && riseTime <= maxTime) {
+                                    // Found a pattern: drop then rise
+                                    const patternKey = getPatternKey(
+                                        Math.abs(dropPct) * 100,
+                                        timeDiff / 1000,
+                                        risePct * 100,
+                                        riseTime / 1000
+                                    );
+
+                                    // Calculate profit
+                                    const profitPct = risePct * 100;
+                                    const profitETH = 1 * risePct; // Assuming 1 ETH trade
+
+                                    // Update or create pattern
+                                    updatePattern(
+                                        patternKey,
+                                        token,
+                                        Math.abs(dropPct) * 100,
+                                        timeDiff / 1000,
+                                        risePct * 100,
+                                        riseTime / 1000,
+                                        profitETH,
+                                        true,
+                                        current.timestamp
+                                    );
+
+                                    // Also check if this is part of a longer pattern
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        function getPatternKey(buyDropPct, buyTime, sellRisePct, sellTime) {
+            // Round to 1 decimal place for percentage, nearest second for time
+            const roundedDrop = Math.round(buyDropPct * 10) / 10;
+            const roundedRise = Math.round(sellRisePct * 10) / 10;
+            const roundedBuyTime = Math.round(buyTime);
+            const roundedSellTime = Math.round(sellTime);
+
+            return `${roundedDrop}%_${roundedBuyTime}s_${roundedRise}%_${roundedSellTime}s`;
+        }
+
+        function getPatternDescription(buyDropPct, buyTime, sellRisePct, sellTime) {
+            return `Buy on ${buyDropPct.toFixed(1)}% drop over ${buyTime.toFixed(0)}s, sell on ${sellRisePct.toFixed(1)}% rise over ${sellTime.toFixed(0)}s`;
+        }
+
+        function updatePattern(patternKey, token, buyDropPct, buyTime, sellRisePct, sellTime, profit, isWin, timestamp) {
+            if (!state.patterns.has(patternKey)) {
+                state.patterns.set(patternKey, {
+                    key: patternKey,
+                    description: getPatternDescription(buyDropPct, buyTime, sellRisePct, sellTime),
+                    token: token,
+                    buyDropPct: buyDropPct,
+                    buyTime: buyTime,
+                    sellRisePct: sellRisePct,
+                    sellTime: sellTime,
+                    totalProfit: 0,
+                    totalTrades: 0,
+                    winningTrades: 0,
+                    losingTrades: 0,
+                    occurrences: 0,
+                    firstSeen: timestamp,
+                    lastSeen: timestamp,
+                    tradeHistory: []
+                });
+            }
+
+            const pattern = state.patterns.get(patternKey);
+            pattern.totalProfit += profit;
+            pattern.totalTrades++;
+            pattern.occurrences++;
+
+            if (isWin) {
+                pattern.winningTrades++;
+            } else {
+                pattern.losingTrades++;
+            }
+
+            pattern.lastSeen = timestamp;
+            pattern.tradeHistory.push({
+                timestamp: timestamp,
+                profit: profit,
+                isWin: isWin
+            });
+
+            // Enforce max patterns
+            if (state.patterns.size > (state.settings.maxPatterns || 500)) {
+                // Remove oldest pattern
+                let oldestKey = null;
+                let oldestTime = Infinity;
+                for (const [key, p] of state.patterns) {
+                    if (p.lastSeen < oldestTime) {
+                        oldestTime = p.lastSeen;
+                        oldestKey = key;
+                    }
+                }
+                if (oldestKey) {
+                    state.patterns.delete(oldestKey);
+                }
+            }
+
+            // Enforce pattern history duration
+            const durationDays = state.settings.patternHistoryDuration || 7;
+            const cutoff = timestamp - durationDays * 24 * 60 * 60 * 1000;
+
+            for (const [key, p] of state.patterns) {
+                if (p.firstSeen < cutoff) {
+                    state.patterns.delete(key);
+                }
+            }
+
+            updateDashboardStats();
+        }
+
+        function updateLeaderboard() {
+            // Convert map to array
+            const patternsArray = Array.from(state.patterns.values());
+
+            // Calculate metrics for each pattern
+            patternsArray.forEach(pattern => {
+                pattern.winRate = pattern.totalTrades > 0 ?
+                    (pattern.winningTrades / pattern.totalTrades * 100) : 0;
+                pattern.avgProfit = pattern.totalTrades > 0 ?
+                    (pattern.totalProfit / pattern.totalTrades) : 0;
+                pattern.profitFactor = pattern.losingTrades > 0 ?
+                    (pattern.winningTrades * pattern.avgProfit) / (pattern.losingTrades * Math.abs(pattern.avgProfit)) :
+                    (pattern.winningTrades > 0 ? Infinity : 0);
+            });
+
+            // Sort by total profit (descending)
+            patternsArray.sort((a, b) => b.totalProfit - a.totalProfit);
+
+            // Assign ranks
+            patternsArray.forEach((pattern, index) => {
+                pattern.rank = index + 1;
+            });
+
+            state.leaderboard = patternsArray;
+        }
+
+        function updateDashboardStats() {
+            const patternsArray = Array.from(state.patterns.values());
+
+            // Update pattern counts
+            document.getElementById('detectedPatternsCount').textContent = state.patterns.size;
+            document.getElementById('patternsAnalyzed').textContent = state.patterns.size;
+
+            const profitablePatterns = patternsArray.filter(p => p.totalProfit > 0);
+            document.getElementById('profitablePatterns').textContent = profitablePatterns.length;
+
+            // Best pattern profit
+            if (profitablePatterns.length > 0) {
+                const bestPattern = profitablePatterns.reduce((a, b) => a.totalProfit > b.totalProfit ? a : b);
+                document.getElementById('bestPatternProfit').textContent = bestPattern.totalProfit.toFixed(6) + ' ETH';
+            } else {
+                document.getElementById('bestPatternProfit').textContent = '0.000000 ETH';
+            }
+
+            // Total opportunities
+            const totalOpportunities = patternsArray.reduce((sum, p) => sum + p.occurrences, 0);
+            document.getElementById('totalOpportunities').textContent = totalOpportunities;
+
+            // Pattern success rate
+            const totalTrades = patternsArray.reduce((sum, p) => sum + p.totalTrades, 0);
+            const winningTrades = patternsArray.reduce((sum, p) => sum + p.winningTrades, 0);
+            const successRate = totalTrades > 0 ? (winningTrades / totalTrades * 100) : 0;
+            document.getElementById('patternSuccessRate').style.width = successRate + '%';
+
+            // Update top pattern display
+            updateTopPatternDisplay(profitablePatterns[0] || null);
+        }
+
+        function updateTopPatternDisplay(pattern) {
+            const container = document.getElementById('topPatternDisplay');
+            if (!pattern) {
+                container.innerHTML = '<p class="text-secondary">No profitable patterns detected yet</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="pattern-card">
+                    <div class="pattern-header">
+                        <h4>${pattern.description}</h4>
+                        <span class="badge badge-success">#${pattern.rank}</span>
+                    </div>
+                    <div class="pattern-metrics">
+                        <div class="metric">
+                            <div>Token</div>
+                            <div class="metric-value">${pattern.token}</div>
+                        </div>
+                        <div class="metric">
+                            <div>Total Profit</div>
+                            <div class="metric-value">${pattern.totalProfit.toFixed(6)} ETH</div>
+                        </div>
+                        <div class="metric">
+                            <div>Win Rate</div>
+                            <div class="metric-value">${pattern.winRate.toFixed(1)}%</div>
+                        </div>
+                        <div class="metric">
+                            <div>Trades</div>
+                            <div class="metric-value">${pattern.totalTrades}</div>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <small>First seen: ${new Date(pattern.firstSeen).toLocaleString()}</small><br>
+                        <small>Last seen: ${new Date(pattern.lastSeen).toLocaleString()}</small>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderPatterns() {
+            const container = document.getElementById('patternsList');
+            if (state.patterns.size === 0) {
+                container.innerHTML = '<p class="text-secondary">No patterns detected yet. Start the observer to begin analysis.</p>';
+                return;
+            }
+
+            let html = '<div class="grid-2">';
+
+            for (const [key, pattern] of state.patterns) {
+                const winRateClass = pattern.winRate >= 70 ? 'price-up' : pattern.winRate >= 50 ? '' : 'price-down';
+                const profitClass = pattern.totalProfit >= 0 ? 'price-up' : 'price-down';
+
+                html += `
+                    <div class="pattern-card">
+                        <div class="pattern-header">
+                            <h4>${pattern.description}</h4>
+                            <span class="badge badge-secondary">${pattern.token}</span>
+                        </div>
+                        <div class="pattern-metrics">
+                            <div class="metric">
+                                <div>Profit</div>
+                                <div class="metric-value ${profitClass}">${pattern.totalProfit.toFixed(6)} ETH</div>
+                            </div>
+                            <div class="metric">
+                                <div>Win Rate</div>
+                                <div class="metric-value ${winRateClass}">${pattern.winRate.toFixed(1)}%</div>
+                            </div>
+                            <div class="metric">
+                                <div>Trades</div>
+                                <div class="metric-value">${pattern.totalTrades}</div>
+                            </div>
+                            <div class="metric">
+                                <div>Occurrences</div>
+                                <div class="metric-value">${pattern.occurrences}</div>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <small>Last: ${new Date(pattern.lastSeen).toLocaleTimeString()}</small>
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function renderLeaderboard() {
+            const tbody = document.getElementById('leaderboardBody');
+            if (state.leaderboard.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-secondary">No patterns ranked yet</td></tr>';
+                return;
+            }
+
+            let html = '';
+            state.leaderboard.forEach(pattern => {
+                const profitClass = pattern.totalProfit >= 0 ? 'price-up' : 'price-down';
+                const winRateClass = pattern.winRate >= 70 ? 'price-up' : pattern.winRate >= 50 ? '' : 'price-down';
+                const avgProfitClass = pattern.avgProfit >= 0 ? 'price-up' : 'price-down';
+
+                html += `
+                    <tr>
+                        <td>${pattern.rank}</td>
+                        <td>${pattern.description}</td>
+                        <td>${pattern.token}</td>
+                        <td class="${profitClass}">${pattern.totalProfit.toFixed(6)}</td>
+                        <td class="${winRateClass}">${pattern.winRate.toFixed(1)}%</td>
+                        <td>${pattern.totalTrades}</td>
+                        <td class="${avgProfitClass}">${pattern.avgProfit.toFixed(6)}</td>
+                        <td>${new Date(pattern.lastSeen).toLocaleTimeString()}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+            updateLeaderboardStats();
+        }
+
+        function updateLeaderboardStats() {
+            if (state.leaderboard.length === 0) {
+                document.getElementById('lbTotalPatterns').textContent = '0';
+                document.getElementById('lbProfitablePatterns').textContent = '0';
+                document.getElementById('lbHighestWinRate').textContent = '0%';
+                document.getElementById('lbMostTrades').textContent = '0';
+                document.getElementById('lbAvgWinRate').textContent = '0%';
+                document.getElementById('lbAvgProfit').textContent = '0.000000 ETH';
+                document.getElementById('lbTotalOpportunities').textContent = '0';
+                document.getElementById('lbSuccessRate').textContent = '0%';
+                document.getElementById('lbNewestPattern').textContent = '-';
+                document.getElementById('lbOldestPattern').textContent = '-';
+                document.getElementById('lbSessionStart').textContent = '-';
+                document.getElementById('lbPatternsPerHour').textContent = '0';
+                return;
+            }
+
+            const profitable = state.leaderboard.filter(p => p.totalProfit > 0);
+            document.getElementById('lbTotalPatterns').textContent = state.leaderboard.length;
+            document.getElementById('lbProfitablePatterns').textContent = profitable.length;
+
+            if (profitable.length > 0) {
+                const highestWinRate = Math.max(...profitable.map(p => p.winRate));
+                document.getElementById('lbHighestWinRate').textContent = highestWinRate.toFixed(1) + '%';
+
+                const mostTrades = Math.max(...profitable.map(p => p.totalTrades));
+                document.getElementById('lbMostTrades').textContent = mostTrades;
+            }
+
+            const avgWinRate = state.leaderboard.reduce((sum, p) => sum + p.winRate, 0) / state.leaderboard.length;
+            document.getElementById('lbAvgWinRate').textContent = avgWinRate.toFixed(1) + '%';
+
+            const avgProfit = state.leaderboard.reduce((sum, p) => sum + p.avgProfit, 0) / state.leaderboard.length;
+            document.getElementById('lbAvgProfit').textContent = avgProfit.toFixed(6) + ' ETH';
+
+            const totalOpportunities = state.leaderboard.reduce((sum, p) => sum + p.occurrences, 0);
+            document.getElementById('lbTotalOpportunities').textContent = totalOpportunities;
+
+            const totalTrades = state.leaderboard.reduce((sum, p) => sum + p.totalTrades, 0);
+            const winningTrades = state.leaderboard.reduce((sum, p) => sum + p.winningTrades, 0);
+            const successRate = totalTrades > 0 ? (winningTrades / totalTrades * 100) : 0;
+            document.getElementById('lbSuccessRate').textContent = successRate.toFixed(1) + '%';
+
+            if (state.leaderboard.length > 0) {
+                const newest = state.leaderboard[0];
+                const oldest = state.leaderboard[state.leaderboard.length - 1];
+                document.getElementById('lbNewestPattern').textContent = newest.description.substring(0, 30) + '...';
+                document.getElementById('lbOldestPattern').textContent = oldest.description.substring(0, 30) + '...';
+            }
+
+            if (state.startTime) {
+                document.getElementById('lbSessionStart').textContent = new Date(state.startTime).toLocaleString();
+
+                const sessionDurationHours = (Date.now() - state.startTime) / (1000 * 60 * 60);
+                const patternsPerHour = sessionDurationHours > 0 ?
+                    (state.leaderboard.length / sessionDurationHours).toFixed(1) : 0;
+                document.getElementById('lbPatternsPerHour').textContent = patternsPerHour;
+            }
+        }
+
+        function sortLeaderboard(column) {
+            const tbody = document.getElementById('leaderboardBody');
+            const header = document.querySelector(`th[onclick="sortLeaderboard('${column}')"]`);
+
+            // Determine sort direction
+            const currentDir = header.getAttribute('data-sort') || 'desc';
+            const newDir = currentDir === 'desc' ? 'asc' : 'desc';
+            header.setAttribute('data-sort', newDir);
+
+            // Update all headers
+            document.querySelectorAll('th[onclick^="sortLeaderboard"]').forEach(h => {
+                h.innerHTML = h.innerHTML.replace('▼', '').replace('▲', '') + (h === header ? (newDir === 'desc' ? ' ▼' : ' ▲') : '');
+            });
+
+            // Sort
+            const sorted = [...state.leaderboard];
+            sorted.sort((a, b) => {
+                let aVal, bVal;
+                switch (column) {
+                    case 'rank': aVal = a.rank; bVal = b.rank; break;
+                    case 'pattern': aVal = a.description; bVal = b.description; break;
+                    case 'token': aVal = a.token; bVal = b.token; break;
+                    case 'profit': aVal = a.totalProfit; bVal = b.totalProfit; break;
+                    case 'winRate': aVal = a.winRate; bVal = b.winRate; break;
+                    case 'trades': aVal = a.totalTrades; bVal = b.totalTrades; break;
+                    case 'avgProfit': aVal = a.avgProfit; bVal = b.avgProfit; break;
+                    case 'lastSeen': aVal = a.lastSeen; bVal = b.lastSeen; break;
+                    default: return 0;
+                }
+
+                if (newDir === 'desc') {
+                    return bVal > aVal ? 1 : bVal < aVal ? -1 : 0;
+                } else {
+                    return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+                }
+            });
+
+            // Update ranks
+            sorted.forEach((p, i) => p.rank = i + 1);
+            state.leaderboard = sorted;
+
+            // Re-render
+            renderLeaderboard();
+        }
+
+        // ============================================
+        // UI Functions
+        // ============================================
+        function updateUI() {
+            updateBotStatus();
+            updateConnectionStatus();
+            updatePriceUI();
+            updateDashboardStats();
+        }
+
+        function updateBotStatus() {
+            const si = document.getElementById('statusIndicator');
+            const st = document.getElementById('botStatusText');
+            const sb = document.getElementById('startBtn');
+            const stopb = document.getElementById('stopBtn');
+            const bsi = document.getElementById('botStatusIndicator');
+
+            if (state.isRunning) {
+                si.className = 'status-indicator status-running';
+                st.textContent = 'Running';
+                sb.disabled = true;
+                stopb.disabled = false;
+                bsi.innerHTML = '<span class="badge badge-success">Running</span>';
+            } else {
+                si.className = 'status-indicator status-stopped';
+                st.textContent = 'Stopped';
+                sb.disabled = false;
+                stopb.disabled = true;
+                bsi.innerHTML = '<span class="badge badge-secondary">Stopped</span>';
+            }
+        }
+
+        function updateConnectionStatus() {
+            const us = document.getElementById('blockchainStatus');
+            const ps = document.getElementById('priceFeedStatus');
+
+            if (us) {
+                const uc = state.activeSession?.connected || false;
+                us.className = `status-item ${uc ? 'status-connected' : 'status-disconnected'}`;
+                us.innerHTML = uc ? 'Blockchain ✓' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Blockchain';
+            }
+
+            if (ps) {
+                const pc = state.activeSession?.connected || false;
+                ps.className = `status-item ${pc ? 'status-connected' : 'status-disconnected'}`;
+                ps.innerHTML = pc ? 'Price Feed ✓' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Price Feed';
+            }
+        }
+
+        function updatePriceUI() {
+            const priceRows = document.getElementById('priceRows');
+            if (!priceRows) return;
+
+            if (Object.keys(state.priceHistory).length === 0) {
+                priceRows.innerHTML = '<tr><td colspan="5" class="text-center text-secondary">Press Start to begin</td></tr>';
+                return;
+            }
+
+            // Update chart token select
+            updateChartTokenSelect();
+
+            let html = '';
+            const tokens = Array.from(state.observedTokens);
+            tokens.sort();
+
+            tokens.forEach(token => {
+                const history = state.priceHistory[token];
+                if (!history || history.length === 0) return;
+
+                const current = history[history.length - 1];
+                const previous = history.length > 1 ? history[history.length - 2] : current;
+                const changePct = ((current.price - previous.price) / previous.price) * 100;
+                const changeClass = changePct >= 0 ? 'price-up' : 'price-down';
+                const changeSymbol = changePct > 0 ? '↑' : changePct < 0 ? '↓' : '';
+
+                html += `
+                    <tr>
+                        <td><strong>${token}</strong></td>
+                        <td>${current.price.toFixed(6)}</td>
+                        <td class="${changeClass}">${changeSymbol} ${Math.abs(changePct).toFixed(2)}%</td>
+                        <td>${history.length}</td>
+                        <td>${new Date(current.timestamp).toLocaleTimeString()}</td>
+                    </tr>
+                `;
+            });
+
+            priceRows.innerHTML = html || '<tr><td colspan="5" class="text-center text-secondary">No price data</td></tr>';
+        }
+
+        function updateChartTokenSelect() {
+            const selectEl = document.getElementById('chartTokenSelect');
+            if (!selectEl) return;
+
+            const currentValue = selectEl.value;
+            const tokens = Array.from(state.observedTokens);
+            tokens.sort();
+
+            let options = '<option value="">Select Token</option>';
+            tokens.forEach(token => {
+                options += `<option value="${token}">${token}</option>`;
+            });
+
+            selectEl.innerHTML = options;
+
+            // Restore previous selection if still valid
+            if (tokens.includes(currentValue)) {
+                selectEl.value = currentValue;
+                updateChart();
+            }
+        }
+
+        function updatePriceUpdateStatus(status) {
+            // This is handled in the swap log processing
+        }
+
+        function setStatus(t, type = "connecting") {
+            const si = document.getElementById('statusIndicator');
+            const st = document.getElementById('botStatusText');
+
+            if (si) {
+                si.className = 'status-indicator';
+                if (type === "connected") si.classList.add('status-running');
+                else if (type === "error") si.classList.add('status-stopped');
+                else si.classList.add('status-disconnected');
+            }
+            if (st) st.textContent = t;
+        }
+
+        function updateButton() {
+            const sb = document.getElementById('startBtn');
+            const stopb = document.getElementById('stopBtn');
+            if (!sb || !stopb) return;
+
+            sb.classList.remove('running', 'starting');
+            stopb.classList.remove('running', 'starting');
+
+            if (state.manuallyStopped || !state.activeSession) {
+                sb.disabled = false;
+                stopb.disabled = true;
+                sb.innerHTML = '<span class="loading-spinner" id="startSpinner" style="display:none;"></span>Start';
+                return;
+            }
+
+            if (!state.activeSession?.connected) {
+                sb.disabled = true;
+                stopb.disabled = true;
+                sb.innerHTML = '<span class="loading-spinner" id="startSpinner" style="display:none;"></span>Connecting...';
+                return;
+            }
+
+            if (state.isRunning) {
+                sb.disabled = true;
+                stopb.disabled = false;
+            } else {
+                sb.disabled = false;
+                stopb.disabled = true;
+            }
+        }
+
+        function resetView() {
+            document.getElementById('priceRows').innerHTML = '<tr><td colspan="5" class="text-center text-secondary">Press Start to begin</td></tr>';
+            document.getElementById('trackedTokensCount').textContent = '0';
+            document.getElementById('detectedPatternsCount').textContent = '0';
+            document.getElementById('patternsAnalyzed').textContent = '0';
+            document.getElementById('profitablePatterns').textContent = '0';
+            document.getElementById('bestPatternProfit').textContent = '0.000000 ETH';
+            document.getElementById('totalOpportunities').textContent = '0';
+            document.getElementById('patternSuccessRate').style.width = '0%';
+        }
+
+        // ============================================
+        // User Actions
+        // ============================================
+        async function startObserver() {
+            if (state.isRunning) {
+                showToast('info', 'Observer is already running.');
+                return;
+            }
+
+            showLoading('startSpinner');
+            document.getElementById('startBtn').disabled = true;
+
+            try {
+                currentChainKey = state.settings.network || 'arbitrum';
+                state.startTime = new Date();
+                state.isRunning = true;
+
+                await startUniswapSession();
+
+                showToast('success', `Observer started! Monitoring ${CHAINS[currentChainKey].name} for patterns.`);
+                log('success', `Observer started on ${CHAINS[currentChainKey].name}`);
+
+            } catch (error) {
+                log('error', `Failed to start observer: ${error.message}`);
+                showToast('error', `Failed to start: ${error.message}`);
+                hideLoading('startSpinner');
+                document.getElementById('startBtn').disabled = false;
+                state.isRunning = false;
+            }
+        }
+
+        async function stopObserver() {
+            if (!state.isRunning) {
+                showToast('info', 'Observer is not running.');
+                return;
+            }
+
+            showLoading('stopSpinner');
+            document.getElementById('stopBtn').disabled = true;
+
+            try {
+                state.isRunning = false;
+                state.manuallyStopped = true;
+                stopPatternDetection();
+                await stopUniswapSession();
+
+                showToast('success', 'Observer stopped.');
+                log('info', 'Observer stopped');
+
+            } catch (error) {
+                log('error', `Failed to stop observer: ${error.message}`);
+                showToast('error', `Failed to stop: ${error.message}`);
+            } finally {
+                hideLoading('stopSpinner');
+                document.getElementById('stopBtn').disabled = false;
+            }
+        }
+
+        async function testConnection() {
+            showToast('info', 'Testing connection...');
+
+            try {
+                currentChainKey = state.settings.network || 'arbitrum';
+                const chain = CHAINS[currentChainKey];
+
+                const provider = new ethers.WebSocketProvider(chain.ws, chain.chainId);
+                await provider.getBlockNumber();
+
+                showToast('success', `Connection to ${chain.name} successful!`);
+                log('success', `Connection test passed for ${chain.name}`);
+
+                provider.destroy();
+            } catch (error) {
+                showToast('error', `Connection test failed: ${error.message}`);
+                log('error', `Connection test failed: ${error.message}`);
+            }
+        }
+
+        function showLoading(elementId) {
+            const spinner = document.getElementById(elementId);
+            if (spinner) spinner.style.display = 'inline-block';
+        }
+
+        function hideLoading(elementId) {
+            const spinner = document.getElementById(elementId);
+            if (spinner) spinner.style.display = 'none';
+        }
+
+        function showToast(type, message, duration = 5000) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icons = { success: '✓', error: '✗', warning: '⚠', info: 'ℹ' };
+            const icon = icons[type] || 'ℹ';
+            toast.innerHTML = `
+                <span>${icon}</span>
+                <span class="toast-message">${message}</span>
+                <span class="toast-close" onclick="this.parentElement.remove()">×</span>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('hiding');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        function toggleAutoScroll() {
+            state.autoScroll = !state.autoScroll;
+            document.querySelector('#logs .btn-warning').textContent = 'Auto-Scroll: ' + (state.autoScroll ? 'ON' : 'OFF');
+        }
+
+        function closeModal() {
+            document.getElementById('notificationModal').style.display = 'none';
+        }
+
+        function clearLogs() {
+            state.logs = [];
+            const lc = document.getElementById('logContainer');
+            if (lc) lc.innerHTML = '<div class="log-entry log-info">[INFO] Logs cleared</div>';
+            log('info', 'Logs cleared');
+        }
+
+        function downloadLogs() {
+            const logText = state.logs.map(l => `[${l.level.toUpperCase()}] ${l.message}`).join('\n');
+            const blob = new Blob([logText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'pattern-finder-logs-' + new Date().toISOString().split('T')[0] + '.log';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('success', 'Logs downloaded!');
+        }
+
+        function exportPatterns() {
+            if (state.patterns.size === 0) {
+                showToast('warning', 'No patterns to export');
+                return;
+            }
+
+            const patterns = Array.from(state.patterns.values()).map(p => ({
+                'Pattern': p.description,
+                'Token': p.token,
+                'Buy Drop %': p.buyDropPct.toFixed(2),
+                'Buy Time (s)': p.buyTime.toFixed(0),
+                'Sell Rise %': p.sellRisePct.toFixed(2),
+                'Sell Time (s)': p.sellTime.toFixed(0),
+                'Total Profit (ETH)': p.totalProfit.toFixed(6),
+                'Win Rate (%)': p.winRate.toFixed(1),
+                'Total Trades': p.totalTrades,
+                'Occurrences': p.occurrences,
+                'First Seen': new Date(p.firstSeen).toLocaleString(),
+                'Last Seen': new Date(p.lastSeen).toLocaleString()
+            }));
+
+            const headers = Object.keys(patterns[0]);
+            const csvContent = [
+                headers.join(','),
+                ...patterns.map(row => headers.map(header => {
+                    const value = row[header];
+                    if (value === null || value === undefined) return '';
+                    if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+                        return '"' + value.replace(/"/g, '""') + '"';
+                    }
+                    return value;
+                }).join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'patterns-' + new Date().toISOString().split('T')[0] + '.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('success', 'Patterns exported!');
+        }
+
+        function exportLeaderboard() {
+            if (state.leaderboard.length === 0) {
+                showToast('warning', 'No leaderboard data to export');
+                return;
+            }
+
+            const data = state.leaderboard.map(p => ({
+                'Rank': p.rank,
+                'Pattern': p.description,
+                'Token': p.token,
+                'Total Profit (ETH)': p.totalProfit.toFixed(6),
+                'Win Rate (%)': p.winRate.toFixed(1),
+                'Total Trades': p.totalTrades,
+                'Winning Trades': p.winningTrades,
+                'Losing Trades': p.losingTrades,
+                'Avg Profit (ETH)': p.avgProfit.toFixed(6),
+                'Occurrences': p.occurrences,
+                'Profit Factor': p.profitFactor === Infinity ? '∞' : p.profitFactor.toFixed(2),
+                'First Seen': new Date(p.firstSeen).toLocaleString(),
+                'Last Seen': new Date(p.lastSeen).toLocaleString()
+            }));
+
+            const headers = Object.keys(data[0]);
+            const csvContent = [
+                headers.join(','),
+                ...data.map(row => headers.map(header => {
+                    const value = row[header];
+                    if (value === null || value === undefined) return '';
+                    if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+                        return '"' + value.replace(/"/g, '""') + '"';
+                    }
+                    return value;
+                }).join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'leaderboard-' + new Date().toISOString().split('T')[0] + '.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('success', 'Leaderboard exported!');
+        }
+
+        function clearPatterns() {
+            if (!confirm('Clear all detected patterns? This cannot be undone.')) return;
+            state.patterns.clear();
+            state.leaderboard = [];
+            renderPatterns();
+            renderLeaderboard();
+            updateDashboardStats();
+            showToast('success', 'Patterns cleared!');
+            log('info', 'All patterns cleared');
+        }
+
+        function resetLeaderboard() {
+            if (!confirm('Reset the leaderboard? This will re-rank all patterns.')) return;
+            updateLeaderboard();
+            renderLeaderboard();
+            showToast('success', 'Leaderboard reset!');
+        }
+
+        // ============================================
+        // Settings Management
+        // ============================================
+        function updateNetworkSettings() {
+            const network = document.getElementById('networkSelect').value;
+            state.settings.network = network;
+            currentChainKey = network;
+            saveSettings();
+            updateNetworkInfo();
+        }
+
+        function saveDetectionSettings() {
+            state.settings.minPriceChange = parseFloat(document.getElementById('minPriceChange').value) || 0.1;
+            state.settings.minTimeWindow = parseInt(document.getElementById('minTimeWindow').value) || 5;
+            state.settings.maxTimeWindow = parseInt(document.getElementById('maxTimeWindow').value) || 300;
+            state.settings.minOccurrences = parseInt(document.getElementById('minOccurrences').value) || 3;
+            saveSettings();
+            showToast('success', 'Detection settings saved!');
+
+            // Restart pattern detection with new settings
+            if (state.isRunning) {
+                stopPatternDetection();
+                startPatternDetection();
+            }
+        }
+
+        function saveStorageSettings() {
+            state.settings.priceHistoryDuration = parseInt(document.getElementById('priceHistoryDuration').value) || 24;
+            state.settings.maxPriceHistory = parseInt(document.getElementById('maxPriceHistory').value) || 10000;
+            state.settings.patternHistoryDuration = parseInt(document.getElementById('patternHistoryDuration').value) || 7;
+            state.settings.maxPatterns = parseInt(document.getElementById('maxPatterns').value) || 500;
+            saveSettings();
+            showToast('success', 'Storage settings saved!');
+        }
+
+        function saveAdvancedSettings() {
+            state.settings.priceUpdateInterval = parseInt(document.getElementById('priceUpdateInterval').value) || 1000;
+            state.settings.patternDetectionInterval = parseInt(document.getElementById('patternDetectionInterval').value) || 5000;
+            state.settings.enableDebug = document.getElementById('enableDebug').checked;
+            saveSettings();
+            showToast('success', 'Advanced settings saved!');
+        }
+
+        function saveSettings() {
+            localStorage.setItem('patternFinderSettings', JSON.stringify(state.settings));
+            log('info', 'Settings saved');
+        }
+
+        function loadSettings() {
+            try {
+                const savedSettings = localStorage.getItem('patternFinderSettings');
+                if (savedSettings) {
+                    state.settings = { ...state.settings, ...JSON.parse(savedSettings) };
+                }
+                updateSettingsUI();
+                log('info', 'Settings loaded');
+            } catch (error) {
+                log('error', `Failed to load settings: ${error.message}`);
+            }
+        }
+
+        function updateSettingsUI() {
+            document.getElementById('networkSelect').value = state.settings.network || 'arbitrum';
+            document.getElementById('minPriceChange').value = state.settings.minPriceChange || 0.1;
+            document.getElementById('minTimeWindow').value = state.settings.minTimeWindow || 5;
+            document.getElementById('maxTimeWindow').value = state.settings.maxTimeWindow || 300;
+            document.getElementById('minOccurrences').value = state.settings.minOccurrences || 3;
+            document.getElementById('priceHistoryDuration').value = state.settings.priceHistoryDuration || 24;
+            document.getElementById('maxPriceHistory').value = state.settings.maxPriceHistory || 10000;
+            document.getElementById('patternHistoryDuration').value = state.settings.patternHistoryDuration || 7;
+            document.getElementById('maxPatterns').value = state.settings.maxPatterns || 500;
+            document.getElementById('priceUpdateInterval').value = state.settings.priceUpdateInterval || 1000;
+            document.getElementById('patternDetectionInterval').value = state.settings.patternDetectionInterval || 5000;
+            document.getElementById('enableDebug').checked = state.settings.enableDebug !== false;
+        }
+
+        function clearAllData() {
+            if (!confirm('Clear ALL data? This cannot be undone. All patterns, price history, and logs will be deleted.')) return;
+
+            try {
+                localStorage.removeItem('patternFinderSettings');
+                state.patterns.clear();
+                state.leaderboard = [];
+                state.priceHistory = {};
+                state.prices = {};
+                state.observedTokens.clear();
+                state.logs = [];
+
+                // Clear UI
+                document.getElementById('logContainer').innerHTML = '<div class="log-entry log-info">[INFO] All data cleared</div>';
+                document.getElementById('priceRows').innerHTML = '<tr><td colspan="5" class="text-center text-secondary">Press Start to begin</td></tr>';
+                document.getElementById('patternsList').innerHTML = '<p class="text-center text-secondary">No patterns detected yet. Start the observer to begin analysis.</p>';
+                document.getElementById('leaderboardBody').innerHTML = '<tr><td colspan="8" class="text-center text-secondary">No patterns ranked yet</td></tr>';
+
+                updateDashboardStats();
+                updateChartTokenSelect();
+
+                showToast('success', 'All data cleared!');
+                log('info', 'All data cleared');
+            } catch (error) {
+                showToast('error', `Failed to clear data: ${error.message}`);
+                log('error', `Failed to clear data: ${error.message}`);
+            }
+        }
+
+        // ============================================
+        // Utility Functions
+        // ============================================
+        function norm(a) {
+            return String(a).toLowerCase();
+        }
+
+        function short(a) {
+            if (!a) return '';
+            return a.substring(0, 6) + '...' + a.substring(a.length - 4);
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Known tokens for better symbol display
+        const KNOWN_TOKENS = {
+            'ETH': { address: null, decimals: 18, symbol: 'ETH', name: 'Ethereum' },
+            'WETH': { address: null, decimals: 18, symbol: 'WETH', name: 'Wrapped ETH' },
+            'WBTC': { address: null, decimals: 8, symbol: 'WBTC', name: 'Wrapped BTC' },
+            'UNI': { address: null, decimals: 18, symbol: 'UNI', name: 'Uniswap' },
+            'LINK': { address: null, decimals: 18, symbol: 'LINK', name: 'Chainlink' },
+            'ARB': { address: null, decimals: 18, symbol: 'ARB', name: 'Arbitrum' },
+            'GMX': { address: null, decimals: 18, symbol: 'GMX', name: 'GMX' },
+            'USDC': { address: null, decimals: 6, symbol: 'USDC', name: 'USD Coin' },
+            'USDT': { address: null, decimals: 6, symbol: 'USDT', name: 'Tether' }
+        };
+
+        // Initialize known tokens with addresses for each network
+        function initializeKnownTokens() {
+            const networkTokens = {
+                arbitrum: {
+                    WETH: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+                    WBTC: '0x2f2a2543B76A416654947aaB75B4e35b52a17231',
+                    UNI: '0xfa7F8980b0f1E64A2062791cc3b0871572f1F7f0',
+                    LINK: '0xf97f4df75117a78c1A5a0DBb814Af92458539FB4',
+                    ARB: '0x912CE59144196C11c48067255325c5414506085A',
+                    GMX: '0xfc5A1A6EB076a2C7aD06eD22C5C769A78b3Fa3A1',
+                    USDC: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+                    USDT: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9'
+                },
+                ethereum: {
+                    WETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+                    WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
+                    UNI: '0x1f9840a85d5aF5bf1D1762F925BDADDd9702f158',
+                    LINK: '0x514910771AF9Ca656af840dff83E8264EcF986CA',
+                    USDC: '0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+                    USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7'
+                },
+                base: {
+                    WETH: '0x4200000000000000000000000000000000000006',
+                    WBTC: '0x6025518810202842D4E7b537291033197F2B498c',
+                    USDC: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+                    USDT: '0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42'
+                },
+                optimism: {
+                    WETH: '0x4200000000000000000000000000000000000006',
+                    WBTC: '0x68f180fcCe6836688e9084f035309fC299A09C00',
+                    UNI: '0x6fd9d7AD17242c41f7131d257212c54A0e816691',
+                    LINK: '0x350a791Bfc2C21F9Ed5d10980Dad2e2638ffa7f6',
+                    USDC: '0x0b2C639c533813f4AaA9D7837CAf62653d097Ff85',
+                    USDT: '0x7F5c764cBc14f9669B88837ca1490cCa17c31607'
+                },
+                polygon: {
+                    WETH: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270',
+                    WBTC: '0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6',
+                    UNI: '0xb33EaAd8d922B1083446DC23f610c2567fB5180',
+                    LINK: '0x53E0bca35eC356BD5ddDFebbD1Fc0fD03Fad3981',
+                    USDC: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
+                    USDT: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F'
+                }
+            };
+
+            // Update known tokens with current network addresses
+            const network = CHAINS[currentChainKey];
+            if (network && networkTokens[currentChainKey]) {
+                for (const [symbol, address] of Object.entries(networkTokens[currentChainKey])) {
+                    if (KNOWN_TOKENS[symbol]) {
+                        KNOWN_TOKENS[symbol].address = address;
+                    }
+                }
+            }
+        }
+
+        // Initialize known tokens
+        initializeKnownTokens();
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function () {
+            state.isRunning = false;
+            state.manuallyStopped = true;
+            stopPatternDetection();
+            if (state.activeSession) {
+                destroySession(state.activeSession);
+            }
+        });
+    </script>
+</body>
+
+</html>
