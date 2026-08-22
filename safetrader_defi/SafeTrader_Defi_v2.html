@@ -1324,7 +1324,7 @@
                         </div>
                         <div class="mt-1">
                             <label>Backup Interval (minutes)</label>
-                            <input type="number" class="form-control" id="backupInterval" value="15" min="1" max="1440">
+                            <input type="number" class="form-control" id="backupInterval" value="5" min="1" max="1440">
                             <small class="setting-description">How often to automatically save your data.</small>
                         </div>
                     </div>
@@ -1574,7 +1574,7 @@
                 executionMode: EXECUTION_MODES.SHADOW,
                 buyPatterns: '<_-0.1_10-60,<_-0.2_30-120,<_-0.05_5-30',
                 sellPatterns: '>_+0.1_10-60,>_+0.2_30-120,>_+0.05_5-30',
-                startingEth: 1.0,
+                startingEth: 0.0041,
                 tradeAmountPercent: 1,
                 maxTrades: 50,
                 tradeCooldown: 10,
@@ -1588,14 +1588,14 @@
                 priceInterval: 1000,
                 maxPriceAge: 10,
                 priceHistoryDuration: 1,
-                assetCaps: { ETH: 100, OTHER: 10 },
+                assetCaps: { ETH: 100, OTHER: 5 },
                 preventSequentialTrades: true,
-                minProfitPercent: 0.1,
+                minProfitPercent: 1.0,
                 maxPositionAge: 300,
                 enforceAgeBasedSelling: true,
                 latencySimulation: '0',
                 autoBackup: true,
-                backupInterval: 15,
+                backupInterval: 5,
                 encryptionEnabled: true,
                 debugMode: 'none'
             },
