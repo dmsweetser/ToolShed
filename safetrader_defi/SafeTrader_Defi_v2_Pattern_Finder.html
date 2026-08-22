@@ -47,6 +47,46 @@
             color: var(--dark);
         }
 
+        .d-flex {
+            display: flex;
+        }
+
+        .justify-between {
+            justify-content: space-between;
+        }
+
+        .align-center {
+            align-items: center;
+        }
+
+        .gap-1 {
+            gap: 10px;
+        }
+
+        .gap-2 {
+            gap: 20px;
+        }
+
+        .mt-1 {
+            margin-top: 10px;
+        }
+
+        .mt-2 {
+            margin-top: 20px;
+        }
+
+        .mb-1 {
+            margin-bottom: 10px;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-secondary {
+            color: #6c757d;
+        }
+
         .nav-tabs {
             display: flex;
             gap: 5px;
@@ -138,6 +178,34 @@
         .btn-sm {
             padding: 0.25rem 0.5rem;
             font-size: 0.875rem;
+        }
+
+        .btn-xs {
+            padding: 0.15rem 0.3rem;
+            font-size: 0.75rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.375rem 0.75rem;
+            border: 1px solid #dee2e6;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            margin-bottom: 10px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .setting-description {
+            display: block;
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: 5px;
+            line-height: 1.4;
         }
 
         .status-indicator {
@@ -492,13 +560,38 @@
             font-weight: 600;
             font-size: 1.1rem;
         }
+
+        .alert {
+            padding: 10px;
+            border-radius: var(--border-radius);
+            margin-bottom: 15px;
+        }
+
+        .alert-info {
+            background: rgba(13, 110, 253, 0.1);
+            border: 1px solid rgba(13, 110, 253, 0.2);
+            color: var(--primary);
+        }
+
+        .alert-warning {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.2);
+            color: var(--warning);
+        }
     </style>
 </head>
 
 <body>
+    <div class="alert alert-warning"
+        style="position: fixed; top: 0; left: 0; right: 0; z-index: 10000; padding: 15px; text-align: center;">
+        ⚠️ <strong>IMPORTANT:</strong> This app requires a local web server.
+        <a href="#" onclick="showServerInstructions(); return false;"
+            style="color: var(--primary); text-decoration: underline;">Click here for instructions</a>
+    </div>
+
     <div class="toast-container" id="toastContainer"></div>
 
-    <div class="container">
+    <div class="container" style="padding-top: 60px;">
         <header>
             <h1>Blockchain Price Pattern Finder</h1>
             <p>Observes real blockchain prices, detects profitable patterns, and ranks them by performance</p>
@@ -777,8 +870,7 @@
                                 pattern.</small>
                         </div>
                         <button class="btn btn-primary mt-2" onclick="saveDetectionSettings()">
-                            <span class="loading-spinner loading-spinner-dark" id="saveSettingsSpinner"
-                                style="display:none;"></span>Save Settings
+                            Save Settings
                         </button>
                     </div>
                 </div>
@@ -874,14 +966,42 @@
         </div>
     </div>
 
-    <!-- Notification Modal -->
-    <div class="modal" id="notificationModal"
-        style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center;">
-        <div class="modal-content"
-            style="background: white; padding: 30px; border-radius: var(--border-radius); max-width: 800px; width: 90%; max-height: 80vh; overflow-y: auto;">
-            <h3 id="modalTitle">Notification</h3>
-            <p id="modalMessage"></p>
-            <button class="btn btn-primary" onclick="closeModal()">OK</button>
+    <!-- Server Instructions Modal -->
+    <div id="serverModal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10001; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 30px; border-radius: 10px; max-width: 600px; width: 90%;">
+            <h2>How to Run This App</h2>
+            <p>This application <strong>requires a local web server</strong> to work properly due to browser security
+                restrictions.</p>
+            <hr style="margin: 20px 0;">
+            <h3>Option 1: Python (Recommended)</h3>
+            <ol>
+                <li>Open a terminal in this folder</li>
+                <li>Run: <code
+                        style="background: #f0f0f0; padding: 2px 5px; border-radius: 3px;">python -m http.server 8000</code>
+                </li>
+                <li>Open: <a href="http://localhost:8000" target="_blank">http://localhost:8000</a></li>
+            </ol>
+            <h3>Option 2: Node.js</h3>
+            <ol>
+                <li>Install Node.js from <a href="https://nodejs.org" target="_blank">nodejs.org</a></li>
+                <li>Open a terminal in this folder</li>
+                <li>Run: <code style="background: #f0f0f0; padding: 2px 5px; border-radius: 3px;">npx serve</code></li>
+                <li>Open: <a href="http://localhost:3000" target="_blank">http://localhost:3000</a></li>
+            </ol>
+            <h3>Option 3: PHP</h3>
+            <ol>
+                <li>Open a terminal in this folder</li>
+                <li>Run: <code
+                        style="background: #f0f0f0; padding: 2px 5px; border-radius: 3px;">php -S localhost:8000</code>
+                </li>
+                <li>Open: <a href="http://localhost:8000" target="_blank">http://localhost:8000</a></li>
+            </ol>
+            <hr style="margin: 20px 0;">
+            <p><strong>Important:</strong> Do NOT open the HTML file directly from your file browser. Always use a local
+                server.</p>
+            <button class="btn btn-primary" onclick="document.getElementById('serverModal').style.display = 'none'"
+                style="margin-top: 20px;">Close</button>
         </div>
     </div>
 
@@ -902,21 +1022,21 @@
                 quoteMode: "native",
                 quoteLabel: "ETH",
                 stables: [
-                    "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", // USDC
-                    "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"  // USDT
+                    "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+                    "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"
                 ]
             },
             ethereum: {
                 name: "Ethereum Mainnet",
                 chainId: 1,
                 ws: "wss://ethereum-rpc.publicnode.com",
-                factory: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f", // Uniswap V2
+                factory: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
                 wrappedNative: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
                 quoteMode: "native",
                 quoteLabel: "ETH",
                 stables: [
-                    "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", // USDC
-                    "0xdAC17F958D2ee523a2206206994597C13D831ec7"   // USDT
+                    "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                    "0xdAC17F958D2ee523a2206206994597C13D831ec7"
                 ]
             },
             base: {
@@ -928,8 +1048,8 @@
                 quoteMode: "native",
                 quoteLabel: "ETH",
                 stables: [
-                    "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
-                    "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42"  // USDT
+                    "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                    "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42"
                 ]
             },
             optimism: {
@@ -941,21 +1061,21 @@
                 quoteMode: "native",
                 quoteLabel: "ETH",
                 stables: [
-                    "0x0b2C639c533813f4AaA9D7837CAf62653d097Ff85", // USDC
-                    "0x7F5c764cBc14f9669B88837ca1490cCa17c31607"   // USDT
+                    "0x0b2C639c533813f4AaA9D7837CAf62653d097Ff85",
+                    "0x7F5c764cBc14f9669B88837ca1490cCa17c31607"
                 ]
             },
             polygon: {
                 name: "Polygon",
                 chainId: 137,
                 ws: "wss://polygon-bor-rpc.publicnode.com",
-                factory: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f", // Uniswap V2
+                factory: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
                 wrappedNative: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
                 quoteMode: "native",
                 quoteLabel: "WPOL",
                 stables: [
-                    "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", // USDC
-                    "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"   // USDT
+                    "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+                    "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
                 ]
             }
         };
@@ -1000,19 +1120,20 @@
             sessionSerial: 0,
             activeSession: null,
             manuallyStopped: true,
+            patternDetectionInterval: null,
             settings: {
                 network: 'arbitrum',
                 uniswapVersion: 'v3',
-                minPriceChange: 0.1,    // %
-                minTimeWindow: 5,      // seconds
-                maxTimeWindow: 300,    // seconds
+                minPriceChange: 0.1,
+                minTimeWindow: 5,
+                maxTimeWindow: 300,
                 minOccurrences: 3,
-                priceHistoryDuration: 24, // hours
+                priceHistoryDuration: 24,
                 maxPriceHistory: 10000,
-                patternHistoryDuration: 7, // days
+                patternHistoryDuration: 7,
                 maxPatterns: 500,
-                priceUpdateInterval: 1000, // ms
-                patternDetectionInterval: 5000, // ms
+                priceUpdateInterval: 1000,
+                patternDetectionInterval: 5000,
                 enableDebug: true
             }
         };
@@ -1021,27 +1142,60 @@
         let currentChainKey = 'arbitrum';
 
         // ============================================
+        // Utility Functions
+        // ============================================
+        function showServerInstructions() {
+            document.getElementById('serverModal').style.display = 'flex';
+        }
+
+        function norm(a) {
+            return String(a).toLowerCase();
+        }
+
+        function short(a) {
+            if (!a) return '';
+            return a.substring(0, 6) + '...' + a.substring(a.length - 4);
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function safeConsole(level, message) {
+            const validLevels = ['log', 'info', 'warn', 'error', 'debug'];
+            if (validLevels.includes(level) && typeof console[level] === 'function') {
+                console[level](message);
+            } else {
+                console.log(`[${level}] ${message}`);
+            }
+        }
+
+        // ============================================
         // Initialization
         // ============================================
         document.addEventListener('DOMContentLoaded', function () {
             window.log = function (level, message, data = null) {
-                const timestamp = new Date().toISOString();
-                const logEntry = { timestamp, level, message, data };
-                state.logs.push(logEntry);
-                if (state.logs.length > 1000) {
-                    state.logs.shift();
-                }
-                const formatted = `[${level.toUpperCase()}] ${message}` + (data ? ` - ${JSON.stringify(data)}` : '');
-                const logContainer = document.getElementById('logContainer');
-                if (logContainer) {
-                    const entry = document.createElement('div');
-                    entry.className = `log-entry log-${level}`;
-                    entry.textContent = formatted;
-                    logContainer.appendChild(entry);
-                    if (state.autoScroll) scrollToBottom('logContainer');
-                }
-                if (state.settings.enableDebug) {
-                    console[level === 'error' ? 'error' : level](formatted);
+                try {
+                    const timestamp = new Date().toISOString();
+                    const logEntry = { timestamp, level, message, data };
+                    state.logs.push(logEntry);
+                    if (state.logs.length > 1000) {
+                        state.logs.shift();
+                    }
+                    const formatted = `[${level.toUpperCase()}] ${message}` + (data ? ` - ${JSON.stringify(data)}` : '');
+                    const logContainer = document.getElementById('logContainer');
+                    if (logContainer) {
+                        const entry = document.createElement('div');
+                        entry.className = `log-entry log-${level}`;
+                        entry.textContent = formatted;
+                        logContainer.appendChild(entry);
+                        if (state.autoScroll) scrollToBottom('logContainer');
+                    }
+                    if (state.settings.enableDebug) {
+                        safeConsole(level, formatted);
+                    }
+                } catch (e) {
+                    console.log(`[LOG ERROR] ${message}`);
                 }
             };
 
@@ -1107,20 +1261,17 @@
         }
 
         function setupEventListeners() {
-            // Tab switching
             document.querySelectorAll('.nav-tabs .nav-link').forEach(link => {
                 link.addEventListener('click', function () {
                     switchTab(this.getAttribute('data-tab'));
                 });
             });
 
-            // Auto-scroll toggle
             document.querySelector('#logs .btn-warning').addEventListener('click', function () {
                 state.autoScroll = !state.autoScroll;
                 this.textContent = 'Auto-Scroll: ' + (state.autoScroll ? 'ON' : 'OFF');
             });
 
-            // Network select
             document.getElementById('networkSelect').addEventListener('change', function () {
                 currentChainKey = this.value;
                 state.settings.network = this.value;
@@ -1128,10 +1279,14 @@
                 saveSettings();
             });
 
-            // Chart token select
             document.getElementById('chartTokenSelect').addEventListener('change', function () {
                 updateChart();
             });
+        }
+
+        function scrollToBottom(elementId) {
+            const el = document.getElementById(elementId);
+            if (el) el.scrollTop = el.scrollHeight;
         }
 
         function switchTab(tab) {
@@ -1149,11 +1304,6 @@
             } else if (tab === 'logs') {
                 scrollToBottom('logContainer');
             }
-        }
-
-        function scrollToBottom(elementId) {
-            const el = document.getElementById(elementId);
-            if (el) el.scrollTop = el.scrollHeight;
         }
 
         function updateNetworkInfo() {
@@ -1180,6 +1330,13 @@
             const s = Math.floor((diff % (1000 * 60)) / 1000);
             document.getElementById('uptime').textContent =
                 `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function renderDashboard() {
+            updatePriceUI();
+            updateDashboardStats();
+            updateConnectionStatus();
+            updateButton();
         }
 
         // ============================================
@@ -1293,7 +1450,7 @@
 
                     s.ws.addEventListener("error", e => {
                         if (!current(s)) return;
-                        log('error', `WebSocket error: ${e.message}`);
+                        log('error', `WebSocket error: ${e.message || String(e)}`);
                         s.connected = false;
                         setStatus("Connection error", "error");
                         updateButton();
@@ -1311,7 +1468,6 @@
                 s.rpcHead = head;
                 s.blockCount = head;
 
-                // Load initial tokens
                 if (s.chain.quoteMode === "native") {
                     await loadToken(s, s.chain.wrappedNative);
                 }
@@ -1325,12 +1481,12 @@
                 updateConnectionStatus();
                 log('success', `Fully connected to ${s.chain.name}. Starting observation...`);
 
-                // Start pattern detection interval
                 startPatternDetection();
 
             } catch (e) {
                 if (!current(s)) return;
-                log('error', `Connection failed: ${e.message}`);
+                const errorMsg = e && e.message ? e.message : String(e);
+                log('error', `Connection failed: ${errorMsg}`);
                 s.connected = false;
                 setStatus("Connection failed", "error");
                 updateButton();
@@ -1411,7 +1567,7 @@
                         await sleep(1000);
                         continue;
                     }
-                    log('warning', `Block log error: ${e.message}`);
+                    log('warning', `Block log error: ${e.message || String(e)}`);
                     return;
                 }
             }
@@ -1424,7 +1580,7 @@
                     try {
                         await processSwapLog(s, log);
                     } catch (e) {
-                        log('debug', `Swap error: ${e.message}`);
+                        log('debug', `Swap error: ${e.message || String(e)}`);
                     }
                 }
             }
@@ -1450,8 +1606,20 @@
                     if (s.gasPriceHistory.length > 100) s.gasPriceHistory.shift();
                 }
             } catch (error) {
-                log('error', `Gas price error: ${error.message}`);
+                log('error', `Gas price error: ${error.message || String(error)}`);
             }
+        }
+
+        function updateStats(s) {
+            if (!s) {
+                resetView();
+                return;
+            }
+
+            document.getElementById('lastPriceUpdate').textContent = s.lastProcessedBlock ? new Date().toLocaleTimeString() : 'Never';
+
+            const processed = s.lastProcessedBlock ?? s.blockCount;
+            const lag = Math.max(0, (s.rpcHead || 0) - (processed || 0));
         }
 
         // ============================================
@@ -1520,7 +1688,6 @@
                     t1.volumeQuote += volume;
                 }
 
-                // Update global state
                 if (t0.symbol) {
                     state.prices[t0.symbol] = p0;
                     state.observedTokens.add(t0.symbol);
@@ -1532,24 +1699,21 @@
 
                 state.lastPriceUpdate = new Date();
                 document.getElementById('lastPriceUpdate').textContent = new Date().toLocaleTimeString();
-                updatePriceUpdateStatus('success');
 
-                // Update price history for UI
-                if (t0.symbol) {
+                if (t0.symbol && p0 !== null && p0 !== undefined) {
                     updatePriceHistory(t0.symbol, p0, ts);
                 }
-                if (t1.symbol) {
+                if (t1.symbol && p1 !== null && p1 !== undefined) {
                     updatePriceHistory(t1.symbol, p1, ts);
                 }
 
-                // Trigger pattern detection with new data
                 if (state.isRunning) {
-                    detectPatternsForToken(t0.symbol);
-                    detectPatternsForToken(t1.symbol);
+                    if (t0.symbol) detectPatternsForToken(t0.symbol);
+                    if (t1.symbol) detectPatternsForToken(t1.symbol);
                 }
 
             } catch (error) {
-                log('error', `Swap log error: ${error.message}`);
+                log('error', `Swap log error: ${error.message || String(error)}`);
             }
         }
 
@@ -1624,6 +1788,10 @@
         }
 
         function updatePriceHistory(token, price, timestamp = null) {
+            if (price === null || price === undefined || !Number.isFinite(price)) {
+                return;
+            }
+
             if (!state.priceHistory[token]) {
                 state.priceHistory[token] = [];
             }
@@ -1632,13 +1800,11 @@
             const newEntry = { price, timestamp: ts };
             state.priceHistory[token].push(newEntry);
 
-            // Enforce max history
             const maxHistory = state.settings.maxPriceHistory || 10000;
             if (state.priceHistory[token].length > maxHistory) {
                 state.priceHistory[token].shift();
             }
 
-            // Enforce time-based history
             const durationHours = state.settings.priceHistoryDuration || 24;
             const durationMs = durationHours * 60 * 60 * 1000;
             const cutoff = ts - durationMs;
@@ -1679,7 +1845,7 @@
             const selectEl = document.getElementById('chartTokenSelect');
             const token = selectEl.value;
 
-            if (!token || !state.priceHistory[token]) {
+            if (!token || !state.priceHistory[token] || state.priceHistory[token].length === 0) {
                 priceChart.data.labels = [];
                 priceChart.data.datasets[0].data = [];
                 priceChart.update();
@@ -1730,7 +1896,6 @@
 
                     state.observedTokens.add(t.symbol);
 
-                    // Add to price history
                     if (!state.priceHistory[t.symbol]) {
                         state.priceHistory[t.symbol] = [];
                     }
@@ -1743,7 +1908,6 @@
                     }
                 } catch (e) {
                     log('debug', `Token metadata unavailable: ${address}`);
-                    // Try to match with known tokens
                     for (const [symbol, token] of Object.entries(KNOWN_TOKENS)) {
                         if (norm(token.address) === norm(address)) {
                             t.symbol = symbol;
@@ -1831,10 +1995,8 @@
         // Pattern Detection
         // ============================================
         function startPatternDetection() {
-            // Initial detection
             detectAllPatterns();
 
-            // Set up interval
             state.patternDetectionInterval = setInterval(() => {
                 if (state.isRunning) {
                     detectAllPatterns();
@@ -1868,11 +2030,9 @@
             const minTime = state.settings.minTimeWindow * 1000;
             const maxTime = state.settings.maxTimeWindow * 1000;
 
-            // Look for local minima (potential buy points)
             for (let i = 5; i < history.length - 5; i++) {
                 const current = history[i];
 
-                // Check if this is a local minima
                 let isMinima = true;
                 for (let j = i - 5; j <= i + 5; j++) {
                     if (j === i) continue;
@@ -1885,21 +2045,18 @@
                 }
 
                 if (isMinima) {
-                    // Look backward to find the drop
                     for (let j = i - 1; j >= Math.max(0, i - 20); j--) {
                         const prev = history[j];
                         const dropPct = (current.price - prev.price) / prev.price;
                         const timeDiff = current.timestamp - prev.timestamp;
 
                         if (dropPct <= -minChange && timeDiff >= minTime && timeDiff <= maxTime) {
-                            // Found a drop, now look forward for a rise
                             for (let k = i + 1; k < Math.min(history.length, i + 20); k++) {
                                 const next = history[k];
                                 const risePct = (next.price - current.price) / current.price;
                                 const riseTime = next.timestamp - current.timestamp;
 
                                 if (risePct >= minChange && riseTime >= minTime && riseTime <= maxTime) {
-                                    // Found a pattern: drop then rise
                                     const patternKey = getPatternKey(
                                         Math.abs(dropPct) * 100,
                                         timeDiff / 1000,
@@ -1907,11 +2064,8 @@
                                         riseTime / 1000
                                     );
 
-                                    // Calculate profit
-                                    const profitPct = risePct * 100;
-                                    const profitETH = 1 * risePct; // Assuming 1 ETH trade
+                                    const profitETH = 1 * risePct;
 
-                                    // Update or create pattern
                                     updatePattern(
                                         patternKey,
                                         token,
@@ -1924,7 +2078,6 @@
                                         current.timestamp
                                     );
 
-                                    // Also check if this is part of a longer pattern
                                     break;
                                 }
                             }
@@ -1936,7 +2089,6 @@
         }
 
         function getPatternKey(buyDropPct, buyTime, sellRisePct, sellTime) {
-            // Round to 1 decimal place for percentage, nearest second for time
             const roundedDrop = Math.round(buyDropPct * 10) / 10;
             const roundedRise = Math.round(sellRisePct * 10) / 10;
             const roundedBuyTime = Math.round(buyTime);
@@ -1988,9 +2140,7 @@
                 isWin: isWin
             });
 
-            // Enforce max patterns
             if (state.patterns.size > (state.settings.maxPatterns || 500)) {
-                // Remove oldest pattern
                 let oldestKey = null;
                 let oldestTime = Infinity;
                 for (const [key, p] of state.patterns) {
@@ -2004,7 +2154,6 @@
                 }
             }
 
-            // Enforce pattern history duration
             const durationDays = state.settings.patternHistoryDuration || 7;
             const cutoff = timestamp - durationDays * 24 * 60 * 60 * 1000;
 
@@ -2018,10 +2167,8 @@
         }
 
         function updateLeaderboard() {
-            // Convert map to array
             const patternsArray = Array.from(state.patterns.values());
 
-            // Calculate metrics for each pattern
             patternsArray.forEach(pattern => {
                 pattern.winRate = pattern.totalTrades > 0 ?
                     (pattern.winningTrades / pattern.totalTrades * 100) : 0;
@@ -2032,10 +2179,8 @@
                     (pattern.winningTrades > 0 ? Infinity : 0);
             });
 
-            // Sort by total profit (descending)
             patternsArray.sort((a, b) => b.totalProfit - a.totalProfit);
 
-            // Assign ranks
             patternsArray.forEach((pattern, index) => {
                 pattern.rank = index + 1;
             });
@@ -2046,14 +2191,12 @@
         function updateDashboardStats() {
             const patternsArray = Array.from(state.patterns.values());
 
-            // Update pattern counts
             document.getElementById('detectedPatternsCount').textContent = state.patterns.size;
             document.getElementById('patternsAnalyzed').textContent = state.patterns.size;
 
             const profitablePatterns = patternsArray.filter(p => p.totalProfit > 0);
             document.getElementById('profitablePatterns').textContent = profitablePatterns.length;
 
-            // Best pattern profit
             if (profitablePatterns.length > 0) {
                 const bestPattern = profitablePatterns.reduce((a, b) => a.totalProfit > b.totalProfit ? a : b);
                 document.getElementById('bestPatternProfit').textContent = bestPattern.totalProfit.toFixed(6) + ' ETH';
@@ -2061,18 +2204,16 @@
                 document.getElementById('bestPatternProfit').textContent = '0.000000 ETH';
             }
 
-            // Total opportunities
             const totalOpportunities = patternsArray.reduce((sum, p) => sum + p.occurrences, 0);
             document.getElementById('totalOpportunities').textContent = totalOpportunities;
 
-            // Pattern success rate
             const totalTrades = patternsArray.reduce((sum, p) => sum + p.totalTrades, 0);
             const winningTrades = patternsArray.reduce((sum, p) => sum + p.winningTrades, 0);
             const successRate = totalTrades > 0 ? (winningTrades / totalTrades * 100) : 0;
             document.getElementById('patternSuccessRate').style.width = successRate + '%';
 
-            // Update top pattern display
             updateTopPatternDisplay(profitablePatterns[0] || null);
+            updateChartTokenSelect();
         }
 
         function updateTopPatternDisplay(pattern) {
@@ -2136,7 +2277,7 @@
                         <div class="pattern-metrics">
                             <div class="metric">
                                 <div>Profit</div>
-                                <div class="metric-value ${profitClass}">${pattern.totalProfit.toFixed(6)} ETH</div>
+                                <div class="metric-value ${profitClass}">${pattern.totalProfit ? pattern.totalProfit.toFixed(6) : '0.000000'} ETH</div>
                             </div>
                             <div class="metric">
                                 <div>Win Rate</div>
@@ -2180,10 +2321,10 @@
                         <td>${pattern.rank}</td>
                         <td>${pattern.description}</td>
                         <td>${pattern.token}</td>
-                        <td class="${profitClass}">${pattern.totalProfit.toFixed(6)}</td>
+                        <td class="${profitClass}">${pattern.totalProfit ? pattern.totalProfit.toFixed(6) : '0.000000'}</td>
                         <td class="${winRateClass}">${pattern.winRate.toFixed(1)}%</td>
                         <td>${pattern.totalTrades}</td>
-                        <td class="${avgProfitClass}">${pattern.avgProfit.toFixed(6)}</td>
+                        <td class="${avgProfitClass}">${pattern.avgProfit ? pattern.avgProfit.toFixed(6) : '0.000000'}</td>
                         <td>${new Date(pattern.lastSeen).toLocaleTimeString()}</td>
                     </tr>
                 `;
@@ -2254,20 +2395,16 @@
         }
 
         function sortLeaderboard(column) {
-            const tbody = document.getElementById('leaderboardBody');
             const header = document.querySelector(`th[onclick="sortLeaderboard('${column}')"]`);
 
-            // Determine sort direction
             const currentDir = header.getAttribute('data-sort') || 'desc';
             const newDir = currentDir === 'desc' ? 'asc' : 'desc';
             header.setAttribute('data-sort', newDir);
 
-            // Update all headers
             document.querySelectorAll('th[onclick^="sortLeaderboard"]').forEach(h => {
                 h.innerHTML = h.innerHTML.replace('▼', '').replace('▲', '') + (h === header ? (newDir === 'desc' ? ' ▼' : ' ▲') : '');
             });
 
-            // Sort
             const sorted = [...state.leaderboard];
             sorted.sort((a, b) => {
                 let aVal, bVal;
@@ -2290,11 +2427,9 @@
                 }
             });
 
-            // Update ranks
             sorted.forEach((p, i) => p.rank = i + 1);
             state.leaderboard = sorted;
 
-            // Re-render
             renderLeaderboard();
         }
 
@@ -2316,17 +2451,17 @@
             const bsi = document.getElementById('botStatusIndicator');
 
             if (state.isRunning) {
-                si.className = 'status-indicator status-running';
-                st.textContent = 'Running';
-                sb.disabled = true;
-                stopb.disabled = false;
-                bsi.innerHTML = '<span class="badge badge-success">Running</span>';
+                if (si) si.className = 'status-indicator status-running';
+                if (st) st.textContent = 'Running';
+                if (sb) sb.disabled = true;
+                if (stopb) stopb.disabled = false;
+                if (bsi) bsi.innerHTML = '<span class="badge badge-success">Running</span>';
             } else {
-                si.className = 'status-indicator status-stopped';
-                st.textContent = 'Stopped';
-                sb.disabled = false;
-                stopb.disabled = true;
-                bsi.innerHTML = '<span class="badge badge-secondary">Stopped</span>';
+                if (si) si.className = 'status-indicator status-stopped';
+                if (st) st.textContent = 'Stopped';
+                if (sb) sb.disabled = false;
+                if (stopb) stopb.disabled = true;
+                if (bsi) bsi.innerHTML = '<span class="badge badge-secondary">Stopped</span>';
             }
         }
 
@@ -2356,7 +2491,6 @@
                 return;
             }
 
-            // Update chart token select
             updateChartTokenSelect();
 
             let html = '';
@@ -2369,6 +2503,9 @@
 
                 const current = history[history.length - 1];
                 const previous = history.length > 1 ? history[history.length - 2] : current;
+
+                if (!current.price || !previous.price) return;
+
                 const changePct = ((current.price - previous.price) / previous.price) * 100;
                 const changeClass = changePct >= 0 ? 'price-up' : 'price-down';
                 const changeSymbol = changePct > 0 ? '↑' : changePct < 0 ? '↓' : '';
@@ -2402,15 +2539,38 @@
 
             selectEl.innerHTML = options;
 
-            // Restore previous selection if still valid
             if (tokens.includes(currentValue)) {
                 selectEl.value = currentValue;
                 updateChart();
             }
         }
 
-        function updatePriceUpdateStatus(status) {
-            // This is handled in the swap log processing
+        function resetView() {
+            const priceRows = document.getElementById('priceRows');
+            if (priceRows) {
+                priceRows.innerHTML = '<tr><td colspan="5" class="text-center text-secondary">Press Start to begin</td></tr>';
+            }
+
+            const trackedEl = document.getElementById('trackedTokensCount');
+            if (trackedEl) trackedEl.textContent = '0';
+
+            const detectedEl = document.getElementById('detectedPatternsCount');
+            if (detectedEl) detectedEl.textContent = '0';
+
+            const patternsEl = document.getElementById('patternsAnalyzed');
+            if (patternsEl) patternsEl.textContent = '0';
+
+            const profitableEl = document.getElementById('profitablePatterns');
+            if (profitableEl) profitableEl.textContent = '0';
+
+            const bestEl = document.getElementById('bestPatternProfit');
+            if (bestEl) bestEl.textContent = '0.000000 ETH';
+
+            const totalEl = document.getElementById('totalOpportunities');
+            if (totalEl) totalEl.textContent = '0';
+
+            const rateEl = document.getElementById('patternSuccessRate');
+            if (rateEl) rateEl.style.width = '0%';
         }
 
         function setStatus(t, type = "connecting") {
@@ -2430,9 +2590,6 @@
             const sb = document.getElementById('startBtn');
             const stopb = document.getElementById('stopBtn');
             if (!sb || !stopb) return;
-
-            sb.classList.remove('running', 'starting');
-            stopb.classList.remove('running', 'starting');
 
             if (state.manuallyStopped || !state.activeSession) {
                 sb.disabled = false;
@@ -2457,17 +2614,6 @@
             }
         }
 
-        function resetView() {
-            document.getElementById('priceRows').innerHTML = '<tr><td colspan="5" class="text-center text-secondary">Press Start to begin</td></tr>';
-            document.getElementById('trackedTokensCount').textContent = '0';
-            document.getElementById('detectedPatternsCount').textContent = '0';
-            document.getElementById('patternsAnalyzed').textContent = '0';
-            document.getElementById('profitablePatterns').textContent = '0';
-            document.getElementById('bestPatternProfit').textContent = '0.000000 ETH';
-            document.getElementById('totalOpportunities').textContent = '0';
-            document.getElementById('patternSuccessRate').style.width = '0%';
-        }
-
         // ============================================
         // User Actions
         // ============================================
@@ -2478,7 +2624,8 @@
             }
 
             showLoading('startSpinner');
-            document.getElementById('startBtn').disabled = true;
+            const startBtn = document.getElementById('startBtn');
+            if (startBtn) startBtn.disabled = true;
 
             try {
                 currentChainKey = state.settings.network || 'arbitrum';
@@ -2491,10 +2638,11 @@
                 log('success', `Observer started on ${CHAINS[currentChainKey].name}`);
 
             } catch (error) {
-                log('error', `Failed to start observer: ${error.message}`);
-                showToast('error', `Failed to start: ${error.message}`);
+                const errorMsg = error && error.message ? error.message : String(error);
+                log('error', `Failed to start observer: ${errorMsg}`);
+                showToast('error', `Failed to start: ${errorMsg}`);
                 hideLoading('startSpinner');
-                document.getElementById('startBtn').disabled = false;
+                if (startBtn) startBtn.disabled = false;
                 state.isRunning = false;
             }
         }
@@ -2506,7 +2654,8 @@
             }
 
             showLoading('stopSpinner');
-            document.getElementById('stopBtn').disabled = true;
+            const stopBtn = document.getElementById('stopBtn');
+            if (stopBtn) stopBtn.disabled = true;
 
             try {
                 state.isRunning = false;
@@ -2518,11 +2667,12 @@
                 log('info', 'Observer stopped');
 
             } catch (error) {
-                log('error', `Failed to stop observer: ${error.message}`);
-                showToast('error', `Failed to stop: ${error.message}`);
+                const errorMsg = error && error.message ? error.message : String(error);
+                log('error', `Failed to stop observer: ${errorMsg}`);
+                showToast('error', `Failed to stop: ${errorMsg}`);
             } finally {
                 hideLoading('stopSpinner');
-                document.getElementById('stopBtn').disabled = false;
+                if (stopBtn) stopBtn.disabled = false;
             }
         }
 
@@ -2541,8 +2691,9 @@
 
                 provider.destroy();
             } catch (error) {
-                showToast('error', `Connection test failed: ${error.message}`);
-                log('error', `Connection test failed: ${error.message}`);
+                const errorMsg = error && error.message ? error.message : String(error);
+                showToast('error', `Connection test failed: ${errorMsg}`);
+                log('error', `Connection test failed: ${errorMsg}`);
             }
         }
 
@@ -2558,6 +2709,8 @@
 
         function showToast(type, message, duration = 5000) {
             const container = document.getElementById('toastContainer');
+            if (!container) return;
+
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
             const icons = { success: '✓', error: '✗', warning: '⚠', info: 'ℹ' };
@@ -2576,11 +2729,8 @@
 
         function toggleAutoScroll() {
             state.autoScroll = !state.autoScroll;
-            document.querySelector('#logs .btn-warning').textContent = 'Auto-Scroll: ' + (state.autoScroll ? 'ON' : 'OFF');
-        }
-
-        function closeModal() {
-            document.getElementById('notificationModal').style.display = 'none';
+            const btn = document.querySelector('#logs .btn-warning');
+            if (btn) btn.textContent = 'Auto-Scroll: ' + (state.autoScroll ? 'ON' : 'OFF');
         }
 
         function clearLogs() {
@@ -2616,7 +2766,7 @@
                 'Buy Time (s)': p.buyTime.toFixed(0),
                 'Sell Rise %': p.sellRisePct.toFixed(2),
                 'Sell Time (s)': p.sellTime.toFixed(0),
-                'Total Profit (ETH)': p.totalProfit.toFixed(6),
+                'Total Profit (ETH)': p.totalProfit ? p.totalProfit.toFixed(6) : '0.000000',
                 'Win Rate (%)': p.winRate.toFixed(1),
                 'Total Trades': p.totalTrades,
                 'Occurrences': p.occurrences,
@@ -2658,12 +2808,12 @@
                 'Rank': p.rank,
                 'Pattern': p.description,
                 'Token': p.token,
-                'Total Profit (ETH)': p.totalProfit.toFixed(6),
+                'Total Profit (ETH)': p.totalProfit ? p.totalProfit.toFixed(6) : '0.000000',
                 'Win Rate (%)': p.winRate.toFixed(1),
                 'Total Trades': p.totalTrades,
                 'Winning Trades': p.winningTrades,
                 'Losing Trades': p.losingTrades,
-                'Avg Profit (ETH)': p.avgProfit.toFixed(6),
+                'Avg Profit (ETH)': p.avgProfit ? p.avgProfit.toFixed(6) : '0.000000',
                 'Occurrences': p.occurrences,
                 'Profit Factor': p.profitFactor === Infinity ? '∞' : p.profitFactor.toFixed(2),
                 'First Seen': new Date(p.firstSeen).toLocaleString(),
@@ -2731,7 +2881,6 @@
             saveSettings();
             showToast('success', 'Detection settings saved!');
 
-            // Restart pattern detection with new settings
             if (state.isRunning) {
                 stopPatternDetection();
                 startPatternDetection();
@@ -2756,8 +2905,13 @@
         }
 
         function saveSettings() {
-            localStorage.setItem('patternFinderSettings', JSON.stringify(state.settings));
-            log('info', 'Settings saved');
+            try {
+                localStorage.setItem('patternFinderSettings', JSON.stringify(state.settings));
+                log('info', 'Settings saved');
+            } catch (e) {
+                log('warning', `Could not save settings: ${e.message}. Running in private mode.`);
+                showToast('warning', 'Settings could not be saved (private browsing?). Changes will be lost on refresh.');
+            }
         }
 
         function loadSettings() {
@@ -2769,23 +2923,47 @@
                 updateSettingsUI();
                 log('info', 'Settings loaded');
             } catch (error) {
-                log('error', `Failed to load settings: ${error.message}`);
+                log('warning', `Could not load settings: ${error.message}. Using defaults.`);
+                updateSettingsUI();
             }
         }
 
         function updateSettingsUI() {
-            document.getElementById('networkSelect').value = state.settings.network || 'arbitrum';
-            document.getElementById('minPriceChange').value = state.settings.minPriceChange || 0.1;
-            document.getElementById('minTimeWindow').value = state.settings.minTimeWindow || 5;
-            document.getElementById('maxTimeWindow').value = state.settings.maxTimeWindow || 300;
-            document.getElementById('minOccurrences').value = state.settings.minOccurrences || 3;
-            document.getElementById('priceHistoryDuration').value = state.settings.priceHistoryDuration || 24;
-            document.getElementById('maxPriceHistory').value = state.settings.maxPriceHistory || 10000;
-            document.getElementById('patternHistoryDuration').value = state.settings.patternHistoryDuration || 7;
-            document.getElementById('maxPatterns').value = state.settings.maxPatterns || 500;
-            document.getElementById('priceUpdateInterval').value = state.settings.priceUpdateInterval || 1000;
-            document.getElementById('patternDetectionInterval').value = state.settings.patternDetectionInterval || 5000;
-            document.getElementById('enableDebug').checked = state.settings.enableDebug !== false;
+            const networkSelect = document.getElementById('networkSelect');
+            if (networkSelect) networkSelect.value = state.settings.network || 'arbitrum';
+
+            const minPriceChange = document.getElementById('minPriceChange');
+            if (minPriceChange) minPriceChange.value = state.settings.minPriceChange || 0.1;
+
+            const minTimeWindow = document.getElementById('minTimeWindow');
+            if (minTimeWindow) minTimeWindow.value = state.settings.minTimeWindow || 5;
+
+            const maxTimeWindow = document.getElementById('maxTimeWindow');
+            if (maxTimeWindow) maxTimeWindow.value = state.settings.maxTimeWindow || 300;
+
+            const minOccurrences = document.getElementById('minOccurrences');
+            if (minOccurrences) minOccurrences.value = state.settings.minOccurrences || 3;
+
+            const priceHistoryDuration = document.getElementById('priceHistoryDuration');
+            if (priceHistoryDuration) priceHistoryDuration.value = state.settings.priceHistoryDuration || 24;
+
+            const maxPriceHistory = document.getElementById('maxPriceHistory');
+            if (maxPriceHistory) maxPriceHistory.value = state.settings.maxPriceHistory || 10000;
+
+            const patternHistoryDuration = document.getElementById('patternHistoryDuration');
+            if (patternHistoryDuration) patternHistoryDuration.value = state.settings.patternHistoryDuration || 7;
+
+            const maxPatterns = document.getElementById('maxPatterns');
+            if (maxPatterns) maxPatterns.value = state.settings.maxPatterns || 500;
+
+            const priceUpdateInterval = document.getElementById('priceUpdateInterval');
+            if (priceUpdateInterval) priceUpdateInterval.value = state.settings.priceUpdateInterval || 1000;
+
+            const patternDetectionInterval = document.getElementById('patternDetectionInterval');
+            if (patternDetectionInterval) patternDetectionInterval.value = state.settings.patternDetectionInterval || 5000;
+
+            const enableDebug = document.getElementById('enableDebug');
+            if (enableDebug) enableDebug.checked = state.settings.enableDebug !== false;
         }
 
         function clearAllData() {
@@ -2793,47 +2971,39 @@
 
             try {
                 localStorage.removeItem('patternFinderSettings');
-                state.patterns.clear();
-                state.leaderboard = [];
-                state.priceHistory = {};
-                state.prices = {};
-                state.observedTokens.clear();
-                state.logs = [];
-
-                // Clear UI
-                document.getElementById('logContainer').innerHTML = '<div class="log-entry log-info">[INFO] All data cleared</div>';
-                document.getElementById('priceRows').innerHTML = '<tr><td colspan="5" class="text-center text-secondary">Press Start to begin</td></tr>';
-                document.getElementById('patternsList').innerHTML = '<p class="text-center text-secondary">No patterns detected yet. Start the observer to begin analysis.</p>';
-                document.getElementById('leaderboardBody').innerHTML = '<tr><td colspan="8" class="text-center text-secondary">No patterns ranked yet</td></tr>';
-
-                updateDashboardStats();
-                updateChartTokenSelect();
-
-                showToast('success', 'All data cleared!');
-                log('info', 'All data cleared');
-            } catch (error) {
-                showToast('error', `Failed to clear data: ${error.message}`);
-                log('error', `Failed to clear data: ${error.message}`);
+            } catch (e) {
+                log('warning', `Could not clear localStorage: ${e.message}`);
             }
+
+            state.patterns.clear();
+            state.leaderboard = [];
+            state.priceHistory = {};
+            state.prices = {};
+            state.observedTokens.clear();
+            state.logs = [];
+
+            const logContainer = document.getElementById('logContainer');
+            if (logContainer) logContainer.innerHTML = '<div class="log-entry log-info">[INFO] All data cleared</div>';
+
+            const priceRows = document.getElementById('priceRows');
+            if (priceRows) priceRows.innerHTML = '<tr><td colspan="5" class="text-center text-secondary">Press Start to begin</td></tr>';
+
+            const patternsList = document.getElementById('patternsList');
+            if (patternsList) patternsList.innerHTML = '<p class="text-center text-secondary">No patterns detected yet. Start the observer to begin analysis.</p>';
+
+            const leaderboardBody = document.getElementById('leaderboardBody');
+            if (leaderboardBody) leaderboardBody.innerHTML = '<tr><td colspan="8" class="text-center text-secondary">No patterns ranked yet</td></tr>';
+
+            updateDashboardStats();
+            updateChartTokenSelect();
+
+            showToast('success', 'All data cleared!');
+            log('info', 'All data cleared');
         }
 
         // ============================================
-        // Utility Functions
+        // Known Tokens
         // ============================================
-        function norm(a) {
-            return String(a).toLowerCase();
-        }
-
-        function short(a) {
-            if (!a) return '';
-            return a.substring(0, 6) + '...' + a.substring(a.length - 4);
-        }
-
-        function sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
-
-        // Known tokens for better symbol display
         const KNOWN_TOKENS = {
             'ETH': { address: null, decimals: 18, symbol: 'ETH', name: 'Ethereum' },
             'WETH': { address: null, decimals: 18, symbol: 'WETH', name: 'Wrapped ETH' },
@@ -2846,7 +3016,6 @@
             'USDT': { address: null, decimals: 6, symbol: 'USDT', name: 'Tether' }
         };
 
-        // Initialize known tokens with addresses for each network
         function initializeKnownTokens() {
             const networkTokens = {
                 arbitrum: {
@@ -2891,7 +3060,6 @@
                 }
             };
 
-            // Update known tokens with current network addresses
             const network = CHAINS[currentChainKey];
             if (network && networkTokens[currentChainKey]) {
                 for (const [symbol, address] of Object.entries(networkTokens[currentChainKey])) {
