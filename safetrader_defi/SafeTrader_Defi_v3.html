@@ -1045,8 +1045,8 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Window Size (points)</label>
-                            <input type="number" class="form-control" id="oscillationWindowSize" value="3" min="2"
-                                max="10">
+                            <input type="number" class="form-control" id="oscillationWindowSize" value="50" min="2"
+                                max="100">
                             <small class="setting-description">Number of price points to consider for local
                                 minima/maxima. Lower = more sensitive.</small>
                         </div>
@@ -1287,7 +1287,7 @@
                 priceHistoryDuration: 1,
                 preventSequentialTrades: true,
                 minPriceChange: 0.5,
-                oscillationWindowSize: 3,
+                oscillationWindowSize: 50,
                 entryThreshold: 3,
                 exitThreshold: 3,
                 patternDetectionInterval: 10000
