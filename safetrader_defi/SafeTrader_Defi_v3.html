@@ -666,6 +666,12 @@
             background: rgba(220, 53, 69, 0.2);
             color: var(--bs-danger);
         }
+
+        .leading-pattern {
+            border-left: 3px solid var(--bs-primary);
+            padding-left: 10px;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 
@@ -676,8 +682,9 @@
         <header class="text-center mb-2">
             <h1>Uniswap Pure Pattern Detection Scalper</h1>
             <p class="text-secondary">
-                <strong>Fully Automatic:</strong> Detects trading patterns from price history and executes trades |
-                Trade amount scales with gas fees
+                <strong>Fully Automatic:</strong> Detects profitable buying patterns and executes trades |
+                Trade amount scales with gas fees |
+                Sells when target profit is reached
             </p>
         </header>
 
@@ -779,8 +786,8 @@
                     <div class="card-body">
                         <p><strong>Total Patterns:</strong> <span id="totalPatterns">0</span></p>
                         <p><strong>Buy Patterns:</strong> <span id="buyPatternsCount">0</span></p>
-                        <p><strong>Sell Patterns:</strong> <span id="sellPatternsCount">0</span></p>
                         <p><strong>Tokens with Patterns:</strong> <span id="tokensWithPatterns">0</span></p>
+                        <p><strong>Target Profit:</strong> <span id="targetProfitPercent">0.5%</span></p>
                         <div class="progress-bar mt-2">
                             <div class="progress-fill" id="patternSuccessBar" style="width: 0%;"></div>
                         </div>
@@ -1006,8 +1013,9 @@
                 </div>
                 <div class="card-body" style="max-height: 500px; overflow-y: auto;">
                     <div class="alert alert-info mb-2">
-                        These are the patterns currently being used for trading. Each pattern is automatically detected
-                        from price history.
+                        These are the profitable buy patterns currently being used for trading.
+                        Each pattern is automatically detected from price history and validated with backtesting.
+                        Only patterns that meet the minimum profitability requirements are shown.
                     </div>
                     <div id="patternsList">
                         <p class="text-secondary">No patterns detected yet. Start the bot to begin pattern analysis.</p>
@@ -1047,7 +1055,7 @@
                     </div>
                 </div>
                 <div class="card">
-                    <div class="card-header">Pattern Validation</div>
+                    <div class="card-header">Pattern Validation & Profit Targets</div>
                     <div class="card-body">
                         <div class="form-group">
                             <label class="form-label">Min Pattern Win Rate (%)</label>
@@ -1059,6 +1067,20 @@
                             <label class="form-label">Backtest Period (hours)</label>
                             <input type="number" class="form-control" id="backtestPeriod" value="24" min="1" max="168">
                             <small class="setting-description">How much history to use for pattern validation.</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Target Profit Percentage (%)</label>
+                            <input type="number" class="form-control" id="targetProfitPercent" value="0.5" min="0.1"
+                                max="100" step="0.1">
+                            <small class="setting-description">Sell when this profit percentage is reached (including
+                                fees).</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Min Pattern Profitability (%)</label>
+                            <input type="number" class="form-control" id="minProfitability" value="0.2" min="0.1"
+                                max="100" step="0.1">
+                            <small class="setting-description">Minimum average profitability for a pattern to be
+                                considered.</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Max Patterns Per Token</label>
@@ -1218,10 +1240,11 @@
                             <small class="setting-description">Maximum allowed slippage.</small>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Min Profit (%)</label>
+                            <label class="form-label">Min Profit to Close (%)</label>
                             <input type="number" class="form-control" id="minProfitPercent" value="0.5" min="0"
                                 max="100" step="0.01">
-                            <small class="setting-description">Minimum profit to close a position.</small>
+                            <small class="setting-description">Minimum profit to close a position (overrides target
+                                profit for manual closes).</small>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Max Position Age (seconds)</label>
@@ -1330,7 +1353,7 @@
         // ============================================
         // Configuration & Constants
         // ============================================
-        const APP_VERSION = '2.0.0';
+        const APP_VERSION = '3.0.0';
 
         const CHAINS = {
             arbitrum: {
@@ -1430,6 +1453,7 @@
                 gasLimit: 200000,
                 maxPriceImpact: 0.5,
                 minProfitPercent: 0.5,
+                targetProfitPercent: 0.5,
                 maxPositionAge: 300,
                 preventSequentialTrades: true,
                 minPriceChange: 0.1,
@@ -1437,6 +1461,7 @@
                 maxTimeWindow: 300,
                 minOccurrences: 2,
                 minWinRate: 60,
+                minProfitability: 0.2,
                 backtestPeriod: 24,
                 maxPatternsPerToken: 5,
                 priceHistoryDuration: 24,
@@ -1462,7 +1487,8 @@
                 buyPatterns: 0,
                 sellPatterns: 0,
                 tokensWithPatterns: 0
-            }
+            },
+            openBuyOrders: new Map()
         };
 
         let equityChart = null;
@@ -1605,6 +1631,15 @@
                 gasFeeMultiplierInput.addEventListener('change', updateTradeAmountDisplay);
                 gasFeeMultiplierInput.addEventListener('input', updateTradeAmountDisplay);
             }
+
+            const targetProfitInput = document.getElementById('targetProfitPercent');
+            if (targetProfitInput) {
+                targetProfitInput.addEventListener('change', function () {
+                    state.settings.targetProfitPercent = parseFloat(this.value) || 0.5;
+                    document.getElementById('targetProfitPercent').textContent = state.settings.targetProfitPercent + '%';
+                    saveSettings();
+                });
+            }
         }
 
         function scrollToBottom(elementId) {
@@ -1683,6 +1718,8 @@
         function updateStartingEthDisplay() {
             const startingEthInput = document.getElementById('startingEth');
             const startingEthDisplay = document.getElementById('startingEthDisplay');
+            const targetProfitDisplay = document.getElementById('targetProfitPercent');
+
             if (startingEthInput && startingEthDisplay) {
                 const startingEth = parseFloat(startingEthInput.value) || 1.0;
                 startingEthDisplay.textContent = startingEth.toFixed(6) + ' ETH';
@@ -1701,13 +1738,15 @@
                     updateEquityChart();
                 }
             }
+
+            if (targetProfitDisplay) {
+                targetProfitDisplay.textContent = (state.settings.targetProfitPercent || 0.5) + '%';
+            }
         }
 
         // ============================================
         // Pattern Detection & Trading
         // ============================================
-
-        // Pattern types
         const PATTERN_TYPES = {
             BUY: 'buy',
             SELL: 'sell'
@@ -1740,12 +1779,17 @@
                 const history = state.priceHistory[token];
                 if (!history || history.length < 10) continue;
 
-                const patterns = detectPatternsForToken(history, token);
+                // Only detect buy patterns as per requirements
+                const patterns = detectBuyPatternsForToken(history, token);
+
                 patterns.forEach(pattern => {
                     const patternKey = getPatternKey(pattern);
 
-                    if (!newActivePatterns.has(patternKey)) {
-                        newActivePatterns.set(patternKey, {
+                    // Check if we already have this pattern for this token
+                    const existingPatternKey = `${token}_${patternKey}`;
+
+                    if (!newActivePatterns.has(existingPatternKey)) {
+                        newActivePatterns.set(existingPatternKey, {
                             ...pattern,
                             token,
                             occurrences: 1,
@@ -1753,10 +1797,12 @@
                             lastSeen: pattern.timestamp,
                             winRate: 0,
                             totalTrades: 0,
-                            winningTrades: 0
+                            winningTrades: 0,
+                            avgProfitability: 0,
+                            totalProfit: 0
                         });
                     } else {
-                        const existing = newActivePatterns.get(patternKey);
+                        const existing = newActivePatterns.get(existingPatternKey);
                         existing.occurrences++;
                         existing.lastSeen = Math.max(existing.lastSeen, pattern.timestamp);
                     }
@@ -1773,7 +1819,7 @@
             window.log('info', `Detected ${newActivePatterns.size} active patterns across ${tokens.length} tokens`);
         }
 
-        function detectPatternsForToken(history, token) {
+        function detectBuyPatternsForToken(history, token) {
             if (!history || history.length < 10) return [];
 
             const minChange = state.settings.minPriceChange / 100;
@@ -1781,11 +1827,12 @@
             const maxTime = state.settings.maxTimeWindow * 1000;
             const patterns = [];
 
-            // Detect buy patterns (local minima)
+            // Detect buy patterns (local minima with subsequent rise)
             for (let i = 5; i < history.length - 5; i++) {
                 const current = history[i];
                 let isMinima = true;
 
+                // Check if this is a local minimum
                 for (let j = i - 5; j <= i + 5; j++) {
                     if (j === i) continue;
                     if (j >= 0 && j < history.length) {
@@ -1829,42 +1876,6 @@
                 }
             }
 
-            // Detect sell patterns (local maxima)
-            for (let i = 5; i < history.length - 5; i++) {
-                const current = history[i];
-                let isMaxima = true;
-
-                for (let j = i - 5; j <= i + 5; j++) {
-                    if (j === i) continue;
-                    if (j >= 0 && j < history.length) {
-                        if (history[j].price > current.price) {
-                            isMaxima = false;
-                            break;
-                        }
-                    }
-                }
-
-                if (isMaxima) {
-                    // Check for sell pattern: price rise
-                    for (let j = i - 1; j >= Math.max(0, i - 20); j--) {
-                        const prev = history[j];
-                        const risePct = (current.price - prev.price) / prev.price;
-                        const timeDiff = current.timestamp - prev.timestamp;
-
-                        if (risePct >= minChange && timeDiff >= minTime && timeDiff <= maxTime) {
-                            patterns.push({
-                                type: PATTERN_TYPES.SELL,
-                                risePct: risePct * 100,
-                                riseTime: timeDiff / 1000,
-                                token: token,
-                                timestamp: current.timestamp
-                            });
-                            break;
-                        }
-                    }
-                }
-            }
-
             return patterns;
         }
 
@@ -1894,6 +1905,7 @@
             const backtestPeriodMs = (state.settings.backtestPeriod || 24) * 60 * 60 * 1000;
             const minWinRate = state.settings.minWinRate || 60;
             const minOccurrences = state.settings.minOccurrences || 2;
+            const minProfitability = state.settings.minProfitability || 0.2;
 
             patterns.forEach((pattern, key) => {
                 const history = state.priceHistory[pattern.token];
@@ -1902,15 +1914,19 @@
                     return;
                 }
 
-                // Simple backtest: check if pattern would have been profitable
+                // Enhanced backtest: check if pattern would have been profitable
                 const backtestResult = backtestPattern(pattern, history, backtestPeriodMs);
 
-                if (backtestResult.occurrences < minOccurrences || backtestResult.winRate < minWinRate) {
+                if (backtestResult.occurrences < minOccurrences ||
+                    backtestResult.winRate < minWinRate ||
+                    backtestResult.avgProfitability < minProfitability) {
                     patterns.delete(key);
                 } else {
                     pattern.winRate = backtestResult.winRate;
                     pattern.totalTrades = backtestResult.totalTrades;
                     pattern.winningTrades = backtestResult.winningTrades;
+                    pattern.avgProfitability = backtestResult.avgProfitability;
+                    pattern.totalProfit = backtestResult.totalProfit;
                 }
             });
         }
@@ -1922,6 +1938,7 @@
             let totalTrades = 0;
             let winningTrades = 0;
             let occurrences = 0;
+            let totalProfit = 0;
 
             // Filter history to backtest period
             const backtestHistory = history.filter(h => h.timestamp >= startTime);
@@ -1953,45 +1970,61 @@
                                     occurrences++;
                                     totalTrades++;
 
-                                    // Check if this would have been a winning trade
-                                    const futurePrice = backtestHistory[Math.min(k + 5, backtestHistory.length - 1)].price;
-                                    const pnl = (futurePrice - current.price) / current.price;
+                                    // Simulate a realistic trade with fees
+                                    const tradeAmountETH = calculateTradeAmount();
+                                    const tokenAmount = tradeAmountETH / current.price;
 
-                                    if (pnl > 0) winningTrades++;
+                                    // Simulate fees (gas + DEX fee)
+                                    const gasCost = 0.001; // Approximate gas cost in ETH
+                                    const dexFee = tradeAmountETH * 0.003; // 0.3% DEX fee
+                                    const totalCost = gasCost + dexFee;
+
+                                    // Find the exit point (where we would sell)
+                                    const targetProfit = state.settings.targetProfitPercent / 100;
+                                    const exitPrice = current.price * (1 + targetProfit);
+
+                                    // Look for the exit price in the future
+                                    let exitIndex = -1;
+                                    for (let l = k; l < backtestHistory.length; l++) {
+                                        if (backtestHistory[l].price >= exitPrice) {
+                                            exitIndex = l;
+                                            break;
+                                        }
+                                    }
+
+                                    if (exitIndex !== -1) {
+                                        const exitPriceActual = backtestHistory[exitIndex].price;
+                                        const pnl = (tokenAmount * exitPriceActual) - tradeAmountETH - totalCost;
+                                        totalProfit += pnl;
+
+                                        if (pnl > 0) winningTrades++;
+                                    } else {
+                                        // Didn't reach target, check if we would have stopped out
+                                        const maxHoldTime = state.settings.maxPositionAge * 1000;
+                                        const lastPrice = backtestHistory[backtestHistory.length - 1].price;
+                                        const pnl = (tokenAmount * lastPrice) - tradeAmountETH - totalCost;
+                                        totalProfit += pnl;
+
+                                        if (pnl > 0) winningTrades++;
+                                    }
                                     break;
                                 }
                             }
                             break;
                         }
                     }
-                } else {
-                    // Sell pattern backtesting
-                    for (let j = i - 1; j >= Math.max(0, i - 20); j--) {
-                        const prev = backtestHistory[j];
-                        const risePct = (current.price - prev.price) / prev.price;
-                        const timeDiff = current.timestamp - prev.timestamp;
-
-                        if (risePct >= (pattern.risePct / 100) &&
-                            timeDiff >= (pattern.riseTime * 1000) &&
-                            timeDiff <= (pattern.riseTime * 1000 * 1.5)) {
-
-                            occurrences++;
-                            totalTrades++;
-
-                            // For sell patterns, we'd need to check if there was a prior buy
-                            // This is simplified - in reality you'd track entry points
-                            winningTrades++; // Assume profitable for now
-                            break;
-                        }
-                    }
                 }
             }
+
+            const avgProfitability = totalTrades > 0 ? (totalProfit / tradeAmountETH / totalTrades * 100) : 0;
 
             return {
                 occurrences,
                 totalTrades,
                 winningTrades,
-                winRate: totalTrades > 0 ? (winningTrades / totalTrades * 100) : 0
+                winRate: totalTrades > 0 ? (winningTrades / totalTrades * 100) : 0,
+                avgProfitability,
+                totalProfit
             };
         }
 
@@ -2014,7 +2047,7 @@
 
             if (tokenPatterns.length === 0) return;
 
-            // Check buy patterns (only if no open position)
+            // Only check buy patterns if no open position
             if (!openPosition) {
                 const buyPatterns = tokenPatterns.filter(p => p.type === PATTERN_TYPES.BUY);
                 buyPatterns.forEach(pattern => {
@@ -2022,29 +2055,43 @@
                         if (state.settings.preventSequentialTrades && state.lastTradedToken === token) {
                             return;
                         }
+
+                        // Check if we already have a buy order for this token
+                        if (state.openBuyOrders.has(token)) {
+                            return;
+                        }
+
                         const tradeAmount = calculateTradeAmount();
-                        executeTrade(token, 'buy', getPatternDescription(pattern), tradeAmount, pattern);
+
+                        // Execute buy trade
+                        executeTrade(token, 'buy', getPatternDescription(pattern), tradeAmount, pattern)
+                            .then(trade => {
+                                if (trade && trade.status === 'open') {
+                                    // Store the buy order with pattern info
+                                    state.openBuyOrders.set(token, {
+                                        tradeId: trade.id,
+                                        pattern: pattern,
+                                        entryPrice: trade.price,
+                                        entryTime: Date.now()
+                                    });
+                                }
+                            });
                     }
                 });
             }
 
-            // Check sell patterns (only if open position exists)
+            // If we have an open position, check if we should sell based on profit target
             if (openPosition) {
-                const sellPatterns = tokenPatterns.filter(p => p.type === PATTERN_TYPES.SELL);
-                sellPatterns.forEach(pattern => {
-                    if (checkPatternMatch(token, pattern, PATTERN_TYPES.SELL)) {
-                        const currentPrice = state.prices[token] || openPosition.entryPrice;
-                        const currentValue = openPosition.amount * currentPrice;
-                        const costBasis = (openPosition.amount * openPosition.entryPrice) + openPosition.feesPaid + openPosition.gasPaid;
-                        const profitPercent = ((currentValue - costBasis) / costBasis) * 100;
+                const currentPrice = state.prices[token] || openPosition.entryPrice;
+                const currentValue = openPosition.amount * currentPrice;
+                const costBasis = (openPosition.amount * openPosition.entryPrice) + openPosition.feesPaid + openPosition.gasPaid;
+                const profitPercent = ((currentValue - costBasis) / costBasis) * 100;
 
-                        if (profitPercent < state.settings.minProfitPercent) {
-                            return;
-                        }
-
-                        executeTrade(token, 'sell', getPatternDescription(pattern), null, pattern);
-                    }
-                });
+                // Check if we've reached the target profit
+                if (profitPercent >= state.settings.targetProfitPercent) {
+                    window.log('info', `Target profit of ${state.settings.targetProfitPercent}% reached for ${token}. Executing sell.`);
+                    executeTrade(token, 'sell', `Profit target (${profitPercent.toFixed(2)}%) reached`);
+                }
             }
 
             // Check age-based selling
@@ -2057,6 +2104,9 @@
 
                 if (positionAgeSeconds > state.settings.maxPositionAge && profit > 0) {
                     executeTrade(token, 'sell', `Age-based sell (${positionAgeSeconds}s old)`);
+                } else if (positionAgeSeconds > state.settings.maxPositionAge && profit <= 0) {
+                    // Stop loss based on age
+                    executeTrade(token, 'sell', `Age-based stop loss (${positionAgeSeconds}s old)`);
                 }
             }
         }
@@ -2093,23 +2143,6 @@
                             }
                         }
                     }
-                } else {
-                    // Check for sell pattern: rise
-                    for (let j = i - 1; j >= Math.max(0, i - 20); j--) {
-                        const prev = recentHistory[j];
-                        const risePct = (current.price - prev.price) / prev.price;
-                        const timeDiff = (current.timestamp - prev.timestamp) / 1000;
-
-                        if (risePct >= (pattern.risePct / 100) &&
-                            timeDiff >= pattern.riseTime &&
-                            timeDiff <= pattern.riseTime * 1.5) {
-
-                            const priceDiff = (currentPrice - current.price) / current.price;
-                            if (Math.abs(priceDiff) < 0.01) {
-                                return true;
-                            }
-                        }
-                    }
                 }
             }
 
@@ -2126,7 +2159,6 @@
 
             document.getElementById('totalPatterns').textContent = state.patternStats.totalPatterns;
             document.getElementById('buyPatternsCount').textContent = state.patternStats.buyPatterns;
-            document.getElementById('sellPatternsCount').textContent = state.patternStats.sellPatterns;
             document.getElementById('tokensWithPatterns').textContent = state.patternStats.tokensWithPatterns;
             document.getElementById('activePatternsCount').textContent = state.patternStats.totalPatterns;
 
@@ -2161,6 +2193,9 @@
                 const buyPatterns = patterns.filter(p => p.type === PATTERN_TYPES.BUY);
                 const sellPatterns = patterns.filter(p => p.type === PATTERN_TYPES.SELL);
 
+                // Sort patterns by avgProfitability (descending) to show best patterns first
+                buyPatterns.sort((a, b) => (b.avgProfitability || 0) - (a.avgProfitability || 0));
+
                 html += `
                     <div class="pattern-card">
                         <div class="pattern-header">
@@ -2180,22 +2215,27 @@
                                 <div class="metric-value">${(patterns.reduce((sum, p) => sum + (p.winRate || 0), 0) / patterns.length).toFixed(1)}%</div>
                             </div>
                             <div class="metric">
-                                <div>Total Occurrences</div>
-                                <div class="metric-value">${patterns.reduce((sum, p) => sum + (p.occurrences || 0), 0)}</div>
+                                <div>Avg Profitability</div>
+                                <div class="metric-value">${(patterns.reduce((sum, p) => sum + (p.avgProfitability || 0), 0) / patterns.length).toFixed(1)}%</div>
                             </div>
                         </div>
                         <div class="mt-2">
                 `;
 
-                // List individual patterns
-                patterns.forEach(pattern => {
+                // List individual patterns, highlighting the leading pattern
+                patterns.forEach((pattern, index) => {
                     const typeClass = pattern.type === PATTERN_TYPES.BUY ? 'pattern-type-buy' : 'pattern-type-sell';
                     const typeLabel = pattern.type === PATTERN_TYPES.BUY ? 'Buy' : 'Sell';
+                    const isLeading = index === 0;
+
                     html += `
-                        <div class="d-flex justify-between align-center mb-1">
-                            <span class="pattern-type-badge ${typeClass}">${typeLabel}</span>
+                        <div class="d-flex justify-between align-center mb-1 ${isLeading ? 'leading-pattern' : ''}">
+                            <span class="pattern-type-badge ${typeClass}">${typeLabel}${isLeading ? ' (Leading)' : ''}</span>
                             <small>${getPatternDescription(pattern)}</small>
-                            <span class="badge badge-secondary">${pattern.winRate.toFixed(1)}% WR</span>
+                            <div>
+                                <span class="badge badge-secondary">${pattern.winRate.toFixed(1)}% WR</span>
+                                <span class="badge badge-info" style="margin-left: 5px;">${pattern.avgProfitability.toFixed(1)}% Profit</span>
+                            </div>
                         </div>
                     `;
                 });
@@ -2295,7 +2335,9 @@
             state.lastTradedToken = tokenSymbol;
             state.lastTradeTimes[tokenSymbol] = Date.now();
 
+            // If this is a sell, remove the buy order
             if (action === 'sell') {
+                state.openBuyOrders.delete(tokenSymbol);
                 await settleTrade(trade);
             }
 
@@ -2588,8 +2630,13 @@
                 const costBasis = (position.amount * position.entryPrice) + position.feesPaid + position.gasPaid;
                 const profit = currentValue - costBasis;
 
-                if (positionAgeSeconds > state.settings.maxPositionAge && profit > 0) {
-                    executeTrade(position.token, 'sell', `Age-based sell (${positionAgeSeconds}s old)`);
+                if (positionAgeSeconds > state.settings.maxPositionAge) {
+                    if (profit > 0) {
+                        executeTrade(position.token, 'sell', `Age-based sell (${positionAgeSeconds}s old)`);
+                    } else {
+                        // Stop loss based on age
+                        executeTrade(position.token, 'sell', `Age-based stop loss (${positionAgeSeconds}s old)`);
+                    }
                 }
             });
         }
@@ -2674,6 +2721,7 @@
 
             state.lastTradedToken = null;
             state.lastTradeTimes = {};
+            state.openBuyOrders.clear();
 
             updatePortfolioUI();
             updateAssetAllocationDisplay();
@@ -2821,7 +2869,7 @@
                     <td>${currentPrice.toFixed(6)}</td>
                     <td>${position.amount.toFixed(6)}</td>
                     <td>${currentValue.toFixed(6)}</td>
-                    <td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">${unrealizedPnL.toFixed(6)}</td>
+                    <td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">${unrealizedPnL.toFixed(6)} (${returnPct.toFixed(2)}%)</td>
                     <td><small>${position.pattern || 'Manual'}</small></td>
                 </tr>`;
             });
@@ -3250,6 +3298,7 @@
                 state.isRunning = true;
                 state.startTime = new Date();
                 state.lastTradedToken = null;
+                state.openBuyOrders.clear();
 
                 updateBotStatus();
                 await updateGasPrice();
@@ -3286,6 +3335,7 @@
                 stopPricePolling();
                 await stopUniswapSession();
                 stopBackupTimer();
+                state.openBuyOrders.clear();
 
                 updateBotStatus();
                 updatePriceUpdateStatus('');
@@ -4093,6 +4143,7 @@
                 'Type': p.type,
                 'Description': getPatternDescription(p),
                 'Win Rate (%)': p.winRate.toFixed(1),
+                'Avg Profitability (%)': p.avgProfitability.toFixed(1),
                 'Occurrences': p.occurrences,
                 'Total Trades': p.totalTrades,
                 'Winning Trades': p.winningTrades,
@@ -4137,6 +4188,7 @@
             state.portfolio.failedTrades = 0;
             state.portfolio.equityHistory = [{ timestamp: Date.now(), ethValue: state.portfolio.startingEth }];
             state.portfolio.currentEth = state.portfolio.startingEth;
+            state.openBuyOrders.clear();
 
             saveAllTrades();
             renderFullTradeHistory();
@@ -4198,6 +4250,8 @@
         function saveValidationSettings() {
             state.settings.minWinRate = parseInt(document.getElementById('minWinRate').value) || 60;
             state.settings.backtestPeriod = parseInt(document.getElementById('backtestPeriod').value) || 24;
+            state.settings.targetProfitPercent = parseFloat(document.getElementById('targetProfitPercent').value) || 0.5;
+            state.settings.minProfitability = parseFloat(document.getElementById('minProfitability').value) || 0.2;
             state.settings.maxPatternsPerToken = parseInt(document.getElementById('maxPatternsPerToken').value) || 5;
             saveSettings();
             showToast('success', 'Validation settings saved!');
@@ -4205,6 +4259,9 @@
                 stopPatternDetection();
                 startPatternDetection();
             }
+
+            // Update the display
+            document.getElementById('targetProfitPercent').textContent = state.settings.targetProfitPercent + '%';
         }
 
         function saveTradeSettings() {
@@ -4287,6 +4344,8 @@
             const maxPriceHistory = document.getElementById('maxPriceHistory');
             const autoBackupEnabled = document.getElementById('autoBackupEnabled');
             const backupInterval = document.getElementById('backupInterval');
+            const targetProfitPercent = document.getElementById('targetProfitPercent');
+            const minProfitability = document.getElementById('minProfitability');
 
             if (startingEth) startingEth.value = state.settings.startingEth || 1.0;
             if (gasFeeMultiplier) gasFeeMultiplier.value = state.settings.gasFeeMultiplier || 10;
@@ -4309,6 +4368,8 @@
             if (maxPriceHistory) maxPriceHistory.value = state.settings.maxPriceHistory || 10000;
             if (autoBackupEnabled) autoBackupEnabled.checked = state.settings.autoBackup !== false;
             if (backupInterval) backupInterval.value = state.settings.backupInterval || 5;
+            if (targetProfitPercent) targetProfitPercent.value = state.settings.targetProfitPercent || 0.5;
+            if (minProfitability) minProfitability.value = state.settings.minProfitability || 0.2;
 
             updateStartingEthDisplay();
             updateTradeAmountDisplay();
@@ -4327,6 +4388,7 @@
                 gasLimit: 200000,
                 maxPriceImpact: 0.5,
                 minProfitPercent: 0.5,
+                targetProfitPercent: 0.5,
                 maxPositionAge: 300,
                 preventSequentialTrades: true,
                 minPriceChange: 0.1,
@@ -4334,6 +4396,7 @@
                 maxTimeWindow: 300,
                 minOccurrences: 2,
                 minWinRate: 60,
+                minProfitability: 0.2,
                 backtestPeriod: 24,
                 maxPatternsPerToken: 5,
                 priceHistoryDuration: 24,
@@ -4425,7 +4488,7 @@
                         if (data.priceHistory) state.priceHistory = data.priceHistory;
                         if (data.activePatterns) {
                             state.activePatterns.clear();
-                            data.activePatterns.forEach(p => state.activePatterns.set(getPatternKey(p), p));
+                            data.activePatterns.forEach(p => state.activePatterns.set(`${p.token}_${getPatternKey(p)}`, p));
                         }
 
                         updateSettingsUI();
@@ -4481,6 +4544,7 @@
             state.lastTradedToken = null;
             state.lastTradeTimes = {};
             state.patternStats = { totalPatterns: 0, buyPatterns: 0, sellPatterns: 0, tokensWithPatterns: 0 };
+            state.openBuyOrders.clear();
 
             const logContainer = document.getElementById('logContainer');
             if (logContainer) logContainer.innerHTML = '<div class="log-entry log-info">[INFO] All data cleared</div>';
