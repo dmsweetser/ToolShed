@@ -1391,10 +1391,10 @@
                         responsive: true,
                         maintainAspectRatio: false,
                         scales: {
-                            y: { beginAtZero: false, type: 'linear', title: { display: true, text: 'ETH Value' }, ticks: { callback: function (value) { return value.toFixed(6); } } },
+                            y: { beginAtZero: false, type: 'linear', title: { display: true, text: 'ETH Value' }, ticks: { callback: function (value) { return value.toFixed(12); } } },
                             x: { type: 'linear', title: { display: true, text: 'Trade #' }, ticks: { callback: function (value, index) { return index; } } }
                         },
-                        plugins: { tooltip: { callbacks: { label: function (context) { return context.parsed.y.toFixed(6) + ' ETH'; } } }, legend: { display: false } }
+                        plugins: { tooltip: { callbacks: { label: function (context) { return context.parsed.y.toFixed(12) + ' ETH'; } } }, legend: { display: false } }
                     }
                 });
             }
@@ -1405,7 +1405,7 @@
             const startingEthDisplay = document.getElementById('startingEthDisplay');
             if (startingEthInput && startingEthDisplay) {
                 const startingEth = parseFloat(startingEthInput.value) || 1.0;
-                startingEthDisplay.textContent = startingEth.toFixed(6) + ' ETH';
+                startingEthDisplay.textContent = startingEth.toFixed(12) + ' ETH';
                 state.settings.startingEth = startingEth;
                 if (!state.isRunning) {
                     state.portfolio.startingEth = startingEth;
@@ -1426,7 +1426,7 @@
                 const gasLimit = state.settings.gasLimit || 200000;
                 const multiplier = state.settings.tradeAmountMultiplier || 100;
                 const tradeAmountETH = multiplier * (gasPrice * gasLimit) / 1e9;
-                tradeAmountDisplay.textContent = `${tradeAmountETH.toFixed(6)} ETH`;
+                tradeAmountDisplay.textContent = `${tradeAmountETH.toFixed(12)} ETH`;
                 multiplierDisplay.textContent = multiplier;
             }
         }
@@ -1456,7 +1456,7 @@
                 startingEthInput.addEventListener('change', updateStartingEthDisplay);
                 startingEthInput.addEventListener('input', function () {
                     const value = parseFloat(this.value) || 0;
-                    document.getElementById('startingEthDisplay').textContent = value.toFixed(6) + ' ETH';
+                    document.getElementById('startingEthDisplay').textContent = value.toFixed(12) + ' ETH';
                 });
             }
 
@@ -1469,7 +1469,7 @@
             const startingEthInput = document.getElementById('startingEth');
             if (state.settings.executionMode === EXECUTION_MODES.LIVE) {
                 startingEthInput.readOnly = true;
-                startingEthInput.value = state.portfolio.startingEth ? state.portfolio.startingEth.toFixed(6) : '0.000000';
+                startingEthInput.value = state.portfolio.startingEth ? state.portfolio.startingEth.toFixed(12) : '0.000000';
                 startingEthInput.placeholder = 'Set by wallet balance';
             } else {
                 startingEthInput.readOnly = false;
@@ -1632,11 +1632,11 @@
                 const balance = await window.ethereum.request({ method: 'eth_getBalance', params: [state.walletAddress, 'latest'] });
                 const ethBalance = parseInt(balance) / 1e18;
                 const wi = document.getElementById('walletInfo');
-                if (wi) wi.innerHTML = `<p><strong>Address:</strong> ${shortenAddress(state.walletAddress)}</p><p><strong>ETH Balance:</strong> ${ethBalance.toFixed(6)} ETH</p><p><strong>Network:</strong> ${state.currentNetwork || 'Unknown'}</p>`;
+                if (wi) wi.innerHTML = `<p><strong>Address:</strong> ${shortenAddress(state.walletAddress)}</p><p><strong>ETH Balance:</strong> ${ethBalance.toFixed(12)} ETH</p><p><strong>Network:</strong> ${state.currentNetwork || 'Unknown'}</p>`;
                 if (state.settings.executionMode === EXECUTION_MODES.LIVE) {
                     state.settings.startingEth = ethBalance; state.portfolio.startingEth = ethBalance;
                     state.portfolio.currentEth = ethBalance; state.portfolio.balances['ETH'] = ethBalance;
-                    document.getElementById('startingEth').value = ethBalance.toFixed(6);
+                    document.getElementById('startingEth').value = ethBalance.toFixed(12);
                     updateStartingEthDisplay(); updatePortfolioUI(); updateEquityChart();
                 }
             } catch (error) { console.error('Balance error:', error); }
@@ -1773,7 +1773,7 @@
                     if (pattern) {
                         state.coinPatterns[token] = pattern;
                         if (pattern.isProfitable) {
-                            log('info', `Detected profitable oscillation for ${token}: swing ${pattern.avgSwing.toFixed(6)} ETH, period ${pattern.avgPeriod}s`);
+                            log('info', `Detected profitable oscillation for ${token}: swing ${pattern.avgSwing.toFixed(12)} ETH, period ${pattern.avgPeriod}s`);
                         }
                     }
                 }
@@ -1906,10 +1906,10 @@
 
                 if (!hasPosition && currentPrice <= pattern.entryPoint) {
                     const tradeAmount = calculateDynamicTradeAmount();
-                    log('info', `Pattern trade: Buying ${token} at ${currentPrice.toFixed(6)} ETH (entry: ${pattern.entryPoint.toFixed(6)} ETH)`);
+                    log('info', `Pattern trade: Buying ${token} at ${currentPrice.toFixed(12)} ETH (entry: ${pattern.entryPoint.toFixed(12)} ETH)`);
                     executeTrade(token, 'buy', `Oscillation: ${token}`, tradeAmount);
                 } else if (hasPosition && currentPrice >= pattern.exitPoint) {
-                    log('info', `Pattern trade: Selling ${token} at ${currentPrice.toFixed(6)} ETH (exit: ${pattern.exitPoint.toFixed(6)} ETH)`);
+                    log('info', `Pattern trade: Selling ${token} at ${currentPrice.toFixed(12)} ETH (exit: ${pattern.exitPoint.toFixed(12)} ETH)`);
                     executeTrade(token, 'sell', `Oscillation: ${token}`);
                 }
             }
@@ -1926,7 +1926,7 @@
                 const costBasis = (position.amount * position.entryPrice) + position.feesPaid + position.gasPaid;
                 const estimatedSellCost = estimateGasCost() + (currentValue * 0.003);
                 if (currentValue - costBasis - estimatedSellCost > 0) {
-                    log('info', `Selling ${token} at ${currentPrice.toFixed(6)} ETH (immediate profitability: +${(currentValue - costBasis - estimatedSellCost).toFixed(6)} ETH)`);
+                    log('info', `Selling ${token} at ${currentPrice.toFixed(12)} ETH (immediate profitability: +${(currentValue - costBasis - estimatedSellCost).toFixed(12)} ETH)`);
                     executeTrade(token, 'sell', 'Immediate profitability');
                 }
             });
@@ -1947,7 +1947,7 @@
                 const profitPerTrade = pattern.avgSwing - pattern.totalRoundTripCost;
                 const profitClass = profitPerTrade >= 0 ? 'price-up' : 'price-down';
                 const profitableBadge = pattern.isProfitable ? '<span class="badge badge-success">Profitable</span>' : '<span class="badge badge-secondary">Not Profitable</span>';
-                html += `<tr><td><strong>${token}</strong> ${profitableBadge}</td><td class="${phaseClass}">${phaseText}</td><td>${pattern.avgSwing.toFixed(6)} ETH</td><td>${pattern.totalRoundTripCost.toFixed(6)} ETH</td><td class="${profitClass}">${profitPerTrade.toFixed(6)} ETH</td><td>${pattern.entryPoint.toFixed(6)} ETH</td><td>${pattern.exitPoint.toFixed(6)} ETH</td><td><button class="btn btn-primary btn-xs" onclick="executeTrade('${token}','buy')">Buy</button><button class="btn btn-danger btn-xs" onclick="executeTrade('${token}','sell')">Sell</button></td></tr>`;
+                html += `<tr><td><strong>${token}</strong> ${profitableBadge}</td><td class="${phaseClass}">${phaseText}</td><td>${pattern.avgSwing.toFixed(12)} ETH</td><td>${pattern.totalRoundTripCost.toFixed(12)} ETH</td><td class="${profitClass}">${profitPerTrade.toFixed(12)} ETH</td><td>${pattern.entryPoint.toFixed(12)} ETH</td><td>${pattern.exitPoint.toFixed(12)} ETH</td><td><button class="btn btn-primary btn-xs" onclick="executeTrade('${token}','buy')">Buy</button><button class="btn btn-danger btn-xs" onclick="executeTrade('${token}','sell')">Sell</button></td></tr>`;
             });
             html += '</tbody></table>'; container.innerHTML = html;
         }
@@ -1998,7 +1998,7 @@
         }
 
         function updatePortfolioUI() {
-            const format6 = (v) => (v || 0).toFixed(6);
+            const format6 = (v) => (v || 0).toFixed(12);
             document.getElementById('startingEthDisplay').textContent = format6(state.portfolio.startingEth) + ' ETH';
             document.getElementById('currentEth').textContent = format6(state.portfolio.currentEth) + ' ETH';
             const realizedPnL = state.portfolio.realizedPnL;
@@ -2028,13 +2028,13 @@
             const ethBalance = state.portfolio.balances['ETH'] || 0;
             const totalEquity = state.portfolio.currentEth;
             const ethAllocation = totalEquity > 0 ? (ethBalance / totalEquity) * 100 : 0;
-            html += `<tr><td><strong>ETH</strong></td><td>${ethBalance.toFixed(6)}</td><td>${ethBalance.toFixed(6)}</td><td>${ethAllocation.toFixed(2)}%</td></tr>`;
+            html += `<tr><td><strong>ETH</strong></td><td>${ethBalance.toFixed(12)}</td><td>${ethBalance.toFixed(12)}</td><td>${ethAllocation.toFixed(2)}%</td></tr>`;
             for (const [tokenSymbol, amount] of Object.entries(state.portfolio.balances)) {
                 if (tokenSymbol === 'ETH') continue;
                 const priceInEth = state.prices[tokenSymbol] || 0;
                 const ethValue = amount * priceInEth;
                 const allocation = totalEquity > 0 ? (ethValue / totalEquity) * 100 : 0;
-                html += `<tr><td><strong>${tokenSymbol}</strong></td><td>${amount.toFixed(6)}</td><td>${ethValue.toFixed(6)}</td><td>${allocation.toFixed(2)}%</td></tr>`;
+                html += `<tr><td><strong>${tokenSymbol}</strong></td><td>${amount.toFixed(12)}</td><td>${ethValue.toFixed(12)}</td><td>${allocation.toFixed(2)}%</td></tr>`;
             }
             if (html === '') html = '<tr><td colspan="4" class="text-center text-secondary">No balances</td></tr>';
             if (balancesTable) balancesTable.innerHTML = html;
@@ -2048,7 +2048,7 @@
                 const currentPrice = state.prices[position.token] || position.entryPrice;
                 const currentValue = position.amount * currentPrice;
                 const unrealizedPnL = currentValue - (position.amount * position.entryPrice) - position.feesPaid - position.gasPaid;
-                html += `<tr><td><strong>${position.token}</strong></td><td>${position.entryPrice.toFixed(6)}</td><td>${currentPrice.toFixed(6)}</td><td>${position.amount.toFixed(6)}</td><td>${currentValue.toFixed(6)}</td><td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">${unrealizedPnL.toFixed(6)}</td></tr>`;
+                html += `<tr><td><strong>${position.token}</strong></td><td>${position.entryPrice.toFixed(12)}</td><td>${currentPrice.toFixed(12)}</td><td>${position.amount.toFixed(12)}</td><td>${currentValue.toFixed(12)}</td><td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">${unrealizedPnL.toFixed(12)}</td></tr>`;
             });
             if (html === '') html = '<tr><td colspan="6" class="text-center text-secondary">No open positions</td></tr>';
             if (positionsTable) positionsTable.innerHTML = html;
@@ -2079,14 +2079,14 @@
             const winRate = state.portfolio.totalTrades > 0 ? ((state.portfolio.winningTrades / state.portfolio.totalTrades) * 100).toFixed(1) + '%' : '0%';
             if (winRateEl) winRateEl.textContent = winRate;
             const closedPositions = state.portfolio.positions.filter(p => p.status === 'closed');
-            const bestTrade = closedPositions.length > 0 ? Math.max(...closedPositions.map(p => p.pnl)).toFixed(6) + ' ETH' : '0.000000 ETH';
-            const worstTrade = closedPositions.length > 0 ? Math.min(...closedPositions.map(p => p.pnl)).toFixed(6) + ' ETH' : '0.000000 ETH';
+            const bestTrade = closedPositions.length > 0 ? Math.max(...closedPositions.map(p => p.pnl)).toFixed(12) + ' ETH' : '0.000000 ETH';
+            const worstTrade = closedPositions.length > 0 ? Math.min(...closedPositions.map(p => p.pnl)).toFixed(12) + ' ETH' : '0.000000 ETH';
             if (bestTradeEl) bestTradeEl.textContent = bestTrade;
             if (worstTradeEl) worstTradeEl.textContent = worstTrade;
             const winningTrades = closedPositions.filter(p => p.pnl > 0);
             const losingTrades = closedPositions.filter(p => p.pnl < 0);
-            const avgWin = winningTrades.length > 0 ? (winningTrades.reduce((sum, p) => sum + p.pnl, 0) / winningTrades.length).toFixed(6) + ' ETH' : '0.000000 ETH';
-            const avgLoss = losingTrades.length > 0 ? (losingTrades.reduce((sum, p) => sum + p.pnl, 0) / losingTrades.length).toFixed(6) + ' ETH' : '0.000000 ETH';
+            const avgWin = winningTrades.length > 0 ? (winningTrades.reduce((sum, p) => sum + p.pnl, 0) / winningTrades.length).toFixed(12) + ' ETH' : '0.000000 ETH';
+            const avgLoss = losingTrades.length > 0 ? (losingTrades.reduce((sum, p) => sum + p.pnl, 0) / losingTrades.length).toFixed(12) + ' ETH' : '0.000000 ETH';
             if (avgWinEl) avgWinEl.textContent = avgWin;
             if (avgLossEl) avgLossEl.textContent = avgLoss;
             let maxDrawdown = 0; let runningMax = state.portfolio.startingEth;
@@ -2096,10 +2096,10 @@
                 const drawdown = runningMax - runningEquity;
                 if (drawdown > maxDrawdown) maxDrawdown = drawdown;
             });
-            if (maxDrawdownEl) maxDrawdownEl.textContent = maxDrawdown.toFixed(6) + ' ETH';
+            if (maxDrawdownEl) maxDrawdownEl.textContent = maxDrawdown.toFixed(12) + ' ETH';
             const avgHoldTime = closedPositions.length > 0 ? (closedPositions.reduce((sum, p) => sum + (p.exitTime - p.entryTime), 0) / closedPositions.length / 1000).toFixed(0) + 's' : '0s';
-            const avgGas = state.portfolio.totalTrades > 0 ? (state.portfolio.gasSpent / state.portfolio.totalTrades).toFixed(6) + ' ETH' : '0.000000 ETH';
-            const avgFees = state.portfolio.totalTrades > 0 ? (state.portfolio.feesPaid / state.portfolio.totalTrades).toFixed(6) + ' ETH' : '0.000000 ETH';
+            const avgGas = state.portfolio.totalTrades > 0 ? (state.portfolio.gasSpent / state.portfolio.totalTrades).toFixed(12) + ' ETH' : '0.000000 ETH';
+            const avgFees = state.portfolio.totalTrades > 0 ? (state.portfolio.feesPaid / state.portfolio.totalTrades).toFixed(12) + ' ETH' : '0.000000 ETH';
             if (avgHoldTimeEl) avgHoldTimeEl.textContent = avgHoldTime;
             if (avgGasEl) avgGasEl.textContent = avgGas;
             if (avgFeesEl) avgFeesEl.textContent = avgFees;
@@ -2349,13 +2349,13 @@
                     phase = 'Flat';
                 }
 
-                const lastMin = minPrice.toFixed(6);
-                const lastMax = maxPrice.toFixed(6);
+                const lastMin = minPrice.toFixed(12);
+                const lastMax = maxPrice.toFixed(12);
                 const lastUpdate = new Date(current.timestamp).toLocaleTimeString();
 
                 html += `<tr>
                     <td><strong>${tokenSymbol}</strong></td>
-                    <td>${current.price.toFixed(6)}</td>
+                    <td>${current.price.toFixed(12)}</td>
                     <td class="${changeClass}">${changeSymbol} ${Math.abs(changePct).toFixed(2)}%</td>
                     <td>${lastMin}</td>
                     <td>${lastMax}</td>
@@ -2431,13 +2431,13 @@
                     phase = 'Flat';
                 }
 
-                const lastMin = minPrice.toFixed(6);
-                const lastMax = maxPrice.toFixed(6);
+                const lastMin = minPrice.toFixed(12);
+                const lastMax = maxPrice.toFixed(12);
                 const lastUpdate = new Date(current.timestamp).toLocaleTimeString();
 
                 html += `<tr>
                     <td><strong>${token}</strong></td>
-                    <td>${current.price.toFixed(6)}</td>
+                    <td>${current.price.toFixed(12)}</td>
                     <td class="${changeClass}">${changeSymbol} ${Math.abs(changePct).toFixed(2)}%</td>
                     <td>${lastMin}</td>
                     <td>${lastMax}</td>
@@ -2466,7 +2466,7 @@
                 const currentPrice = state.prices[position.token] || position.entryPrice;
                 const currentValue = position.amount * currentPrice;
                 const unrealizedPnL = currentValue - (position.amount * position.entryPrice) - position.feesPaid - position.gasPaid;
-                html += `<tr><td><strong>${position.token}</strong></td><td>${position.entryPrice.toFixed(6)}</td><td>${position.amount.toFixed(6)}</td><td>${currentValue.toFixed(6)}</td><td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">${unrealizedPnL.toFixed(6)}</td></tr>`;
+                html += `<tr><td><strong>${position.token}</strong></td><td>${position.entryPrice.toFixed(12)}</td><td>${position.amount.toFixed(12)}</td><td>${currentValue.toFixed(12)}</td><td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">${unrealizedPnL.toFixed(12)}</td></tr>`;
             });
             html += '</tbody></table>'; activePositions.innerHTML = html;
         }
@@ -2478,7 +2478,7 @@
             let html = '';
             trades.forEach(trade => {
                 const pnlClass = trade.pnl >= 0 ? 'price-up' : trade.pnl < 0 ? 'price-down' : '';
-                html += `<tr><td>${new Date(trade.timestamp).toLocaleTimeString()}</td><td><strong>${trade.token}</strong></td><td><span class="badge badge-${trade.type === 'buy' ? 'success' : 'danger'}">${trade.type.toUpperCase()}</span></td><td>${trade.price.toFixed(6)}</td><td>${trade.tokenAmount.toFixed(6)}</td><td class="${pnlClass}">${trade.pnl.toFixed(6)}</td></tr>`;
+                html += `<tr><td>${new Date(trade.timestamp).toLocaleTimeString()}</td><td><strong>${trade.token}</strong></td><td><span class="badge badge-${trade.type === 'buy' ? 'success' : 'danger'}">${trade.type.toUpperCase()}</span></td><td>${trade.price.toFixed(12)}</td><td>${trade.tokenAmount.toFixed(12)}</td><td class="${pnlClass}">${trade.pnl.toFixed(12)}</td></tr>`;
             });
             recentTrades.innerHTML = html;
         }
@@ -2486,7 +2486,7 @@
         function updatePnLDisplay() {
             const netPnL = state.portfolio.realizedPnL + state.portfolio.unrealizedPnL;
             if (document.getElementById('totalPnL') != null) {
-                document.getElementById('totalPnL').textContent = netPnL.toFixed(6) + ' ETH';
+                document.getElementById('totalPnL').textContent = netPnL.toFixed(12) + ' ETH';
                 document.getElementById('totalPnL').className = netPnL >= 0 ? 'price-up' : 'price-down';
             }
         }
@@ -2499,7 +2499,7 @@
             if (document.getElementById('totalTrades')) document.getElementById('totalTrades').textContent = state.portfolio.totalTrades;
             const winRate = state.portfolio.totalTrades > 0 ? ((state.portfolio.winningTrades / state.portfolio.totalTrades) * 100).toFixed(1) + '%' : '0%';
             if (document.getElementById('winRate')) document.getElementById('winRate').textContent = winRate;
-            const avgProfit = closedTrades.length > 0 ? (closedTrades.reduce((sum, t) => sum + t.pnl, 0) / closedTrades.length).toFixed(6) + ' ETH' : '0.000000 ETH';
+            const avgProfit = closedTrades.length > 0 ? (closedTrades.reduce((sum, t) => sum + t.pnl, 0) / closedTrades.length).toFixed(12) + ' ETH' : '0.000000 ETH';
             if (document.getElementById('avgProfit')) document.getElementById('avgProfit').textContent = avgProfit;
             let maxDrawdown = 0; let runningMax = state.portfolio.startingEth;
             state.portfolio.equityHistory.forEach(point => {
@@ -2508,7 +2508,7 @@
                 const drawdown = runningMax - runningEquity;
                 if (drawdown > maxDrawdown) maxDrawdown = drawdown;
             });
-            if (document.getElementById('maxDrawdown')) document.getElementById('maxDrawdown').textContent = maxDrawdown.toFixed(6) + ' ETH';
+            if (document.getElementById('maxDrawdown')) document.getElementById('maxDrawdown').textContent = maxDrawdown.toFixed(12) + ' ETH';
             const grossProfit = winningTrades.reduce((sum, t) => sum + t.pnl, 0);
             const grossLoss = Math.abs(losingTrades.reduce((sum, t) => sum + t.pnl, 0));
             const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss).toFixed(2) : '∞';
@@ -2518,11 +2518,11 @@
             const sessionTrades = state.trades.filter(t => state.startTime && new Date(t.timestamp) >= state.startTime).length;
             if (document.getElementById('sessionTrades')) document.getElementById('sessionTrades').textContent = sessionTrades;
             const sessionPnL = state.trades.filter(t => state.startTime && new Date(t.timestamp) >= state.startTime && t.status === 'closed' && t.pnl !== undefined).reduce((sum, t) => sum + t.pnl, 0);
-            if (document.getElementById('sessionPnL')) document.getElementById('sessionPnL').textContent = sessionPnL.toFixed(6) + ' ETH';
+            if (document.getElementById('sessionPnL')) document.getElementById('sessionPnL').textContent = sessionPnL.toFixed(12) + ' ETH';
             const bestTrade = closedTrades.length > 0 ? Math.max(...closedTrades.map(t => t.pnl)) : 0;
             const worstTrade = closedTrades.length > 0 ? Math.min(...closedTrades.map(t => t.pnl)) : 0;
-            if (document.getElementById('bestTrade')) document.getElementById('bestTrade').textContent = bestTrade.toFixed(6) + ' ETH';
-            if (document.getElementById('worstTrade')) document.getElementById('worstTrade').textContent = worstTrade.toFixed(6) + ' ETH';
+            if (document.getElementById('bestTrade')) document.getElementById('bestTrade').textContent = bestTrade.toFixed(12) + ' ETH';
+            if (document.getElementById('worstTrade')) document.getElementById('worstTrade').textContent = worstTrade.toFixed(12) + ' ETH';
             const tokenPnL = {}; const tokenTrades = {}; const tokenWinRates = {};
             closedTrades.forEach(t => {
                 tokenPnL[t.token] = (tokenPnL[t.token] || 0) + t.pnl;
@@ -2538,7 +2538,7 @@
             if (bestToken) {
                 const winRate = (tokenWinRates[bestToken].wins / tokenWinRates[bestToken].total * 100).toFixed(1) + '%';
                 if (document.getElementById('bestToken')) document.getElementById('bestToken').textContent = bestToken;
-                if (document.getElementById('bestTokenPnL')) document.getElementById('bestTokenPnL').textContent = bestTokenPnLValue.toFixed(6) + ' ETH';
+                if (document.getElementById('bestTokenPnL')) document.getElementById('bestTokenPnL').textContent = bestTokenPnLValue.toFixed(12) + ' ETH';
                 if (document.getElementById('bestTokenWinRate')) document.getElementById('bestTokenWinRate').textContent = winRate;
                 if (document.getElementById('bestTokenTrades')) document.getElementById('bestTokenTrades').textContent = tokenTrades[bestToken] || 0;
             }
@@ -2556,7 +2556,7 @@
             let html = '';
             trades.forEach(trade => {
                 const pnlClass = trade.pnl >= 0 ? 'price-up' : trade.pnl < 0 ? 'price-down' : '';
-                html += `<tr><td>${new Date(trade.timestamp).toLocaleString()}</td><td><strong>${trade.token || 'N/A'}</strong></td><td><span class="badge badge-${trade.type === 'buy' ? 'success' : 'danger'}">${(trade.type || 'N/A').toUpperCase()}</span></td><td>${(trade.price || 0).toFixed(6)}</td><td>${(trade.tokenAmount || 0).toFixed(6)}</td><td>${(trade.fee || 0).toFixed(6)}</td><td class="${pnlClass}">${(trade.pnl || 0).toFixed(6)}</td></tr>`;
+                html += `<tr><td>${new Date(trade.timestamp).toLocaleString()}</td><td><strong>${trade.token || 'N/A'}</strong></td><td><span class="badge badge-${trade.type === 'buy' ? 'success' : 'danger'}">${(trade.type || 'N/A').toUpperCase()}</span></td><td>${(trade.price || 0).toFixed(12)}</td><td>${(trade.tokenAmount || 0).toFixed(12)}</td><td>${(trade.fee || 0).toFixed(12)}</td><td class="${pnlClass}">${(trade.pnl || 0).toFixed(12)}</td></tr>`;
             });
             fullTradeHistory.innerHTML = html;
         }
