@@ -1549,11 +1549,11 @@
             const minAmount = state.settings.minTradeAmountETH || 0.0001;
             const method = amountETH === minAmount ? "Min ETH Floor" :
                 amountETH === percentBased ? "Percentage of ETH" : "Gas-Based";
-            window.log('info', `Trade amount: ${amountETH.toFixed(6)} ETH (Method: ${method})`);
+            window.log('info', `Trade amount: ${amountETH.toFixed(12)} ETH (Method: ${method})`);
 
             // Check if trade amount is zero or invalid
             if (amountETH <= 0) {
-                window.log('warn', `Invalid trade amount: ${amountETH.toFixed(6)} ETH`);
+                window.log('warn', `Invalid trade amount: ${amountETH.toFixed(12)} ETH`);
                 return null;
             }
 
@@ -1714,7 +1714,7 @@
                                 beginAtZero: false,
                                 type: 'linear',
                                 title: { display: true, text: 'ETH Value' },
-                                ticks: { callback: function (value) { return value.toFixed(6); } }
+                                ticks: { callback: function (value) { return value.toFixed(12); } }
                             },
                             x: {
                                 type: 'linear',
@@ -1726,7 +1726,7 @@
                             tooltip: {
                                 callbacks: {
                                     label: function (context) {
-                                        return context.parsed.y.toFixed(6) + ' ETH';
+                                        return context.parsed.y.toFixed(12) + ' ETH';
                                     }
                                 }
                             },
@@ -1766,7 +1766,7 @@
                 startingEthInput.addEventListener('change', updateStartingEthDisplay);
                 startingEthInput.addEventListener('input', function () {
                     const value = parseFloat(this.value) || 0;
-                    document.getElementById('startingEthDisplay').textContent = value.toFixed(6) + ' ETH';
+                    document.getElementById('startingEthDisplay').textContent = value.toFixed(12) + ' ETH';
                     updateTradeAmountDisplay();
                 });
             }
@@ -1852,7 +1852,7 @@
             const tradeAmount = calculateTradeAmount();
             const displayEl = document.getElementById('tradeAmountDisplay');
             if (displayEl) {
-                displayEl.textContent = tradeAmount.toFixed(6) + ' ETH';
+                displayEl.textContent = tradeAmount.toFixed(12) + ' ETH';
 
                 const gasBased = (state.currentGasPrice * state.settings.gasLimit * state.settings.gasFeeMultiplier) / 1e18;
                 const percentBased = (state.portfolio.currentEth || state.settings.startingEth) * (state.settings.tradeAmountPercent / 100);
@@ -1860,7 +1860,7 @@
 
                 const method = tradeAmount === minAmount ? "Min ETH Floor" :
                     tradeAmount === percentBased ? "Percentage of ETH" : "Gas-Based";
-                displayEl.title = `Method: ${method}\nGas-Based: ${gasBased.toFixed(6)} ETH\n% of ETH: ${percentBased.toFixed(6)} ETH\nMin: ${minAmount.toFixed(6)} ETH`;
+                displayEl.title = `Method: ${method}\nGas-Based: ${gasBased.toFixed(12)} ETH\n% of ETH: ${percentBased.toFixed(12)} ETH\nMin: ${minAmount.toFixed(12)} ETH`;
             }
         }
 
@@ -1871,7 +1871,7 @@
 
             if (startingEthInput && startingEthDisplay) {
                 const startingEth = parseFloat(startingEthInput.value) || 0.0033;
-                startingEthDisplay.textContent = startingEth.toFixed(6) + ' ETH';
+                startingEthDisplay.textContent = startingEth.toFixed(12) + ' ETH';
                 state.settings.startingEth = startingEth;
                 updateTradeAmountDisplay();
 
@@ -2139,7 +2139,7 @@
                     }
                 }
             }
-            
+
             const tradeAmountETH = calculateTradeAmount();
             const avgProfitability = totalTrades > 0 ? (totalProfit / tradeAmountETH / totalTrades * 100) : 0;
 
@@ -2678,7 +2678,7 @@
             if (newAllocation > capPercent) {
                 return {
                     allowed: false,
-                    reason: `Adding ${amountETH.toFixed(6)} ETH would exceed ${token} cap (${capPercent}%). Current: ${currentAllocation.toFixed(2)}%, New: ${newAllocation.toFixed(2)}%`
+                    reason: `Adding ${amountETH.toFixed(12)} ETH would exceed ${token} cap (${capPercent}%). Current: ${currentAllocation.toFixed(2)}%, New: ${newAllocation.toFixed(2)}%`
                 };
             }
             return { allowed: true };
@@ -2765,7 +2765,7 @@
         }
 
         function updatePortfolioUI() {
-            const format6 = (value) => (value || 0).toFixed(6);
+            const format6 = (value) => (value || 0).toFixed(12);
 
             const startingEthDisplay = document.getElementById('startingEthDisplay');
             const currentEthEl = document.getElementById('currentEth');
@@ -2831,8 +2831,8 @@
 
             html += `<tr>
                 <td><strong>ETH</strong></td>
-                <td>${ethBalance.toFixed(6)}</td>
-                <td>${ethBalance.toFixed(6)}</td>
+                <td>${ethBalance.toFixed(12)}</td>
+                <td>${ethBalance.toFixed(12)}</td>
                 <td>${ethAllocation.toFixed(2)}%</td>
             </tr>`;
 
@@ -2844,8 +2844,8 @@
 
                 html += `<tr>
                     <td><strong>${tokenSymbol}</strong></td>
-                    <td>${amount.toFixed(6)}</td>
-                    <td>${ethValue.toFixed(6)}</td>
+                    <td>${amount.toFixed(12)}</td>
+                    <td>${ethValue.toFixed(12)}</td>
                     <td>${allocation.toFixed(2)}%</td>
                 </tr>`;
             }
@@ -2868,11 +2868,11 @@
 
                 html += `<tr>
                     <td><strong>${position.token}</strong></td>
-                    <td>${position.entryPrice.toFixed(6)}</td>
-                    <td>${currentPrice.toFixed(6)}</td>
-                    <td>${position.amount.toFixed(6)}</td>
-                    <td>${currentValue.toFixed(6)}</td>
-                    <td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">${unrealizedPnL.toFixed(6)} (${returnPct.toFixed(2)}%)</td>
+                    <td>${position.entryPrice.toFixed(12)}</td>
+                    <td>${currentPrice.toFixed(12)}</td>
+                    <td>${position.amount.toFixed(12)}</td>
+                    <td>${currentValue.toFixed(12)}</td>
+                    <td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">${unrealizedPnL.toFixed(12)} (${returnPct.toFixed(2)}%)</td>
                     <td><small>${position.pattern || 'Manual'}</small></td>
                 </tr>`;
             });
@@ -2913,9 +2913,9 @@
 
             const closedPositions = state.portfolio.positions.filter(p => p.status === 'closed');
             const bestTrade = closedPositions.length > 0 ?
-                Math.max(...closedPositions.map(p => p.pnl)).toFixed(6) + ' ETH' : '0.000000 ETH';
+                Math.max(...closedPositions.map(p => p.pnl)).toFixed(12) + ' ETH' : '0.000000 ETH';
             const worstTrade = closedPositions.length > 0 ?
-                Math.min(...closedPositions.map(p => p.pnl)).toFixed(6) + ' ETH' : '0.000000 ETH';
+                Math.min(...closedPositions.map(p => p.pnl)).toFixed(12) + ' ETH' : '0.000000 ETH';
 
             if (bestTradeEl) bestTradeEl.textContent = bestTrade;
             if (worstTradeEl) worstTradeEl.textContent = worstTrade;
@@ -2924,9 +2924,9 @@
             const losingTrades = closedPositions.filter(p => p.pnl < 0);
 
             const avgWin = winningTrades.length > 0 ?
-                (winningTrades.reduce((sum, p) => sum + p.pnl, 0) / winningTrades.length).toFixed(6) + ' ETH' : '0.000000 ETH';
+                (winningTrades.reduce((sum, p) => sum + p.pnl, 0) / winningTrades.length).toFixed(12) + ' ETH' : '0.000000 ETH';
             const avgLoss = losingTrades.length > 0 ?
-                (losingTrades.reduce((sum, p) => sum + p.pnl, 0) / losingTrades.length).toFixed(6) + ' ETH' : '0.000000 ETH';
+                (losingTrades.reduce((sum, p) => sum + p.pnl, 0) / losingTrades.length).toFixed(12) + ' ETH' : '0.000000 ETH';
 
             if (avgWinEl) avgWinEl.textContent = avgWin;
             if (avgLossEl) avgLossEl.textContent = avgLoss;
@@ -2939,14 +2939,14 @@
                 const drawdown = runningMax - runningEquity;
                 if (drawdown > maxDrawdown) maxDrawdown = drawdown;
             });
-            if (maxDrawdownEl) maxDrawdownEl.textContent = maxDrawdown.toFixed(6) + ' ETH';
+            if (maxDrawdownEl) maxDrawdownEl.textContent = maxDrawdown.toFixed(12) + ' ETH';
 
             const avgHoldTime = closedPositions.length > 0 ?
                 (closedPositions.reduce((sum, p) => sum + (p.exitTime - p.entryTime), 0) / closedPositions.length / 1000).toFixed(0) + 's' : '0s';
             const avgGas = state.portfolio.totalTrades > 0 ?
-                (state.portfolio.gasSpent / state.portfolio.totalTrades).toFixed(6) + ' ETH' : '0.000000 ETH';
+                (state.portfolio.gasSpent / state.portfolio.totalTrades).toFixed(12) + ' ETH' : '0.000000 ETH';
             const avgFees = state.portfolio.totalTrades > 0 ?
-                (state.portfolio.feesPaid / state.portfolio.totalTrades).toFixed(6) + ' ETH' : '0.000000 ETH';
+                (state.portfolio.feesPaid / state.portfolio.totalTrades).toFixed(12) + ' ETH' : '0.000000 ETH';
 
             if (avgHoldTimeEl) avgHoldTimeEl.textContent = avgHoldTime;
             if (avgGasEl) avgGasEl.textContent = avgGas;
@@ -3008,7 +3008,7 @@
 
                 const changeClass = changePct >= 0 ? 'price-up' : 'price-down';
                 const changeSymbol = changePct > 0 ? '\u25B2' : changePct < 0 ? '\u25BC' : '';
-                const displayPrice = price != null ? price.toFixed(6) : '<span class="text-secondary">No quote</span>';
+                const displayPrice = price != null ? price.toFixed(12) : '<span class="text-secondary">No quote</span>';
 
                 const lastUpdate = history && history.length > 0 ?
                     new Date(history[history.length - 1].timestamp).toLocaleTimeString() : 'Never';
@@ -3064,10 +3064,10 @@
 
                 html += `<tr>
                     <td><strong>${position.token}</strong></td>
-                    <td>${position.entryPrice.toFixed(6)}</td>
-                    <td>${position.amount.toFixed(6)}</td>
-                    <td>${currentValue.toFixed(6)}</td>
-                    <td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">${unrealizedPnL.toFixed(6)}</td>
+                    <td>${position.entryPrice.toFixed(12)}</td>
+                    <td>${position.amount.toFixed(12)}</td>
+                    <td>${currentValue.toFixed(12)}</td>
+                    <td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">${unrealizedPnL.toFixed(12)}</td>
                     <td><small>${position.pattern || 'Manual'}</small></td>
                 </tr>`;
             });
@@ -3094,10 +3094,10 @@
                     <td>${new Date(trade.timestamp).toLocaleTimeString()}</td>
                     <td><strong>${trade.token}</strong></td>
                     <td><span class="badge ${typeClass}">${trade.type.toUpperCase()}</span></td>
-                    <td>${trade.price.toFixed(6)}</td>
-                    <td>${trade.tokenAmount.toFixed(6)}</td>
+                    <td>${trade.price.toFixed(12)}</td>
+                    <td>${trade.tokenAmount.toFixed(12)}</td>
                     <td><small>${trade.pattern || 'Manual'}</small></td>
-                    <td class="${pnlClass}">${trade.pnl.toFixed(6)}</td>
+                    <td class="${pnlClass}">${trade.pnl.toFixed(12)}</td>
                 </tr>`;
             });
 
@@ -3108,7 +3108,7 @@
             const netPnL = state.portfolio.realizedPnL + state.portfolio.unrealizedPnL;
             const netPnLEl = document.getElementById('netPnL');
             if (netPnLEl) {
-                netPnLEl.textContent = netPnL.toFixed(6) + ' ETH';
+                netPnLEl.textContent = netPnL.toFixed(12) + ' ETH';
                 netPnLEl.className = netPnL >= 0 ? 'value price-up' : 'value price-down';
             }
         }
@@ -3141,7 +3141,7 @@
             if (winRateEl) winRateEl.textContent = winRate;
 
             const avgProfit = closedTrades.length > 0 ?
-                (closedTrades.reduce((sum, t) => sum + t.pnl, 0) / closedTrades.length).toFixed(6) + ' ETH' : '0.000000 ETH';
+                (closedTrades.reduce((sum, t) => sum + t.pnl, 0) / closedTrades.length).toFixed(12) + ' ETH' : '0.000000 ETH';
             if (avgProfitEl) avgProfitEl.textContent = avgProfit;
 
             let maxDrawdown = 0;
@@ -3152,19 +3152,19 @@
                 const drawdown = runningMax - runningEquity;
                 if (drawdown > maxDrawdown) maxDrawdown = drawdown;
             });
-            if (maxDrawdownEl) maxDrawdownEl.textContent = maxDrawdown.toFixed(6) + ' ETH';
+            if (maxDrawdownEl) maxDrawdownEl.textContent = maxDrawdown.toFixed(12) + ' ETH';
 
             const grossProfit = winningTrades.reduce((sum, t) => sum + t.pnl, 0);
             const grossLoss = Math.abs(losingTrades.reduce((sum, t) => sum + t.pnl, 0));
             const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss).toFixed(2) : '\u221E';
             if (profitFactorEl) profitFactorEl.textContent = profitFactor;
 
-            if (totalFeesEl) totalFeesEl.textContent = state.portfolio.totalFees.toFixed(6) + ' ETH';
+            if (totalFeesEl) totalFeesEl.textContent = state.portfolio.totalFees.toFixed(12) + ' ETH';
 
             const bestTrade = closedTrades.length > 0 ? Math.max(...closedTrades.map(t => t.pnl)) : 0;
             const worstTrade = closedTrades.length > 0 ? Math.min(...closedTrades.map(t => t.pnl)) : 0;
-            if (bestTradeEl) bestTradeEl.textContent = bestTrade.toFixed(6) + ' ETH';
-            if (worstTradeEl) worstTradeEl.textContent = worstTrade.toFixed(6) + ' ETH';
+            if (bestTradeEl) bestTradeEl.textContent = bestTrade.toFixed(12) + ' ETH';
+            if (worstTradeEl) worstTradeEl.textContent = worstTrade.toFixed(12) + ' ETH';
 
             const tokenPnL = {};
             const tokenTrades = {};
@@ -3192,7 +3192,7 @@
                 }
             }
             if (bestTokenEl) bestTokenEl.textContent = bestToken;
-            if (bestTokenPnLEl) bestTokenPnLEl.textContent = bestTokenPnL.toFixed(6) + ' ETH';
+            if (bestTokenPnLEl) bestTokenPnLEl.textContent = bestTokenPnL.toFixed(12) + ' ETH';
 
             const patternPnL = {};
             const patternUsage = {};
@@ -3216,7 +3216,7 @@
                 const pattern = Array.from(state.activePatterns.values()).find(p => getPatternKey(p) === bestPatternName);
                 bestPatternNameEl.textContent = pattern ? getPatternDescription(pattern) : bestPatternName;
             }
-            if (bestPatternPnLEl) bestPatternPnLEl.textContent = bestPatternPnLValue.toFixed(6) + ' ETH';
+            if (bestPatternPnLEl) bestPatternPnLEl.textContent = bestPatternPnLValue.toFixed(12) + ' ETH';
 
             let mostUsedPatternKey = '-';
             let maxUsage = 0;
@@ -3250,12 +3250,12 @@
                     <td>${new Date(trade.timestamp).toLocaleString()}</td>
                     <td><strong>${trade.token || 'N/A'}</strong></td>
                     <td><span class="badge ${typeClass}">${(trade.type || 'N/A').toUpperCase()}</span></td>
-                    <td>${(trade.price || 0).toFixed(6)}</td>
-                    <td>${(trade.tokenAmount || 0).toFixed(6)}</td>
-                    <td>${(trade.gasUsed * trade.gasPrice / 1e9 / 1e18 || 0).toFixed(6)}</td>
-                    <td>${(trade.fee || 0).toFixed(6)}</td>
+                    <td>${(trade.price || 0).toFixed(12)}</td>
+                    <td>${(trade.tokenAmount || 0).toFixed(12)}</td>
+                    <td>${(trade.gasUsed * trade.gasPrice / 1e9 / 1e18 || 0).toFixed(12)}</td>
+                    <td>${(trade.fee || 0).toFixed(12)}</td>
                     <td><small>${trade.pattern || 'Manual'}</small></td>
-                    <td class="${pnlClass}">${(trade.pnl || 0).toFixed(6)}</td>
+                    <td class="${pnlClass}">${(trade.pnl || 0).toFixed(12)}</td>
                 </tr>`;
             });
 
@@ -3308,7 +3308,7 @@
 
                 showToast('success', `Bot started! Monitoring ${CHAINS[currentChainKey].name} for patterns.`);
                 window.log('success', `Bot started on ${CHAINS[currentChainKey].name}`);
-                window.log('info', `Trade amount: ${calculateTradeAmount().toFixed(6)} ETH (Method: ${state.settings.tradeAmountPercent}% of ETH or ${state.settings.minTradeAmountETH} ETH min)`);
+                window.log('info', `Trade amount: ${calculateTradeAmount().toFixed(12)} ETH (Method: ${state.settings.tradeAmountPercent}% of ETH or ${state.settings.minTradeAmountETH} ETH min)`);
 
             } catch (error) {
                 const errorMsg = error && error.message ? error.message : String(error);
