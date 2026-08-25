@@ -682,8 +682,8 @@
         <header class="text-center mb-2">
             <h1>Uniswap Pure Pattern Detection Scalper</h1>
             <p class="text-secondary">
-                <strong>Optimized for $10:</strong> Hybrid trade sizing (Gas/Percentage/Min) |
-                Looser pattern detection | Lower validation thresholds
+                <strong>Optimized for $10:</strong> Hybrid trade sizing (Gas/Percentage/Min) | Looser pattern detection
+                | Lower validation thresholds
             </p>
         </header>
 
@@ -998,8 +998,8 @@
                 </div>
                 <div class="card-body" style="max-height: 500px; overflow-y: auto;">
                     <div class="alert alert-info mb-2">
-                        These are the profitable buy patterns currently being used for trading.
-                        Each pattern is automatically detected from price history and validated with backtesting.
+                        These are the profitable buy patterns currently being used for trading. Each pattern is
+                        automatically detected from price history and validated with backtesting.
                         <strong>Optimized for $10:</strong> Lower thresholds for better detection.
                     </div>
                     <div id="patternsList">
@@ -1202,7 +1202,6 @@
                             <small class="setting-description">Trade amount = Gas Fee * Multiplier. Higher values =
                                 larger trades.</small>
                         </div>
-                        <!-- NEW FIELDS FOR HYBRID TRADE SIZING -->
                         <div class="form-group mt-2">
                             <label class="form-label">Trade Amount (% of ETH)</label>
                             <div class="starting-eth-container">
@@ -1445,7 +1444,7 @@
                 unrealizedPnL: 0,
                 gasSpent: 0,
                 feesPaid: 0,
-                startingEth: 0.0033,  // ~$10 at $3000/ETH
+                startingEth: 0.0033,
                 currentEth: 0.0033,
                 equityHistory: [{ timestamp: Date.now(), ethValue: 0.0033 }],
                 totalTrades: 0,
@@ -1456,27 +1455,27 @@
             },
             settings: {
                 network: 'arbitrum',
-                startingEth: 0.0033,      // ~$10
+                startingEth: 0.0033,
                 gasFeeMultiplier: 10,
-                tradeAmountPercent: 10,  // NEW: 10% of available ETH
-                minTradeAmountETH: 0.0001, // NEW: ~$0.30 floor
-                maxTrades: 3,             // Reduced for $10
+                tradeAmountPercent: 10,
+                minTradeAmountETH: 0.0001,
+                maxTrades: 3,
                 tradeCooldown: 30,
                 maxSlippage: 0.5,
                 maxGasPrice: 200,
                 gasLimit: 200000,
                 maxPriceImpact: 0.5,
                 minProfitPercent: 0.5,
-                targetProfitPercent: 1.0,  // Increased to 1% for $10
+                targetProfitPercent: 1.0,
                 maxPositionAge: 300,
                 preventSequentialTrades: true,
-                minPriceChange: 0.05,     // Lowered for better detection
-                minTimeWindow: 10,        // Increased from 5
+                minPriceChange: 0.05,
+                minTimeWindow: 10,
                 maxTimeWindow: 300,
                 minOccurrences: 2,
-                minWinRate: 50,           // Lowered from 60
-                minProfitability: 0.1,    // Lowered from 0.2
-                backtestPeriod: 4,        // Reduced from 24 to match runtime
+                minWinRate: 50,
+                minProfitability: 0.1,
+                backtestPeriod: 4,
                 maxPatternsPerToken: 5,
                 priceHistoryDuration: 24,
                 maxPriceHistory: 10000,
@@ -1488,7 +1487,7 @@
             lastTradeTimes: {},
             startTime: null,
             lastPriceUpdate: null,
-            currentGasPrice: 0.02,     // Pre-set to Arbitrum's typical gas
+            currentGasPrice: 0.02,
             logs: [],
             autoScroll: true,
             currentChainKey: 'arbitrum',
@@ -1509,7 +1508,7 @@
         let currentChainKey = 'arbitrum';
 
         // ============================================
-        // UPDATED: Trade Amount Calculation (HYBRID LOGIC)
+        // Trade Amount Calculation (HYBRID LOGIC)
         // ============================================
         function calculateTradeAmount() {
             const gasPrice = state.currentGasPrice || state.settings.maxGasPrice || 200;
@@ -1517,16 +1516,10 @@
             const gasLimit = state.settings.gasLimit || 200000;
             const availableETH = state.portfolio.currentEth || state.settings.startingEth || 0.0033;
 
-            // 1. Gas-based amount
             const gasBasedAmount = (gasPrice * gasLimit * multiplier) / 1e18;
-
-            // 2. Percentage of available ETH
             const percentBasedAmount = availableETH * (state.settings.tradeAmountPercent / 100);
-
-            // 3. Minimum ETH floor
             const minTradeAmountETH = state.settings.minTradeAmountETH || 0.0001;
 
-            // Use the LARGEST of the three, but never exceed available ETH
             let tradeAmount = Math.max(gasBasedAmount, percentBasedAmount, minTradeAmountETH);
             tradeAmount = Math.min(tradeAmount, availableETH);
 
@@ -1534,112 +1527,13 @@
         }
 
         // ============================================
-        // UPDATED: executeTrade (REMOVED HARDCODED MINIMUM CHECK)
-        // ============================================
-        async function executeTrade(token, action, patternDescription = 'Manual', amountETH = null, pattern = null) {
-            if (!state.isRunning) return null;
-
-            if (amountETH === null) {
-                amountETH = calculateTradeAmount();
-            }
-
-            // Log the method used for trade amount
-            const gasBased = (state.currentGasPrice * state.settings.gasLimit * state.settings.gasFeeMultiplier) / 1e18;
-            const percentBased = (state.portfolio.currentEth || state.settings.startingEth) * (state.settings.tradeAmountPercent / 100);
-            const minAmount = state.settings.minTradeAmountETH || 0.0001;
-            const method = amountETH === minAmount ? "Min ETH Floor" :
-                amountETH === percentBased ? "Percentage of ETH" : "Gas-Based";
-            window.log('info', `Trade amount: ${amountETH.toFixed(12)} ETH (Method: ${method})`);
-
-            // Check if trade amount is zero or invalid
-            if (amountETH <= 0) {
-                window.log('warn', `Invalid trade amount: ${amountETH.toFixed(12)} ETH`);
-                return null;
-            }
-
-            const totalOpenPositions = state.portfolio.positions.filter(p => p.status === 'open').length;
-            if (totalOpenPositions >= state.settings.maxTrades) {
-                window.log('warn', `Max open trades (${state.settings.maxTrades}) reached`);
-                return null;
-            }
-
-            const lastTradeTime = state.lastTradeTimes[token];
-            if (lastTradeTime && (Date.now() - lastTradeTime) < (state.settings.tradeCooldown * 1000)) {
-                window.log('warn', `Cooldown active for ${token}`);
-                return null;
-            }
-
-            const tokenSymbol = token;
-            const currentPrice = state.prices[tokenSymbol];
-            if (!currentPrice) {
-                window.log('warn', `No price for ${tokenSymbol}`);
-                return null;
-            }
-
-            const tokenAmount = amountETH / currentPrice;
-            const poolInfo = await getEnhancedPoolInfo(tokenSymbol);
-            if (!poolInfo) {
-                window.log('warn', `No pool info for ${tokenSymbol}`);
-                return null;
-            }
-
-            const currentGasPrice = state.currentGasPrice || state.settings.maxGasPrice;
-            const tradeResult = await simulateRealisticTrade(
-                tokenSymbol, action, tokenAmount, currentPrice, poolInfo, 0, currentGasPrice
-            );
-
-            if (!tradeResult.success) {
-                const failedTrade = createTradeObject(
-                    tokenSymbol, action, currentPrice, tokenAmount, amountETH,
-                    patternDescription, 'failed', tradeResult.reason,
-                    tradeResult.gasUsed, tradeResult.gasPrice, tradeResult.feeAmount,
-                    tradeResult.priceImpact, tradeResult.slippage, pattern
-                );
-                state.trades.push(failedTrade);
-                state.portfolio.failedTrades++;
-                state.portfolio.totalTrades++;
-                updateDashboard();
-                return failedTrade;
-            }
-
-            if (state.settings.preventSequentialTrades && state.lastTradedToken === tokenSymbol) {
-                return null;
-            }
-
-            const trade = createTradeObject(
-                tokenSymbol, action, tradeResult.executionPrice, tradeResult.tokenAmount,
-                tradeResult.amountETH, patternDescription, 'open', null, tradeResult.gasUsed,
-                tradeResult.gasPrice, tradeResult.feeAmount, tradeResult.priceImpact, tradeResult.slippage, pattern
-            );
-
-            updatePortfolioForTrade(trade, action, tradeResult);
-            state.trades.push(trade);
-            state.portfolio.totalTrades++;
-            state.lastTradedToken = tokenSymbol;
-            state.lastTradeTimes[tokenSymbol] = Date.now();
-
-            if (action === 'sell') {
-                state.openBuyOrders.delete(tokenSymbol);
-                await settleTrade(trade);
-            }
-
-            updateDashboard();
-            updatePortfolioUI();
-            updateEquityChart();
-            updateTradeAmountDisplay();
-
-            return trade;
-        }
-
-        // ============================================
-        // CORE FUNCTIONS (KEEP ALL EXISTING ONES BELOW)
+        // CORE FUNCTIONS
         // ============================================
         const PATTERN_TYPES = {
             BUY: 'buy',
             SELL: 'sell'
         };
 
-        // Initialize the app
         document.addEventListener('DOMContentLoaded', async function () {
             window.log = function (level, message, data = null) {
                 try {
@@ -1894,7 +1788,7 @@
         }
 
         // ============================================
-        // PATTERN DETECTION (OPTIMIZED FOR $10)
+        // PATTERN DETECTION
         // ============================================
         function startPatternDetection() {
             state.patternDetectionTimer = setInterval(() => {
@@ -2102,8 +1996,8 @@
                                     const tradeAmountETH = calculateTradeAmount();
                                     const tokenAmount = tradeAmountETH / current.price;
 
-                                    const gasCost = 0.000004; // Approximate gas cost in ETH for $10 trades
-                                    const dexFee = tradeAmountETH * 0.003; // 0.3% DEX fee
+                                    const gasCost = 0.000004;
+                                    const dexFee = tradeAmountETH * 0.003;
                                     const totalCost = gasCost + dexFee;
 
                                     const targetProfit = state.settings.targetProfitPercent / 100;
@@ -2171,6 +2065,26 @@
 
             if (tokenPatterns.length === 0) return;
 
+            // Check for sell conditions (target profit reached)
+            if (openPosition) {
+                const currentValue = openPosition.amount * currentPrice;
+                const costBasis = (openPosition.amount * openPosition.entryPrice) + openPosition.feesPaid + openPosition.gasPaid;
+                const profitPercent = ((currentValue - costBasis) / costBasis) * 100;
+
+                if (profitPercent >= state.settings.targetProfitPercent) {
+                    window.log('info', `Target profit of ${state.settings.targetProfitPercent}% reached for ${token}. Executing sell.`);
+                    const sellAmountETH = openPosition.amount * currentPrice;
+                    executeTrade(token, 'sell', `Profit target (${profitPercent.toFixed(2)}%) reached`, sellAmountETH, null)
+                        .then(trade => {
+                            if (trade && trade.status === 'closed') {
+                                state.openBuyOrders.delete(token);
+                            }
+                        });
+                    return;
+                }
+            }
+
+            // Check for buy patterns
             if (!openPosition) {
                 const buyPatterns = tokenPatterns.filter(p => p.type === PATTERN_TYPES.BUY);
                 buyPatterns.forEach(pattern => {
@@ -2199,29 +2113,19 @@
                 });
             }
 
-            if (openPosition) {
-                const currentPrice = state.prices[token] || openPosition.entryPrice;
-                const currentValue = openPosition.amount * currentPrice;
-                const costBasis = (openPosition.amount * openPosition.entryPrice) + openPosition.feesPaid + openPosition.gasPaid;
-                const profitPercent = ((currentValue - costBasis) / costBasis) * 100;
-
-                if (profitPercent >= state.settings.targetProfitPercent) {
-                    window.log('info', `Target profit of ${state.settings.targetProfitPercent}% reached for ${token}. Executing sell.`);
-                    executeTrade(token, 'sell', `Profit target (${profitPercent.toFixed(2)}%) reached`);
-                }
-            }
-
+            // Check for age-based selling
             if (openPosition && state.settings.maxPositionAge > 0) {
                 const positionAgeSeconds = (Date.now() - openPosition.entryTime) / 1000;
-                const currentPrice = state.prices[token] || openPosition.entryPrice;
                 const currentValue = openPosition.amount * currentPrice;
                 const costBasis = (openPosition.amount * openPosition.entryPrice) + openPosition.feesPaid + openPosition.gasPaid;
                 const profit = currentValue - costBasis;
 
-                if (positionAgeSeconds > state.settings.maxPositionAge && profit > 0) {
-                    executeTrade(token, 'sell', `Age-based sell (${positionAgeSeconds}s old)`);
-                } else if (positionAgeSeconds > state.settings.maxPositionAge && profit <= 0) {
-                    executeTrade(token, 'sell', `Age-based stop loss (${positionAgeSeconds}s old)`);
+                if (positionAgeSeconds > state.settings.maxPositionAge) {
+                    if (profit > 0) {
+                        executeTrade(token, 'sell', `Age-based sell (${positionAgeSeconds}s old)`);
+                    } else {
+                        executeTrade(token, 'sell', `Age-based stop loss (${positionAgeSeconds}s old)`);
+                    }
                 }
             }
         }
@@ -2589,6 +2493,99 @@
             }
 
             updatePortfolioEquity();
+        }
+
+        async function executeTrade(token, action, patternDescription = 'Manual', amountETH = null, pattern = null) {
+            if (!state.isRunning) return null;
+
+            if (amountETH === null) {
+                amountETH = calculateTradeAmount();
+            }
+
+            const gasBased = (state.currentGasPrice * state.settings.gasLimit * state.settings.gasFeeMultiplier) / 1e18;
+            const percentBased = (state.portfolio.currentEth || state.settings.startingEth) * (state.settings.tradeAmountPercent / 100);
+            const minAmount = state.settings.minTradeAmountETH || 0.0001;
+            const method = amountETH === minAmount ? "Min ETH Floor" :
+                amountETH === percentBased ? "Percentage of ETH" : "Gas-Based";
+            window.log('info', `Trade amount: ${amountETH.toFixed(12)} ETH (Method: ${method})`);
+
+            if (amountETH <= 0) {
+                window.log('warn', `Invalid trade amount: ${amountETH.toFixed(12)} ETH`);
+                return null;
+            }
+
+            const totalOpenPositions = state.portfolio.positions.filter(p => p.status === 'open').length;
+            if (totalOpenPositions >= state.settings.maxTrades) {
+                window.log('warn', `Max open trades (${state.settings.maxTrades}) reached`);
+                return null;
+            }
+
+            const lastTradeTime = state.lastTradeTimes[token];
+            if (lastTradeTime && (Date.now() - lastTradeTime) < (state.settings.tradeCooldown * 1000)) {
+                window.log('warn', `Cooldown active for ${token}`);
+                return null;
+            }
+
+            const tokenSymbol = token;
+            const currentPrice = state.prices[tokenSymbol];
+            if (!currentPrice) {
+                window.log('warn', `No price for ${tokenSymbol}`);
+                return null;
+            }
+
+            const tokenAmount = amountETH / currentPrice;
+            const poolInfo = await getEnhancedPoolInfo(tokenSymbol);
+            if (!poolInfo) {
+                window.log('warn', `No pool info for ${tokenSymbol}`);
+                return null;
+            }
+
+            const currentGasPrice = state.currentGasPrice || state.settings.maxGasPrice;
+            const tradeResult = await simulateRealisticTrade(
+                tokenSymbol, action, tokenAmount, currentPrice, poolInfo, 0, currentGasPrice
+            );
+
+            if (!tradeResult.success) {
+                const failedTrade = createTradeObject(
+                    tokenSymbol, action, currentPrice, tokenAmount, amountETH,
+                    patternDescription, 'failed', tradeResult.reason,
+                    tradeResult.gasUsed, tradeResult.gasPrice, tradeResult.feeAmount,
+                    tradeResult.priceImpact, tradeResult.slippage, pattern
+                );
+                state.trades.push(failedTrade);
+                state.portfolio.failedTrades++;
+                state.portfolio.totalTrades++;
+                updateDashboard();
+                return failedTrade;
+            }
+
+            if (state.settings.preventSequentialTrades && state.lastTradedToken === tokenSymbol) {
+                return null;
+            }
+
+            const trade = createTradeObject(
+                tokenSymbol, action, tradeResult.executionPrice, tradeResult.tokenAmount,
+                tradeResult.amountETH, patternDescription, 'open', null, tradeResult.gasUsed,
+                tradeResult.gasPrice, tradeResult.feeAmount, tradeResult.priceImpact, tradeResult.slippage, pattern
+            );
+
+            updatePortfolioForTrade(trade, action, tradeResult);
+            state.trades.push(trade);
+            state.portfolio.totalTrades++;
+            state.lastTradedToken = tokenSymbol;
+            state.lastTradeTimes[tokenSymbol] = Date.now();
+
+            if (action === 'sell') {
+                state.openBuyOrders.delete(tokenSymbol);
+                await settleTrade(trade);
+            }
+
+            updateDashboard();
+            updatePortfolioUI();
+            updateEquityChart();
+            updateTradeAmountDisplay();
+
+            return trade;
         }
 
         async function settleTrade(trade) {
@@ -3121,9 +3118,7 @@
 
             const totalTradesEl = document.getElementById('totalTrades');
             const winRateEl = document.getElementById('winRate');
-            const avgProfitEl = document.getElementById('avgProfit');
-            const maxDrawdownEl = document.getElementById('maxDrawdown');
-            const profitFactorEl = document.getElementById('profitFactor');
+            const totalPnLEl = document.getElementById('totalPnL');
             const totalFeesEl = document.getElementById('totalFeesHistory');
             const bestTradeEl = document.getElementById('bestTrade');
             const worstTradeEl = document.getElementById('worstTrade');
@@ -3140,25 +3135,8 @@
                 ((state.portfolio.winningTrades / state.portfolio.totalTrades) * 100).toFixed(1) + '%' : '0%';
             if (winRateEl) winRateEl.textContent = winRate;
 
-            const avgProfit = closedTrades.length > 0 ?
-                (closedTrades.reduce((sum, t) => sum + t.pnl, 0) / closedTrades.length).toFixed(12) + ' ETH' : '0.000000 ETH';
-            if (avgProfitEl) avgProfitEl.textContent = avgProfit;
-
-            let maxDrawdown = 0;
-            let runningMax = state.portfolio.startingEth;
-            state.portfolio.equityHistory.forEach(point => {
-                const runningEquity = point.ethValue;
-                if (runningEquity > runningMax) runningMax = runningEquity;
-                const drawdown = runningMax - runningEquity;
-                if (drawdown > maxDrawdown) maxDrawdown = drawdown;
-            });
-            if (maxDrawdownEl) maxDrawdownEl.textContent = maxDrawdown.toFixed(12) + ' ETH';
-
-            const grossProfit = winningTrades.reduce((sum, t) => sum + t.pnl, 0);
-            const grossLoss = Math.abs(losingTrades.reduce((sum, t) => sum + t.pnl, 0));
-            const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss).toFixed(2) : '\u221E';
-            if (profitFactorEl) profitFactorEl.textContent = profitFactor;
-
+            const totalPnL = state.portfolio.realizedPnL + state.portfolio.unrealizedPnL;
+            if (totalPnLEl) totalPnLEl.textContent = totalPnL.toFixed(12) + ' ETH';
             if (totalFeesEl) totalFeesEl.textContent = state.portfolio.totalFees.toFixed(12) + ' ETH';
 
             const bestTrade = closedTrades.length > 0 ? Math.max(...closedTrades.map(t => t.pnl)) : 0;
