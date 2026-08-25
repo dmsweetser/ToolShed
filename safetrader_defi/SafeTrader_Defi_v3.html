@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Pure Pattern Detection Scalper - $10 Optimized</title>
+    <title>Uniswap Easy Pattern Trader - $10 Optimized</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script
@@ -672,6 +672,39 @@
             padding-left: 10px;
             margin-bottom: 10px;
         }
+
+        .help-icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            background: var(--bs-info);
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 16px;
+            font-size: 12px;
+            cursor: help;
+            margin-left: 5px;
+        }
+
+        .settings-section {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .settings-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--bs-primary);
+        }
     </style>
 </head>
 
@@ -680,20 +713,19 @@
 
     <div class="container">
         <header class="text-center mb-2">
-            <h1>Uniswap Pure Pattern Detection Scalper</h1>
+            <h1>Uniswap Easy Pattern Trader</h1>
             <p class="text-secondary">
-                <strong>Optimized for $10:</strong> Hybrid trade sizing (Gas/Percentage/Min) | Looser pattern detection
-                | Lower validation thresholds
+                <strong>Simple $10 Trading:</strong> Automatically finds and trades profitable patterns in the market
             </p>
         </header>
 
         <div class="nav-tabs">
             <div class="nav-link active" data-tab="dashboard">Dashboard</div>
             <div class="nav-link" data-tab="portfolio">Portfolio</div>
-            <div class="nav-link" data-tab="patterns">Active Patterns</div>
+            <div class="nav-link" data-tab="patterns">Pattern Finder</div>
             <div class="nav-link" data-tab="trades">Trade History</div>
-            <div class="nav-link" data-tab="settings">Settings</div>
-            <div class="nav-link" data-tab="logs">Logs</div>
+            <div class="nav-link" data-tab="settings">All Settings</div>
+            <div class="nav-link" data-tab="logs">Activity Log</div>
         </div>
 
         <!-- Dashboard Tab -->
@@ -701,72 +733,73 @@
             <div class="grid-4">
                 <div class="card">
                     <div class="card-header d-flex justify-between align-center">
-                        <span>Bot Status</span>
+                        <span>Trading Status</span>
                         <span id="botStatusIndicator"></span>
                     </div>
                     <div class="card-body">
                         <div class="d-flex align-center gap-1 mb-1">
                             <span class="status-indicator status-disconnected" id="statusIndicator"></span>
-                            <span id="botStatusText">Disconnected</span>
+                            <span id="botStatusText">Not Running</span>
                         </div>
                         <div class="connection-status" id="connectionStatus">
                             <div class="status-item status-disconnected" id="blockchainStatus">
                                 <span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span>
-                                Blockchain
+                                Market Connection
                             </div>
                             <div class="status-item status-disconnected" id="priceFeedStatus">
                                 <span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span>
-                                Price Feed
+                                Price Updates
                             </div>
                         </div>
                         <div class="d-flex gap-1 mt-2">
                             <button class="btn btn-success btn-sm" id="startBotBtn" onclick="startBot()">
                                 <span class="loading-spinner" id="startSpinner" style="display:none;"></span>Start
+                                Trading
                             </button>
                             <button class="btn btn-danger btn-sm" id="stopBotBtn" onclick="stopBot()" disabled>
-                                <span class="loading-spinner" id="stopSpinner" style="display:none;"></span>Stop
+                                <span class="loading-spinner" id="stopSpinner" style="display:none;"></span>Stop Trading
                             </button>
                             <button class="btn btn-secondary btn-sm" onclick="testConnection()">Test Connection</button>
                         </div>
                         <div class="mt-2">
-                            <p><strong>Uptime:</strong> <span id="uptime">00:00:00</span></p>
-                            <p><strong>Last Update:</strong> <span id="lastPriceUpdate">Never</span></p>
-                            <p><strong>Gas Price:</strong> <span id="currentGasPrice">0.02 gwei</span></p>
-                            <p><strong>Trade Amount:</strong> <span id="tradeAmountDisplay"
-                                    title="Method: Loading...">0.000000 ETH</span></p>
-                            <p><strong>Tracked Tokens:</strong> <span id="trackedTokensCount">0</span></p>
+                            <p><strong>Running Time:</strong> <span id="uptime">00:00:00</span></p>
+                            <p><strong>Last Price Update:</strong> <span id="lastPriceUpdate">Never</span></p>
+                            <p><strong>Network Fee:</strong> <span id="currentGasPrice">0.02 gwei</span></p>
+                            <p><strong>Trade Size:</strong> <span id="tradeAmountDisplay"
+                                    title="How much ETH will be used for each trade">0.000000 ETH</span></p>
+                            <p><strong>Tokens Watched:</strong> <span id="trackedTokensCount">0</span></p>
                             <p><strong>Active Patterns:</strong> <span id="activePatternsCount">0</span></p>
                         </div>
                     </div>
                 </div>
                 <div class="card">
-                    <div class="card-header">Portfolio Summary</div>
+                    <div class="card-header">Your Money</div>
                     <div class="card-body">
                         <div class="d-flex justify-between">
                             <div>
-                                <p><strong>Starting ETH:</strong></p>
+                                <p><strong>Starting Budget:</strong></p>
                                 <p class="value" id="startingEthDisplay">0.003300 ETH</p>
                             </div>
                             <div>
-                                <p><strong>Current ETH:</strong></p>
+                                <p><strong>Current Value:</strong></p>
                                 <p class="value" id="currentEth">0.003300 ETH</p>
                             </div>
                         </div>
                         <hr>
                         <div class="d-flex justify-between">
                             <div>
-                                <p><strong>Realized PnL:</strong></p>
+                                <p><strong>Profit from Closed Trades:</strong></p>
                                 <p class="value price-up" id="realizedPnL">0.000000 ETH</p>
                             </div>
                             <div>
-                                <p><strong>Unrealized PnL:</strong></p>
+                                <p><strong>Profit from Open Trades:</strong></p>
                                 <p class="value" id="unrealizedPnL">0.000000 ETH</p>
                             </div>
                         </div>
                         <hr>
                         <div class="d-flex justify-between">
                             <div>
-                                <p><strong>Net PnL:</strong></p>
+                                <p><strong>Total Profit:</strong></p>
                                 <p class="value" id="netPnL">0.000000 ETH</p>
                             </div>
                             <div>
@@ -777,38 +810,38 @@
                     </div>
                 </div>
                 <div class="card">
-                    <div class="card-header">Pattern Detection</div>
+                    <div class="card-header">Pattern Finder Status</div>
                     <div class="card-body">
-                        <p><strong>Total Patterns:</strong> <span id="totalPatterns">0</span></p>
-                        <p><strong>Buy Patterns:</strong> <span id="buyPatternsCount">0</span></p>
+                        <p><strong>Total Patterns Found:</strong> <span id="totalPatterns">0</span></p>
+                        <p><strong>Buy Opportunities:</strong> <span id="buyPatternsCount">0</span></p>
                         <p><strong>Tokens with Patterns:</strong> <span id="tokensWithPatterns">0</span></p>
-                        <p><strong>Target Profit:</strong> <span id="targetProfitPercent">1.0%</span></p>
+                        <p><strong>Profit Target:</strong> <span id="targetProfitPercent">1.0%</span></p>
                         <div class="progress-bar mt-2">
                             <div class="progress-fill" id="patternSuccessBar" style="width: 0%;"></div>
                         </div>
-                        <p class="text-secondary mt-1">Pattern Success Rate</p>
+                        <p class="text-secondary mt-1">How often patterns work</p>
                     </div>
                 </div>
                 <div class="card">
-                    <div class="card-header">Costs</div>
+                    <div class="card-header">Trading Costs</div>
                     <div class="card-body">
-                        <p><strong>Gas Spent:</strong> <span id="gasSpent">0.000000 ETH</span></p>
-                        <p><strong>DEX Fees:</strong> <span id="dexFees">0.000000 ETH</span></p>
+                        <p><strong>Network Fees Paid:</strong> <span id="gasSpent">0.000000 ETH</span></p>
+                        <p><strong>Exchange Fees Paid:</strong> <span id="dexFees">0.000000 ETH</span></p>
                         <p><strong>Total Fees:</strong> <span id="totalFees">0.000000 ETH</span></p>
                         <div class="progress-bar mt-2">
                             <div class="progress-fill" id="feeImpactBar" style="width: 0%;"></div>
                         </div>
-                        <p class="text-secondary mt-1">Fee Impact on PnL</p>
+                        <p class="text-secondary mt-1">How fees affect your profit</p>
                     </div>
                 </div>
             </div>
             <div class="grid-2">
                 <div class="card">
                     <div class="card-header d-flex justify-between align-center">
-                        <span>ETH Equity Curve</span>
+                        <span>Your Portfolio Value Over Time</span>
                         <div class="d-flex gap-1">
                             <button class="btn btn-secondary btn-xs" onclick="toggleEquityChartType()">Toggle
-                                Linear/Log</button>
+                                View</button>
                         </div>
                     </div>
                     <div class="card-body">
@@ -817,12 +850,12 @@
                 </div>
                 <div class="card">
                     <div class="card-header d-flex justify-between align-center">
-                        <span>Active Positions</span>
+                        <span>Your Current Investments</span>
                         <span class="badge badge-secondary" id="activeCount">0</span>
                     </div>
                     <div class="card-body">
                         <div id="activePositions">
-                            <p class="text-secondary">No active positions</p>
+                            <p class="text-secondary">No open investments</p>
                         </div>
                         <div class="asset-allocation" id="assetAllocation"></div>
                     </div>
@@ -831,7 +864,7 @@
             <div class="grid-2">
                 <div class="card">
                     <div class="card-header d-flex justify-between align-center">
-                        <span>Token Monitoring</span>
+                        <span>Market Watch</span>
                         <div class="d-flex gap-1">
                             <button class="btn btn-primary btn-xs" onclick="refreshPrices()">
                                 <span class="loading-spinner loading-spinner-dark" id="priceRefreshSpinner"
@@ -849,8 +882,8 @@
                     </div>
                     <div class="card-body">
                         <div class="alert alert-info mb-2">
-                            Monitors ALL tokens traded on Uniswap. Patterns are detected automatically from price
-                            history.
+                            Watching all tokens trading on Uniswap. The system automatically looks for profitable
+                            patterns in price movements.
                         </div>
                         <div id="priceTable">
                             <table class="table">
@@ -858,14 +891,15 @@
                                     <tr>
                                         <th>Token</th>
                                         <th>Price (ETH)</th>
-                                        <th>Change</th>
-                                        <th>Patterns</th>
+                                        <th>24h Change</th>
+                                        <th>Patterns Found</th>
                                         <th>Last Trade</th>
                                     </tr>
                                 </thead>
                                 <tbody id="priceRows">
                                     <tr>
-                                        <td colspan="5" class="text-center text-secondary">Press Start to begin</td>
+                                        <td colspan="5" class="text-center text-secondary">Press Start to begin watching
+                                            the market</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -883,11 +917,11 @@
                                 <tr>
                                     <th>Time</th>
                                     <th>Token</th>
-                                    <th>Type</th>
+                                    <th>Action</th>
                                     <th>Price (ETH)</th>
                                     <th>Amount</th>
-                                    <th>Pattern</th>
-                                    <th>PnL (ETH)</th>
+                                    <th>Pattern Used</th>
+                                    <th>Profit (ETH)</th>
                                 </tr>
                             </thead>
                             <tbody id="recentTrades">
@@ -905,43 +939,43 @@
         <div id="portfolio" class="tab-content">
             <div class="grid-2">
                 <div class="card">
-                    <div class="card-header">Portfolio Balances</div>
+                    <div class="card-header">What You Own</div>
                     <div class="card-body">
                         <table class="table portfolio-table">
                             <thead>
                                 <tr>
                                     <th>Asset</th>
-                                    <th>Balance</th>
-                                    <th>ETH Value</th>
-                                    <th>Allocation</th>
+                                    <th>Amount</th>
+                                    <th>Value in ETH</th>
+                                    <th>% of Portfolio</th>
                                 </tr>
                             </thead>
                             <tbody id="portfolioBalances">
                                 <tr>
-                                    <td colspan="4" class="text-center text-secondary">No balances</td>
+                                    <td colspan="4" class="text-center text-secondary">Nothing owned yet</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
                 <div class="card">
-                    <div class="card-header">Position Details</div>
+                    <div class="card-header">Open Investments</div>
                     <div class="card-body">
                         <table class="table portfolio-table">
                             <thead>
                                 <tr>
                                     <th>Token</th>
-                                    <th>Entry Price</th>
+                                    <th>Bought At</th>
                                     <th>Current Price</th>
                                     <th>Amount</th>
-                                    <th>Value (ETH)</th>
-                                    <th>Unrealized PnL</th>
+                                    <th>Current Value</th>
+                                    <th>Unrealized Profit</th>
                                     <th>Pattern Used</th>
                                 </tr>
                             </thead>
                             <tbody id="positionDetails">
                                 <tr>
-                                    <td colspan="7" class="text-center text-secondary">No open positions</td>
+                                    <td colspan="7" class="text-center text-secondary">No open investments</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -950,7 +984,7 @@
             </div>
             <div class="grid-3">
                 <div class="card">
-                    <div class="card-header">Performance Metrics</div>
+                    <div class="card-header">Trading Results</div>
                     <div class="card-body">
                         <p><strong>Total Trades:</strong> <span id="portfolioTotalTrades">0</span></p>
                         <p><strong>Winning Trades:</strong> <span id="portfolioWinningTrades">0</span></p>
@@ -969,7 +1003,7 @@
                         <p><strong>Avg Win:</strong> <span class="price-up" id="portfolioAvgWin">0.000000 ETH</span></p>
                         <p><strong>Avg Loss:</strong> <span class="price-down" id="portfolioAvgLoss">0.000000 ETH</span>
                         </p>
-                        <p><strong>Max Drawdown:</strong> <span class="price-down" id="portfolioMaxDrawdown">0.000000
+                        <p><strong>Biggest Loss:</strong> <span class="price-down" id="portfolioMaxDrawdown">0.000000
                                 ETH</span></p>
                     </div>
                 </div>
@@ -977,8 +1011,8 @@
                     <div class="card-header">Efficiency</div>
                     <div class="card-body">
                         <p><strong>Avg Hold Time:</strong> <span id="portfolioAvgHoldTime">0s</span></p>
-                        <p><strong>Gas per Trade:</strong> <span id="portfolioAvgGas">0.000000 ETH</span></p>
-                        <p><strong>Fee per Trade:</strong> <span id="portfolioAvgFees">0.000000 ETH</span></p>
+                        <p><strong>Avg Network Fee:</strong> <span id="portfolioAvgGas">0.000000 ETH</span></p>
+                        <p><strong>Avg Exchange Fee:</strong> <span id="portfolioAvgFees">0.000000 ETH</span></p>
                         <p><strong>Failed Trades:</strong> <span id="portfolioFailedTrades">0</span></p>
                         <p><strong>Success Rate:</strong> <span id="portfolioSuccessRate">100%</span></p>
                     </div>
@@ -990,93 +1024,21 @@
         <div id="patterns" class="tab-content">
             <div class="card">
                 <div class="card-header d-flex justify-between align-center">
-                    <span>Active Trading Patterns</span>
+                    <span>Current Trading Opportunities</span>
                     <div class="d-flex gap-1">
-                        <button class="btn btn-secondary btn-sm" onclick="exportPatterns()">Export CSV</button>
+                        <button class="btn btn-secondary btn-sm" onclick="exportPatterns()">Export List</button>
                         <button class="btn btn-danger btn-sm" onclick="clearPatterns()">Clear All</button>
                     </div>
                 </div>
                 <div class="card-body" style="max-height: 500px; overflow-y: auto;">
                     <div class="alert alert-info mb-2">
-                        These are the profitable buy patterns currently being used for trading. Each pattern is
-                        automatically detected from price history and validated with backtesting.
-                        <strong>Optimized for $10:</strong> Lower thresholds for better detection.
+                        These are the buy opportunities the system has found. Each one is automatically tested to make
+                        sure it's profitable before being used for trading.
+                        <strong>For $10 trading:</strong> The system looks for smaller, more frequent opportunities.
                     </div>
                     <div id="patternsList">
-                        <p class="text-secondary">No patterns detected yet. Start the bot to begin pattern analysis.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="grid-2">
-                <div class="card">
-                    <div class="card-header">Detection Parameters</div>
-                    <div class="card-body">
-                        <div class="form-group">
-                            <label class="form-label">Min Price Change (%)</label>
-                            <input type="number" class="form-control" id="minPriceChange" value="0.05" min="0.01"
-                                max="10" step="0.01">
-                            <small class="setting-description">Minimum percentage change to consider for pattern
-                                detection (lowered to 0.05% for $10).</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Min Time Window (seconds)</label>
-                            <input type="number" class="form-control" id="minTimeWindow" value="10" min="1" max="300">
-                            <small class="setting-description">Minimum time for pattern detection (increased to
-                                10s).</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Max Time Window (seconds)</label>
-                            <input type="number" class="form-control" id="maxTimeWindow" value="300" min="10"
-                                max="3600">
-                            <small class="setting-description">Maximum time for pattern detection.</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Min Pattern Occurrences</label>
-                            <input type="number" class="form-control" id="minOccurrences" value="2" min="1" max="10">
-                            <small class="setting-description">Minimum times a pattern must be detected before trading
-                                on it.</small>
-                        </div>
-                        <button class="btn btn-primary mt-2" onclick="saveDetectionSettings()">Save Detection
-                            Settings</button>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-header">Pattern Validation & Profit Targets</div>
-                    <div class="card-body">
-                        <div class="form-group">
-                            <label class="form-label">Min Pattern Win Rate (%)</label>
-                            <input type="number" class="form-control" id="minWinRate" value="50" min="0" max="100">
-                            <small class="setting-description">Only trade patterns with at least this win rate in
-                                backtesting (lowered to 50% for $10).</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Backtest Period (hours)</label>
-                            <input type="number" class="form-control" id="backtestPeriod" value="4" min="1" max="168">
-                            <small class="setting-description">How much history to use for pattern validation (reduced
-                                to 4h for $10).</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Target Profit Percentage (%)</label>
-                            <input type="number" class="form-control" id="targetProfitPercent" value="1.0" min="0.1"
-                                max="100" step="0.1">
-                            <small class="setting-description">Sell when this profit percentage is reached (increased to
-                                1% for $10).</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Min Pattern Profitability (%)</label>
-                            <input type="number" class="form-control" id="minProfitability" value="0.1" min="0.1"
-                                max="100" step="0.1">
-                            <small class="setting-description">Minimum average profitability for a pattern to be
-                                considered (lowered to 0.1% for $10).</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Max Patterns Per Token</label>
-                            <input type="number" class="form-control" id="maxPatternsPerToken" value="5" min="1"
-                                max="20">
-                            <small class="setting-description">Maximum number of patterns to track per token.</small>
-                        </div>
-                        <button class="btn btn-primary mt-2" onclick="saveValidationSettings()">Save Validation
-                            Settings</button>
+                        <p class="text-secondary">No patterns found yet. Start the bot to begin looking for
+                            opportunities.</p>
                     </div>
                 </div>
             </div>
@@ -1086,9 +1048,9 @@
         <div id="trades" class="tab-content">
             <div class="card">
                 <div class="card-header d-flex justify-between align-center">
-                    <span>Trade History</span>
+                    <span>Complete Trade History</span>
                     <div class="d-flex gap-1">
-                        <button class="btn btn-secondary btn-sm" onclick="exportTradeHistory()">Export CSV</button>
+                        <button class="btn btn-secondary btn-sm" onclick="exportTradeHistory()">Export List</button>
                         <button class="btn btn-danger btn-sm" onclick="clearTradeHistory()">Clear All</button>
                     </div>
                 </div>
@@ -1098,13 +1060,13 @@
                             <tr>
                                 <th>Time</th>
                                 <th>Token</th>
-                                <th>Type</th>
+                                <th>Action</th>
                                 <th>Price (ETH)</th>
                                 <th>Amount</th>
-                                <th>Gas (ETH)</th>
-                                <th>Fee (ETH)</th>
-                                <th>Pattern</th>
-                                <th>PnL (ETH)</th>
+                                <th>Network Fee (ETH)</th>
+                                <th>Exchange Fee (ETH)</th>
+                                <th>Pattern Used</th>
+                                <th>Profit (ETH)</th>
                             </tr>
                         </thead>
                         <tbody id="fullTradeHistory">
@@ -1117,16 +1079,16 @@
             </div>
             <div class="grid-3">
                 <div class="card">
-                    <div class="card-header">Overall Statistics</div>
+                    <div class="card-header">Overall Performance</div>
                     <div class="card-body">
                         <p><strong>Total Trades:</strong> <span id="totalTrades">0</span></p>
                         <p><strong>Win Rate:</strong> <span id="winRate">0%</span></p>
-                        <p><strong>Total PnL:</strong> <span id="totalPnL">0.000000 ETH</span></p>
-                        <p><strong>Total Fees:</strong> <span id="totalFeesHistory">0.000000 ETH</span></p>
+                        <p><strong>Total Profit:</strong> <span id="totalPnL">0.000000 ETH</span></p>
+                        <p><strong>Total Fees Paid:</strong> <span id="totalFeesHistory">0.000000 ETH</span></p>
                     </div>
                 </div>
                 <div class="card">
-                    <div class="card-header">Best Performers</div>
+                    <div class="card-header">Best & Worst</div>
                     <div class="card-body">
                         <p><strong>Best Trade:</strong> <span class="price-up" id="bestTrade">0.000000 ETH</span></p>
                         <p><strong>Worst Trade:</strong> <span class="price-down" id="worstTrade">0.000000 ETH</span>
@@ -1138,7 +1100,7 @@
                     <div class="card-header">Pattern Performance</div>
                     <div class="card-body">
                         <p><strong>Best Pattern:</strong> <span id="bestPatternName">-</span></p>
-                        <p><strong>Best Pattern PnL:</strong> <span class="price-up" id="bestPatternPnL">0.000000
+                        <p><strong>Best Pattern Profit:</strong> <span class="price-up" id="bestPatternPnL">0.000000
                                 ETH</span></p>
                         <p><strong>Most Used Pattern:</strong> <span id="mostUsedPattern">-</span></p>
                     </div>
@@ -1148,190 +1110,345 @@
 
         <!-- Settings Tab -->
         <div id="settings" class="tab-content">
-            <div class="grid-2">
-                <div class="card">
-                    <div class="card-header">Network Configuration</div>
-                    <div class="card-body">
+            <div class="card">
+                <div class="card-header">All Trading Settings</div>
+                <div class="card-body">
+
+                    <!-- Network Configuration -->
+                    <div class="settings-section">
+                        <h3 class="section-title">1. Market Connection <span class="help-icon">?</span></h3>
+                        <p style="margin-bottom: 15px; color: #6c757d;">Choose which blockchain network to watch for
+                            trading opportunities</p>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Blockchain Network <span class="help-icon">?</span></label>
+                                <select class="form-control" id="settingsNetworkSelect"
+                                    onchange="updateNetworkSettings()">
+                                    <option value="arbitrum">Arbitrum (Recommended - Lower fees)</option>
+                                    <option value="ethereum">Ethereum (Higher fees)</option>
+                                    <option value="base">Base (Low fees)</option>
+                                    <option value="optimism">Optimism (Low fees)</option>
+                                    <option value="polygon">Polygon (Low fees)</option>
+                                </select>
+                                <small class="setting-description">Which blockchain to monitor for trading
+                                    opportunities. Arbitrum is recommended for $10 trading due to lower fees.</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Uniswap Version <span class="help-icon">?</span></label>
+                                <select class="form-control" id="uniswapVersion">
+                                    <option value="v3">Uniswap V3 (Most tokens)</option>
+                                    <option value="v2">Uniswap V2 (Fewer tokens)</option>
+                                </select>
+                                <small class="setting-description">Which version of Uniswap to use. V3 has most trading
+                                    activity.</small>
+                            </div>
+                        </div>
                         <div class="form-group">
-                            <label class="form-label">Blockchain Network</label>
-                            <select class="form-control" id="settingsNetworkSelect" onchange="updateNetworkSettings()">
-                                <option value="arbitrum">Arbitrum One</option>
-                                <option value="ethereum">Ethereum Mainnet</option>
-                                <option value="base">Base</option>
-                                <option value="optimism">Optimism</option>
-                                <option value="polygon">Polygon</option>
-                            </select>
-                            <small class="setting-description">Select the blockchain network to monitor.</small>
-                        </div>
-                        <div class="form-group mt-2">
-                            <label class="form-label">Uniswap Version</label>
-                            <select class="form-control" id="uniswapVersion">
-                                <option value="v3">Uniswap V3</option>
-                                <option value="v2">Uniswap V2</option>
-                            </select>
-                            <small class="setting-description">Version of Uniswap to monitor.</small>
-                        </div>
-                        <div class="form-group mt-2">
-                            <label class="form-label">Factory Address</label>
+                            <label class="form-label">Factory Address <span class="help-icon">?</span></label>
                             <input type="text" class="form-control" id="factoryAddressInput" readonly>
-                            <small class="setting-description">Uniswap factory contract address.</small>
+                            <small class="setting-description">Technical detail - automatically set based on your
+                                network selection.</small>
                         </div>
                     </div>
-                </div>
 
-                <div class="card">
-                    <div class="card-header">Trade Configuration</div>
-                    <div class="card-body">
-                        <div class="form-group">
-                            <label class="form-label">Starting ETH</label>
-                            <div class="starting-eth-container">
-                                <input type="number" class="form-control" id="startingEth" value="0.0033" min="0.0001"
-                                    step="0.0001" onchange="updateStartingEthDisplay()">
-                                <span class="eth-suffix">ETH</span>
-                            </div>
-                            <small class="setting-description">Initial ETH amount for trading (~$10 at
-                                $3000/ETH).</small>
-                        </div>
-                        <div class="form-group mt-2">
-                            <label class="form-label">Gas Fee Multiplier</label>
-                            <div class="starting-eth-container">
-                                <input type="number" class="form-control" id="gasFeeMultiplier" value="10" min="1"
-                                    max="1000" step="0.1">
-                                <span class="eth-suffix">x</span>
-                            </div>
-                            <small class="setting-description">Trade amount = Gas Fee * Multiplier. Higher values =
-                                larger trades.</small>
-                        </div>
-                        <div class="form-group mt-2">
-                            <label class="form-label">Trade Amount (% of ETH)</label>
-                            <div class="starting-eth-container">
-                                <input type="number" class="form-control" id="tradeAmountPercent" value="10" min="1"
-                                    max="100" step="1">
-                                <span class="eth-suffix">%</span>
-                            </div>
-                            <small class="setting-description">Percentage of available ETH to use per trade (e.g., 10%
-                                of $10 = $1).</small>
-                        </div>
-                        <div class="form-group mt-2">
-                            <label class="form-label">Minimum Trade Amount (ETH)</label>
-                            <div class="starting-eth-container">
-                                <input type="number" class="form-control" id="minTradeAmountETH" value="0.0001"
-                                    min="0.00001" step="0.00001">
-                                <span class="eth-suffix">ETH</span>
-                            </div>
-                            <small class="setting-description">Never trade below this amount (~$0.30 at
-                                $3000/ETH).</small>
-                        </div>
-                        <div class="form-group mt-2">
-                            <label class="form-label">Max Open Trades</label>
-                            <input type="number" class="form-control" id="maxTrades" value="3" min="1" max="200">
-                            <small class="setting-description">Maximum number of simultaneous open positions (reduced to
-                                3 for $10).</small>
-                        </div>
-                        <div class="form-group mt-2">
-                            <label class="form-label">Trade Cooldown (seconds)</label>
-                            <input type="number" class="form-control" id="tradeCooldown" value="30" min="0">
-                            <small class="setting-description">Minimum time between trades on the same token.</small>
-                        </div>
-                        <button class="btn btn-primary mt-2" onclick="saveTradeSettings()">Save Trade Settings</button>
-                    </div>
-                </div>
-            </div>
+                    <!-- Trade Configuration -->
+                    <div class="settings-section">
+                        <h3 class="section-title">2. Your Trading Budget <span class="help-icon">?</span></h3>
+                        <p style="margin-bottom: 15px; color: #6c757d;">Set how much money you want to trade with and
+                            how it should be used</p>
 
-            <div class="card">
-                <div class="card-header">Advanced Settings</div>
-                <div class="card-body">
-                    <div class="grid-3">
-                        <div class="form-group">
-                            <label class="form-label">Max Slippage (%)</label>
-                            <input type="number" class="form-control" id="maxSlippage" value="0.5" min="0.1" max="10"
-                                step="0.01">
-                            <small class="setting-description">Maximum allowed slippage.</small>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Your Trading Budget (in ETH) <span
+                                        class="help-icon">?</span></label>
+                                <div class="starting-eth-container">
+                                    <input type="number" class="form-control" id="startingEth" value="0.0033"
+                                        min="0.0001" step="0.0001" onchange="updateStartingEthDisplay()">
+                                    <span class="eth-suffix">ETH</span>
+                                </div>
+                                <small class="setting-description">How much ETH you're starting with. $10 is about
+                                    0.0033 ETH when ETH is at $3000. This is your total trading money.</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Trade Size Multiplier <span class="help-icon">?</span></label>
+                                <div class="starting-eth-container">
+                                    <input type="number" class="form-control" id="gasFeeMultiplier" value="10" min="1"
+                                        max="1000" step="0.1">
+                                    <span class="eth-suffix">x</span>
+                                </div>
+                                <small class="setting-description">Bigger number = bigger trades. For $10, 10x means
+                                    each trade uses about $1 worth of ETH. Higher values use more of your budget per
+                                    trade.</small>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Min Profit to Close (%)</label>
-                            <input type="number" class="form-control" id="minProfitPercent" value="0.5" min="0"
-                                max="100" step="0.01">
-                            <small class="setting-description">Minimum profit to close a position.</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Max Position Age (seconds)</label>
-                            <input type="number" class="form-control" id="maxPositionAge" value="300" min="10"
-                                max="86400">
-                            <small class="setting-description">Auto-sell if position is older than this.</small>
-                        </div>
-                    </div>
-                    <div class="grid-2 mt-2">
-                        <div class="form-group">
-                            <label class="form-label">Max Gas Price (gwei)</label>
-                            <input type="number" class="form-control" id="maxGasPrice" value="200" min="1">
-                            <small class="setting-description">Maximum gas price to pay.</small>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Gas Limit</label>
-                            <input type="number" class="form-control" id="gasLimit" value="200000" min="21000">
-                            <small class="setting-description">Gas limit for each transaction.</small>
-                        </div>
-                    </div>
-                    <div class="form-group mt-2">
-                        <label><input type="checkbox" id="preventSequentialTrades" checked> Prevent Sequential
-                            Same-Asset Trades</label>
-                        <small class="setting-description">Prevents consecutive trades on the same token.</small>
-                    </div>
-                    <div class="d-flex gap-1 mt-2">
-                        <button class="btn btn-primary" onclick="saveAdvancedSettings()">Save Advanced Settings</button>
-                        <button class="btn btn-secondary" onclick="loadDefaultSettings()">Load Defaults</button>
-                    </div>
-                </div>
-            </div>
 
-            <div class="card">
-                <div class="card-header">Data Storage</div>
-                <div class="card-body">
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">Price History Duration (hours)</label>
-                            <input type="number" class="form-control" id="priceHistoryDuration" value="24" min="1"
-                                max="720">
-                            <small class="setting-description">How many hours of price history to maintain.</small>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Percentage of Budget per Trade <span
+                                        class="help-icon">?</span></label>
+                                <div class="starting-eth-container">
+                                    <input type="number" class="form-control" id="tradeAmountPercent" value="10" min="1"
+                                        max="100" step="1">
+                                    <span class="eth-suffix">%</span>
+                                </div>
+                                <small class="setting-description">What percentage of your total budget to use for each
+                                    trade. 10% of $10 = $1 per trade. Lower percentages are safer.</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Minimum Trade Size (ETH) <span
+                                        class="help-icon">?</span></label>
+                                <div class="starting-eth-container">
+                                    <input type="number" class="form-control" id="minTradeAmountETH" value="0.0001"
+                                        min="0.00001" step="0.00001">
+                                    <span class="eth-suffix">ETH</span>
+                                </div>
+                                <small class="setting-description">Never trade below this amount. 0.0001 ETH is about
+                                    $0.30. This prevents trading with tiny amounts that aren't worth it.</small>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Max Price History Points</label>
-                            <input type="number" class="form-control" id="maxPriceHistory" value="10000" min="100"
-                                max="100000">
-                            <small class="setting-description">Maximum price points per token.</small>
-                        </div>
-                    </div>
-                    <div class="d-flex gap-1 mt-2">
-                        <button class="btn btn-primary" onclick="saveStorageSettings()">Save Storage Settings</button>
-                        <button class="btn btn-danger" onclick="clearAllData()">Clear All Data</button>
-                    </div>
-                </div>
-            </div>
 
-            <div class="card">
-                <div class="card-header">Backup & Security</div>
-                <div class="card-body">
-                    <div class="form-group">
-                        <label class="form-label">Auto-Backup</label>
-                        <div class="d-flex gap-2 align-center">
-                            <input type="checkbox" id="autoBackupEnabled" checked>
-                            <label for="autoBackupEnabled">Enable Auto-Backup</label>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Maximum Open Trades <span class="help-icon">?</span></label>
+                                <input type="number" class="form-control" id="maxTrades" value="3" min="1" max="200">
+                                <small class="setting-description">How many trades can be open at the same time. For
+                                    $10, 3 is recommended so you don't spread your money too thin.</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Time Between Trades on Same Token <span
+                                        class="help-icon">?</span></label>
+                                <input type="number" class="form-control" id="tradeCooldown" value="30" min="0">
+                                <small class="setting-description">Minimum seconds to wait before trading the same token
+                                    again. 30 seconds prevents rapid buying and selling.</small>
+                            </div>
                         </div>
-                        <div class="mt-1">
-                            <label>Backup Interval (minutes)</label>
-                            <input type="number" class="form-control" id="backupInterval" value="5" min="1" max="1440">
-                            <small class="setting-description">How often to automatically save data.</small>
+                        <button class="btn btn-primary mt-2" onclick="saveTradeSettings()">Save Budget Settings</button>
+                    </div>
+
+                    <!-- Pattern Detection Settings -->
+                    <div class="settings-section">
+                        <h3 class="section-title">3. Opportunity Finder Settings <span class="help-icon">?</span></h3>
+                        <p style="margin-bottom: 15px; color: #6c757d;">Adjust how the system looks for trading
+                            opportunities in price movements</p>
+
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Minimum Price Movement to Notice <span
+                                        class="help-icon">?</span></label>
+                                <input type="number" class="form-control" id="minPriceChange" value="0.05" min="0.01"
+                                    max="10" step="0.01">
+                                <small class="setting-description">How much a price needs to move (in percent) before
+                                    the system pays attention. Lower numbers find more opportunities but may be less
+                                    reliable.</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Minimum Time for Pattern (seconds) <span
+                                        class="help-icon">?</span></label>
+                                <input type="number" class="form-control" id="minTimeWindow" value="10" min="1"
+                                    max="300">
+                                <small class="setting-description">How long a price movement must take to be considered.
+                                    10 seconds catches quick opportunities.</small>
+                            </div>
+                        </div>
+
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Maximum Time for Pattern (seconds) <span
+                                        class="help-icon">?</span></label>
+                                <input type="number" class="form-control" id="maxTimeWindow" value="300" min="10"
+                                    max="3600">
+                                <small class="setting-description">The longest time a pattern can take to form. 300
+                                    seconds (5 minutes) is a good starting point.</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Minimum Pattern Repetitions <span
+                                        class="help-icon">?</span></label>
+                                <input type="number" class="form-control" id="minOccurrences" value="2" min="1"
+                                    max="10">
+                                <small class="setting-description">How many times a pattern must appear before trading
+                                    on it. 2 means the system needs to see the pattern twice before using it.</small>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary mt-2" onclick="saveDetectionSettings()">Save Opportunity Finder
+                            Settings</button>
+                    </div>
+
+                    <!-- Pattern Validation & Profit Targets -->
+                    <div class="settings-section">
+                        <h3 class="section-title">4. Opportunity Quality Settings <span class="help-icon">?</span></h3>
+                        <p style="margin-bottom: 15px; color: #6c757d;">Only trade opportunities that meet these quality
+                            standards</p>
+
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Minimum Success Rate for Patterns <span
+                                        class="help-icon">?</span></label>
+                                <input type="number" class="form-control" id="minWinRate" value="50" min="0" max="100">
+                                <small class="setting-description">Only use patterns that have worked this often in
+                                    testing. 50% means the pattern needs to be right at least half the time.</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Test Period (hours) <span class="help-icon">?</span></label>
+                                <input type="number" class="form-control" id="backtestPeriod" value="4" min="1"
+                                    max="168">
+                                <small class="setting-description">How much past price history to use when testing
+                                    patterns. 4 hours is good for $10 trading.</small>
+                            </div>
+                        </div>
+
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Take Profit at This Gain <span
+                                        class="help-icon">?</span></label>
+                                <input type="number" class="form-control" id="targetProfitPercent" value="1.0" min="0.1"
+                                    max="100" step="0.1">
+                                <small class="setting-description">Sell when the trade makes this much profit. 1.0%
+                                    means sell when you've made 1% on your investment.</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Minimum Pattern Profitability <span
+                                        class="help-icon">?</span></label>
+                                <input type="number" class="form-control" id="minProfitability" value="0.1" min="0.1"
+                                    max="100" step="0.1">
+                                <small class="setting-description">Only use patterns that have made at least this much
+                                    profit on average in testing. 0.1% is very low for $10 trading.</small>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Maximum Patterns per Token <span
+                                    class="help-icon">?</span></label>
+                            <input type="number" class="form-control" id="maxPatternsPerToken" value="5" min="1"
+                                max="20">
+                            <small class="setting-description">How many different patterns to track for each token. More
+                                patterns means more opportunities but can be overwhelming.</small>
+                        </div>
+                        <button class="btn btn-primary mt-2" onclick="saveValidationSettings()">Save Quality
+                            Settings</button>
+                    </div>
+
+                    <!-- Advanced Settings -->
+                    <div class="settings-section">
+                        <h3 class="section-title">5. Safety & Advanced Settings <span class="help-icon">?</span></h3>
+                        <p style="margin-bottom: 15px; color: #6c757d;">Fine-tune how trades are executed and protected
+                        </p>
+
+                        <div class="grid-3">
+                            <div class="form-group">
+                                <label class="form-label">Maximum Slippage <span class="help-icon">?</span></label>
+                                <input type="number" class="form-control" id="maxSlippage" value="0.5" min="0.1"
+                                    max="10" step="0.01">
+                                <small class="setting-description">Maximum price change allowed when executing a trade.
+                                    0.5% prevents bad trades when prices move fast.</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Minimum Profit to Close <span
+                                        class="help-icon">?</span></label>
+                                <input type="number" class="form-control" id="minProfitPercent" value="0.5" min="0"
+                                    max="100" step="0.01">
+                                <small class="setting-description">Don't close a trade unless it's made at least this
+                                    much profit. 0.5% prevents selling too early.</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Auto-Sell After (seconds) <span
+                                        class="help-icon">?</span></label>
+                                <input type="number" class="form-control" id="maxPositionAge" value="300" min="10"
+                                    max="86400">
+                                <small class="setting-description">If a trade hasn't hit your profit target by this
+                                    time, sell it anyway. 300 seconds = 5 minutes.</small>
+                            </div>
+                        </div>
+
+                        <div class="grid-2 mt-2">
+                            <div class="form-group">
+                                <label class="form-label">Maximum Network Fee (gwei) <span
+                                        class="help-icon">?</span></label>
+                                <input type="number" class="form-control" id="maxGasPrice" value="200" min="1">
+                                <small class="setting-description">Don't trade if network fees are higher than this. 200
+                                    gwei is very high - most trades will be much cheaper.</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Network Fee Estimate <span class="help-icon">?</span></label>
+                                <input type="number" class="form-control" id="gasLimit" value="200000" min="21000">
+                                <small class="setting-description">Technical estimate of how much computational work
+                                    each trade requires. 200000 is standard.</small>
+                            </div>
+                        </div>
+
+                        <div class="form-group mt-2">
+                            <label><input type="checkbox" id="preventSequentialTrades" checked> Prevent Rapid Trading of
+                                Same Token <span class="help-icon">?</span></label>
+                            <small class="setting-description">Prevents buying and selling the same token too quickly in
+                                a row, which can lose money to fees.</small>
+                        </div>
+
+                        <div class="d-flex gap-1 mt-2">
+                            <button class="btn btn-primary" onclick="saveAdvancedSettings()">Save Safety
+                                Settings</button>
+                            <button class="btn btn-secondary" onclick="loadDefaultSettings()">Reset to Defaults</button>
                         </div>
                     </div>
-                    <div class="d-flex gap-1 mt-2">
-                        <button class="btn btn-primary btn-sm" onclick="createBackup()">
-                            <span class="loading-spinner loading-spinner-dark" id="backupSpinner"
-                                style="display:none;"></span>Create Backup
-                        </button>
-                        <button class="btn btn-secondary btn-sm" onclick="restoreBackup()">Restore from Backup</button>
-                        <input type="file" id="backupFileInput" accept=".json" style="display:none;"
-                            onchange="handleBackupUpload(event)">
+
+                    <!-- Data Storage -->
+                    <div class="settings-section">
+                        <h3 class="section-title">6. Data & History Settings <span class="help-icon">?</span></h3>
+                        <p style="margin-bottom: 15px; color: #6c757d;">Control how much market data the system keeps
+                            track of</p>
+
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label class="form-label">Price History Duration (hours) <span
+                                        class="help-icon">?</span></label>
+                                <input type="number" class="form-control" id="priceHistoryDuration" value="24" min="1"
+                                    max="720">
+                                <small class="setting-description">How many hours of price history to remember. 24 hours
+                                    is good for finding recent patterns.</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Maximum Price Points per Token <span
+                                        class="help-icon">?</span></label>
+                                <input type="number" class="form-control" id="maxPriceHistory" value="10000" min="100"
+                                    max="100000">
+                                <small class="setting-description">How many price data points to keep for each token.
+                                    More points means more memory used but more accurate patterns.</small>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-1 mt-2">
+                            <button class="btn btn-primary" onclick="saveStorageSettings()">Save Data Settings</button>
+                            <button class="btn btn-danger" onclick="clearAllData()">Clear All Data</button>
+                        </div>
+                    </div>
+
+                    <!-- Backup & Security -->
+                    <div class="settings-section">
+                        <h3 class="section-title">7. Backup & Restore <span class="help-icon">?</span></h3>
+                        <p style="margin-bottom: 15px; color: #6c757d;">Save your settings and trading history, or
+                            restore from a previous backup</p>
+
+                        <div class="form-group">
+                            <label class="form-label">Auto-Backup <span class="help-icon">?</span></label>
+                            <div class="d-flex gap-2 align-center">
+                                <input type="checkbox" id="autoBackupEnabled" checked>
+                                <label for="autoBackupEnabled">Enable Automatic Backups</label>
+                            </div>
+                            <div class="mt-1">
+                                <label>Backup Every (minutes) <span class="help-icon">?</span></label>
+                                <input type="number" class="form-control" id="backupInterval" value="5" min="1"
+                                    max="1440">
+                                <small class="setting-description">How often to automatically save your data. 5 minutes
+                                    is a good balance.</small>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-1 mt-2">
+                            <button class="btn btn-primary btn-sm" onclick="createBackup()">
+                                <span class="loading-spinner loading-spinner-dark" id="backupSpinner"
+                                    style="display:none;"></span>Create Backup Now
+                            </button>
+                            <button class="btn btn-secondary btn-sm" onclick="restoreBackup()">Restore from
+                                Backup</button>
+                            <input type="file" id="backupFileInput" accept=".json" style="display:none;"
+                                onchange="handleBackupUpload(event)">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1341,7 +1458,7 @@
         <div id="logs" class="tab-content">
             <div class="card">
                 <div class="card-header d-flex justify-between align-center">
-                    <span>Application Logs</span>
+                    <span>Activity Log</span>
                     <div class="d-flex gap-1">
                         <button class="btn btn-secondary btn-sm" onclick="clearLogs()">Clear</button>
                         <button class="btn btn-primary btn-sm" onclick="downloadLogs()">Download</button>
@@ -1350,10 +1467,10 @@
                 </div>
                 <div class="card-body">
                     <div class="log-container" id="logContainer">
-                        <div class="log-entry log-info">[INFO] Uniswap Pure Pattern Detection Scalper v3.1.0 loaded.
-                            Optimized for $10.</div>
-                        <div class="log-entry log-info">[INFO] Hybrid trade sizing: max(Gas-Based, % of ETH, Min ETH
-                            Floor)</div>
+                        <div class="log-entry log-info">[INFO] Uniswap Easy Pattern Trader v3.2.0 loaded. Optimized for
+                            simple $10 trading.</div>
+                        <div class="log-entry log-info">[INFO] Trade sizing: Uses the largest of (Network Fee Based,
+                            Percentage of Budget, or Minimum Amount)</div>
                         <div class="log-entry log-info">[INFO] Pattern detection: minPriceChange=0.05%,
                             minTimeWindow=10s, backtestPeriod=4h</div>
                     </div>
@@ -1366,7 +1483,7 @@
         // ============================================
         // Configuration & Constants
         // ============================================
-        const APP_VERSION = '3.1.0';
+        const APP_VERSION = '3.2.0';
 
         const CHAINS = {
             arbitrum: {
@@ -1501,7 +1618,8 @@
                 sellPatterns: 0,
                 tokensWithPatterns: 0
             },
-            openBuyOrders: new Map()
+            openBuyOrders: new Map(),
+            patternDetectionActive: false
         };
 
         let equityChart = null;
@@ -1565,8 +1683,8 @@
                 }
             };
 
-            window.log('info', 'Initializing Uniswap Pure Pattern Detection Scalper v' + APP_VERSION);
-            window.log('info', 'Optimized for $10: Hybrid trade sizing (Gas/%/Min) | Looser pattern detection');
+            window.log('info', 'Initializing Uniswap Easy Pattern Trader v' + APP_VERSION);
+            window.log('info', 'Optimized for simple $10 trading: Hybrid trade sizing (Network Fee/%/Min) | More sensitive pattern detection');
             initializeApp();
             setupEventListeners();
             updateNetworkInfo();
@@ -1752,9 +1870,9 @@
                 const percentBased = (state.portfolio.currentEth || state.settings.startingEth) * (state.settings.tradeAmountPercent / 100);
                 const minAmount = state.settings.minTradeAmountETH || 0.0001;
 
-                const method = tradeAmount === minAmount ? "Min ETH Floor" :
-                    tradeAmount === percentBased ? "Percentage of ETH" : "Gas-Based";
-                displayEl.title = `Method: ${method}\nGas-Based: ${gasBased.toFixed(12)} ETH\n% of ETH: ${percentBased.toFixed(12)} ETH\nMin: ${minAmount.toFixed(12)} ETH`;
+                const method = tradeAmount === minAmount ? "Minimum Amount" :
+                    tradeAmount === percentBased ? "Percentage of Budget" : "Network Fee Based";
+                displayEl.title = `Calculation: ${method}\nNetwork Fee Based: ${gasBased.toFixed(12)} ETH\n% of Budget: ${percentBased.toFixed(12)} ETH\nMinimum: ${minAmount.toFixed(12)} ETH`;
             }
         }
 
@@ -1788,18 +1906,23 @@
         }
 
         // ============================================
-        // PATTERN DETECTION
+        // PATTERN DETECTION - IMPROVED FOR BETTER DETECTION
         // ============================================
         function startPatternDetection() {
+            if (state.patternDetectionActive) return;
+            state.patternDetectionActive = true;
+
+            // Check more frequently
             state.patternDetectionTimer = setInterval(() => {
                 if (state.isRunning) {
                     detectAllPatterns();
                 }
-            }, 30000);
+            }, 15000); // Every 15 seconds instead of 30
 
+            // Start initial detection immediately
             setTimeout(() => {
                 if (state.isRunning) detectAllPatterns();
-            }, 10000);
+            }, 5000);
         }
 
         function stopPatternDetection() {
@@ -1807,16 +1930,21 @@
                 clearInterval(state.patternDetectionTimer);
                 state.patternDetectionTimer = null;
             }
+            state.patternDetectionActive = false;
         }
 
         function detectAllPatterns() {
             const tokens = Array.from(state.observedTokens);
             const newActivePatterns = new Map();
 
+            // Log detection start
+            window.log('info', `Starting pattern detection for ${tokens.length} tokens...`);
+
             for (const token of tokens) {
                 const history = state.priceHistory[token];
-                if (!history || history.length < 10) continue;
+                if (!history || history.length < 5) continue; // Need at least 5 points
 
+                // Detect patterns for this token
                 const patterns = detectBuyPatternsForToken(history, token);
 
                 patterns.forEach(pattern => {
@@ -1844,43 +1972,50 @@
                 });
             }
 
+            // Validate patterns with backtesting
             validatePatternsWithBacktesting(newActivePatterns);
+
+            // Update state with new patterns
             state.activePatterns = newActivePatterns;
             updatePatternStats();
             renderPatterns();
-            window.log('info', `Detected ${newActivePatterns.size} active patterns across ${tokens.length} tokens`);
+
+            const patternCount = newActivePatterns.size;
+            if (patternCount > 0) {
+                window.log('success', `Found ${patternCount} active patterns across ${tokens.length} tokens`);
+            } else {
+                window.log('info', `No valid patterns found in this detection cycle. Will try again in 15 seconds.`);
+            }
         }
 
         function detectBuyPatternsForToken(history, token) {
-            if (!history || history.length < 10) return [];
+            if (!history || history.length < 5) return [];
 
             const minChange = state.settings.minPriceChange / 100;
             const minTime = state.settings.minTimeWindow * 1000;
             const maxTime = state.settings.maxTimeWindow * 1000;
             const patterns = [];
 
-            for (let i = 5; i < history.length - 5; i++) {
+            // Look for local minima (potential buying opportunities)
+            for (let i = 2; i < history.length - 2; i++) {
                 const current = history[i];
-                let isMinima = true;
 
-                for (let j = i - 5; j <= i + 5; j++) {
-                    if (j === i) continue;
-                    if (j >= 0 && j < history.length) {
-                        if (history[j].price < current.price) {
-                            isMinima = false;
-                            break;
-                        }
-                    }
-                }
+                // Check if this is a local minimum
+                const isMinima = current.price <= history[i - 1].price &&
+                    current.price <= history[i - 2].price &&
+                    current.price <= history[i + 1].price &&
+                    current.price <= history[i + 2].price;
 
                 if (isMinima) {
-                    for (let j = i - 1; j >= Math.max(0, i - 20); j--) {
+                    // Look backward for the drop
+                    for (let j = i - 1; j >= Math.max(0, i - 10); j--) {
                         const prev = history[j];
                         const dropPct = (current.price - prev.price) / prev.price;
                         const timeDiff = current.timestamp - prev.timestamp;
 
                         if (dropPct <= -minChange && timeDiff >= minTime && timeDiff <= maxTime) {
-                            for (let k = i + 1; k < Math.min(history.length, i + 20); k++) {
+                            // Look forward for the rise
+                            for (let k = i + 1; k < Math.min(history.length, i + 10); k++) {
                                 const next = history[k];
                                 const risePct = (next.price - current.price) / current.price;
                                 const riseTime = next.timestamp - current.timestamp;
@@ -1895,10 +2030,10 @@
                                         token: token,
                                         timestamp: current.timestamp
                                     });
-                                    break;
+                                    break; // Found a valid pattern for this minima
                                 }
                             }
-                            break;
+                            break; // Found the drop, move to next minima
                         }
                     }
                 }
@@ -1922,9 +2057,9 @@
 
         function getPatternDescription(pattern) {
             if (pattern.type === PATTERN_TYPES.BUY) {
-                return `Buy on ${pattern.dropPct.toFixed(1)}% drop over ${pattern.dropTime.toFixed(0)}s, expect ${pattern.risePct.toFixed(1)}% rise over ${pattern.riseTime.toFixed(0)}s`;
+                return `Buy when price drops ${pattern.dropPct.toFixed(1)}% over ${pattern.dropTime.toFixed(0)}s, expecting ${pattern.risePct.toFixed(1)}% rise over ${pattern.riseTime.toFixed(0)}s`;
             } else {
-                return `Sell on ${pattern.risePct.toFixed(1)}% rise over ${pattern.riseTime.toFixed(0)}s`;
+                return `Sell when price rises ${pattern.risePct.toFixed(1)}% over ${pattern.riseTime.toFixed(0)}s`;
             }
         }
 
@@ -1946,6 +2081,7 @@
                 if (backtestResult.occurrences < minOccurrences ||
                     backtestResult.winRate < minWinRate ||
                     backtestResult.avgProfitability < minProfitability) {
+                    window.log('info', `Pattern rejected for ${pattern.token}: Occurrences=${backtestResult.occurrences}, WinRate=${backtestResult.winRate.toFixed(1)}%, Profitability=${backtestResult.avgProfitability.toFixed(1)}%`);
                     patterns.delete(key);
                 } else {
                     pattern.winRate = backtestResult.winRate;
@@ -1953,6 +2089,7 @@
                     pattern.winningTrades = backtestResult.winningTrades;
                     pattern.avgProfitability = backtestResult.avgProfitability;
                     pattern.totalProfit = backtestResult.totalProfit;
+                    window.log('success', `Pattern validated for ${pattern.token}: ${backtestResult.winRate.toFixed(1)}% win rate, ${backtestResult.avgProfitability.toFixed(1)}% avg profitability`);
                 }
             });
         }
@@ -1972,6 +2109,7 @@
                 const current = backtestHistory[i];
 
                 if (pattern.type === PATTERN_TYPES.BUY) {
+                    // Look for the pattern in history
                     for (let j = i - 1; j >= Math.max(0, i - 20); j--) {
                         const prev = backtestHistory[j];
                         const dropPct = (current.price - prev.price) / prev.price;
@@ -1981,6 +2119,7 @@
                             timeDiff >= (pattern.dropTime * 1000) &&
                             timeDiff <= (pattern.dropTime * 1000 * 1.5)) {
 
+                            // Look for the expected rise
                             for (let k = i + 1; k < Math.min(backtestHistory.length, i + 20); k++) {
                                 const next = backtestHistory[k];
                                 const risePct = (next.price - current.price) / current.price;
@@ -2018,6 +2157,7 @@
 
                                         if (pnl > 0) winningTrades++;
                                     } else {
+                                        // Didn't hit target, check if we would have sold at max age
                                         const maxHoldTime = state.settings.maxPositionAge * 1000;
                                         const lastPrice = backtestHistory[backtestHistory.length - 1].price;
                                         const pnl = (tokenAmount * lastPrice) - tradeAmountETH - totalCost;
@@ -2122,9 +2262,9 @@
 
                 if (positionAgeSeconds > state.settings.maxPositionAge) {
                     if (profit > 0) {
-                        executeTrade(token, 'sell', `Age-based sell (${positionAgeSeconds}s old)`);
+                        executeTrade(token, 'sell', `Auto-sell after ${positionAgeSeconds}s (made profit)`);
                     } else {
-                        executeTrade(token, 'sell', `Age-based stop loss (${positionAgeSeconds}s old)`);
+                        executeTrade(token, 'sell', `Auto-sell after ${positionAgeSeconds}s (prevent loss)`);
                     }
                 }
             }
@@ -2188,7 +2328,7 @@
             const patternsArray = Array.from(state.activePatterns.values());
 
             if (patternsArray.length === 0) {
-                container.innerHTML = '<p class="text-secondary">No patterns detected yet. Start the bot to begin pattern analysis.</p>';
+                container.innerHTML = '<p class="text-secondary">No trading opportunities found yet. The system is looking for patterns - this can take a few minutes after starting.</p>';
                 return;
             }
 
@@ -2213,8 +2353,8 @@
                         <div class="pattern-header">
                             <h4>${token}</h4>
                             <div>
-                                <span class="badge badge-success">${buyPatterns.length} Buy</span>
-                                <span class="badge badge-danger">${sellPatterns.length} Sell</span>
+                                <span class="badge badge-success">${buyPatterns.length} Buy Opportunities</span>
+                                <span class="badge badge-danger">${sellPatterns.length} Sell Signals</span>
                             </div>
                         </div>
                         <div class="pattern-metrics">
@@ -2223,7 +2363,7 @@
                                 <div class="metric-value">${patterns.length}</div>
                             </div>
                             <div class="metric">
-                                <div>Avg Win Rate</div>
+                                <div>Avg Success Rate</div>
                                 <div class="metric-value">${(patterns.reduce((sum, p) => sum + (p.winRate || 0), 0) / patterns.length).toFixed(1)}%</div>
                             </div>
                             <div class="metric">
@@ -2236,16 +2376,16 @@
 
                 patterns.forEach((pattern, index) => {
                     const typeClass = pattern.type === PATTERN_TYPES.BUY ? 'pattern-type-buy' : 'pattern-type-sell';
-                    const typeLabel = pattern.type === PATTERN_TYPES.BUY ? 'Buy' : 'Sell';
+                    const typeLabel = pattern.type === PATTERN_TYPES.BUY ? 'Buy Opportunity' : 'Sell Signal';
                     const isLeading = index === 0;
 
                     html += `
                         <div class="d-flex justify-between align-center mb-1 ${isLeading ? 'leading-pattern' : ''}">
-                            <span class="pattern-type-badge ${typeClass}">${typeLabel}${isLeading ? ' (Leading)' : ''}</span>
+                            <span class="pattern-type-badge ${typeClass}">${typeLabel}${isLeading ? ' (Best)' : ''}</span>
                             <small>${getPatternDescription(pattern)}</small>
                             <div>
-                                <span class="badge badge-secondary">${pattern.winRate.toFixed(1)}% WR</span>
-                                <span class="badge badge-info" style="margin-left: 5px;">${pattern.avgProfitability.toFixed(1)}% Profit</span>
+                                <span class="badge badge-secondary">${pattern.winRate.toFixed(1)}% Success</span>
+                                <span class="badge badge-info" style="margin-left: 5px;">${pattern.avgProfitability.toFixed(1)}% Avg Profit</span>
                             </div>
                         </div>
                     `;
@@ -2320,7 +2460,7 @@
                 const maxSlippage = state.settings.maxSlippage || 0.5;
                 if (result.slippage > maxSlippage) {
                     result.success = false;
-                    result.reason = `Slippage ${result.slippage.toFixed(4)}% exceeds maximum ${maxSlippage}%`;
+                    result.reason = `Price moved too much during execution (${result.slippage.toFixed(4)}% > ${maxSlippage}% max)`;
                     return result;
                 }
 
@@ -2387,7 +2527,7 @@
 
                 if (ethBalance < totalTradeCost) {
                     trade.status = 'failed';
-                    trade.reason = 'Insufficient ETH (including fees)';
+                    trade.reason = 'Not enough ETH (including fees)';
                     state.portfolio.failedTrades++;
                     return;
                 }
@@ -2505,9 +2645,9 @@
             const gasBased = (state.currentGasPrice * state.settings.gasLimit * state.settings.gasFeeMultiplier) / 1e18;
             const percentBased = (state.portfolio.currentEth || state.settings.startingEth) * (state.settings.tradeAmountPercent / 100);
             const minAmount = state.settings.minTradeAmountETH || 0.0001;
-            const method = amountETH === minAmount ? "Min ETH Floor" :
-                amountETH === percentBased ? "Percentage of ETH" : "Gas-Based";
-            window.log('info', `Trade amount: ${amountETH.toFixed(12)} ETH (Method: ${method})`);
+            const method = amountETH === minAmount ? "Minimum Amount" :
+                amountETH === percentBased ? "Percentage of Budget" : "Network Fee Based";
+            window.log('info', `Attempting ${action} trade for ${token}: ${amountETH.toFixed(12)} ETH (Method: ${method})`);
 
             if (amountETH <= 0) {
                 window.log('warn', `Invalid trade amount: ${amountETH.toFixed(12)} ETH`);
@@ -2516,7 +2656,7 @@
 
             const totalOpenPositions = state.portfolio.positions.filter(p => p.status === 'open').length;
             if (totalOpenPositions >= state.settings.maxTrades) {
-                window.log('warn', `Max open trades (${state.settings.maxTrades}) reached`);
+                window.log('warn', `Maximum open trades (${state.settings.maxTrades}) reached`);
                 return null;
             }
 
@@ -2529,14 +2669,14 @@
             const tokenSymbol = token;
             const currentPrice = state.prices[tokenSymbol];
             if (!currentPrice) {
-                window.log('warn', `No price for ${tokenSymbol}`);
+                window.log('warn', `No price available for ${tokenSymbol}`);
                 return null;
             }
 
             const tokenAmount = amountETH / currentPrice;
             const poolInfo = await getEnhancedPoolInfo(tokenSymbol);
             if (!poolInfo) {
-                window.log('warn', `No pool info for ${tokenSymbol}`);
+                window.log('warn', `No pool information for ${tokenSymbol}`);
                 return null;
             }
 
@@ -2584,6 +2724,8 @@
             updatePortfolioUI();
             updateEquityChart();
             updateTradeAmountDisplay();
+
+            window.log('success', `Successfully executed ${action} trade for ${tokenSymbol}: ${tradeResult.tokenAmount.toFixed(6)} tokens at ${tradeResult.executionPrice.toFixed(8)} ETH`);
 
             return trade;
         }
@@ -2639,9 +2781,9 @@
 
                 if (positionAgeSeconds > state.settings.maxPositionAge) {
                     if (profit > 0) {
-                        executeTrade(position.token, 'sell', `Age-based sell (${positionAgeSeconds}s old)`);
+                        executeTrade(position.token, 'sell', `Auto-sell after ${positionAgeSeconds}s (made profit)`);
                     } else {
-                        executeTrade(position.token, 'sell', `Age-based stop loss (${positionAgeSeconds}s old)`);
+                        executeTrade(position.token, 'sell', `Auto-sell after ${positionAgeSeconds}s (prevent loss)`);
                     }
                 }
             });
@@ -2875,7 +3017,7 @@
             });
 
             if (html === '') {
-                html = '<tr><td colspan="7" class="text-center text-secondary">No open positions</td></tr>';
+                html = '<tr><td colspan="7" class="text-center text-secondary">No open investments</td></tr>';
             }
 
             if (positionsTable) positionsTable.innerHTML = html;
@@ -2979,7 +3121,7 @@
 
             if (!state.activeSession || observedTokens.length === 0) {
                 const priceRows = document.getElementById('priceRows');
-                if (priceRows) priceRows.innerHTML = '<tr><td colspan="5" class="text-center text-secondary">Press Start to begin</td></tr>';
+                if (priceRows) priceRows.innerHTML = '<tr><td colspan="5" class="text-center text-secondary">Press Start to begin watching the market</td></tr>';
                 const trackedEl = document.getElementById('trackedTokensCount');
                 if (trackedEl) trackedEl.textContent = '0';
                 return;
@@ -3005,7 +3147,7 @@
 
                 const changeClass = changePct >= 0 ? 'price-up' : 'price-down';
                 const changeSymbol = changePct > 0 ? '\u25B2' : changePct < 0 ? '\u25BC' : '';
-                const displayPrice = price != null ? price.toFixed(12) : '<span class="text-secondary">No quote</span>';
+                const displayPrice = price != null ? price.toFixed(12) : '<span class="text-secondary">No price</span>';
 
                 const lastUpdate = history && history.length > 0 ?
                     new Date(history[history.length - 1].timestamp).toLocaleTimeString() : 'Never';
@@ -3043,7 +3185,7 @@
             const openPositions = state.portfolio.positions.filter(p => p.status === 'open');
 
             if (openPositions.length === 0) {
-                if (activePositions) activePositions.innerHTML = '<p class="text-secondary">No active positions</p>';
+                if (activePositions) activePositions.innerHTML = '<p class="text-secondary">No open investments</p>';
                 const activeCountEl = document.getElementById('activeCount');
                 if (activeCountEl) activeCountEl.textContent = '0';
                 return;
@@ -3052,7 +3194,7 @@
             const activeCountEl = document.getElementById('activeCount');
             if (activeCountEl) activeCountEl.textContent = openPositions.length;
 
-            let html = '<table class="table table-striped"><thead><tr><th>Token</th><th>Entry Price</th><th>Amount</th><th>Value (ETH)</th><th>Unrealized PnL</th><th>Pattern</th></tr></thead><tbody>';
+            let html = '<table class="table table-striped"><thead><tr><th>Token</th><th>Bought At</th><th>Amount</th><th>Current Value</th><th>Profit/Loss</th><th>Pattern Used</th></tr></thead><tbody>';
 
             openPositions.forEach(position => {
                 const currentPrice = state.prices[position.token] || position.entryPrice;
@@ -3090,7 +3232,7 @@
                 html += `<tr>
                     <td>${new Date(trade.timestamp).toLocaleTimeString()}</td>
                     <td><strong>${trade.token}</strong></td>
-                    <td><span class="badge ${typeClass}">${trade.type.toUpperCase()}</span></td>
+                    <td><span class="badge ${typeClass}">${trade.type === 'buy' ? 'BUY' : 'SELL'}</span></td>
                     <td>${trade.price.toFixed(12)}</td>
                     <td>${trade.tokenAmount.toFixed(12)}</td>
                     <td><small>${trade.pattern || 'Manual'}</small></td>
@@ -3260,7 +3402,7 @@
         // ============================================
         async function startBot() {
             if (state.isRunning) {
-                showToast('info', 'Bot is already running.');
+                showToast('info', 'Trading is already running.');
                 return;
             }
 
@@ -3284,9 +3426,9 @@
                 startPatternDetection();
                 setInterval(checkAgeBasedSelling, 30000);
 
-                showToast('success', `Bot started! Monitoring ${CHAINS[currentChainKey].name} for patterns.`);
+                showToast('success', `Started! Watching ${CHAINS[currentChainKey].name} for trading opportunities.`);
                 window.log('success', `Bot started on ${CHAINS[currentChainKey].name}`);
-                window.log('info', `Trade amount: ${calculateTradeAmount().toFixed(12)} ETH (Method: ${state.settings.tradeAmountPercent}% of ETH or ${state.settings.minTradeAmountETH} ETH min)`);
+                window.log('info', `Trade amount: ${calculateTradeAmount().toFixed(12)} ETH`);
 
             } catch (error) {
                 const errorMsg = error && error.message ? error.message : String(error);
@@ -3300,7 +3442,7 @@
 
         async function stopBot() {
             if (!state.isRunning) {
-                showToast('info', 'Bot is not running.');
+                showToast('info', 'Trading is not running.');
                 return;
             }
 
@@ -3318,7 +3460,7 @@
 
                 updateBotStatus();
                 updatePriceUpdateStatus('');
-                showToast('success', 'Bot stopped!');
+                showToast('success', 'Trading stopped!');
                 window.log('info', 'Bot stopped');
             } catch (error) {
                 const errorMsg = error && error.message ? error.message : String(error);
@@ -3345,7 +3487,7 @@
                 if (bsi) bsi.innerHTML = '<span class="badge badge-success">Running</span>';
             } else {
                 if (si) si.className = 'status-indicator status-stopped';
-                if (st) st.textContent = 'Stopped';
+                if (st) st.textContent = 'Not Running';
                 if (sb) sb.disabled = false;
                 if (stopb) stopb.disabled = true;
                 if (bsi) bsi.innerHTML = '<span class="badge badge-secondary">Stopped</span>';
@@ -3359,7 +3501,7 @@
                 const chain = CHAINS[currentChainKey];
                 const provider = new ethers.WebSocketProvider(chain.ws, chain.chainId);
                 await provider.getBlockNumber();
-                showToast('success', `Connection to ${chain.name} successful!`);
+                showToast('success', `Successfully connected to ${chain.name}!`);
                 window.log('success', `Connection test passed for ${chain.name}`);
                 provider.destroy();
             } catch (error) {
@@ -3393,13 +3535,13 @@
             if (!el) return;
             if (status === 'success') {
                 el.className = 'status-item status-connected';
-                el.innerHTML = 'Price Feed \u2713';
+                el.innerHTML = 'Price Updates \u2713';
             } else if (status === 'error') {
                 el.className = 'status-item status-disconnected';
-                el.innerHTML = '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Price Feed';
+                el.innerHTML = '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Price Updates';
             } else {
                 el.className = 'status-item status-disconnected';
-                el.innerHTML = '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Price Feed';
+                el.innerHTML = '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Price Updates';
             }
         }
 
@@ -3410,11 +3552,11 @@
 
             if (us) {
                 us.className = `status-item ${connected ? 'status-connected' : 'status-disconnected'}`;
-                us.innerHTML = connected ? 'Blockchain \u2713' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Blockchain';
+                us.innerHTML = connected ? 'Market Connection \u2713' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Market Connection';
             }
             if (ps) {
                 ps.className = `status-item ${connected ? 'status-connected' : 'status-disconnected'}`;
-                ps.innerHTML = connected ? 'Price Feed \u2713' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Price Feed';
+                ps.innerHTML = connected ? 'Price Updates \u2713' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Price Updates';
             }
         }
 
@@ -3576,7 +3718,7 @@
                 s.connected = true;
                 updateButton();
                 updateConnectionStatus();
-                window.log('success', `Fully connected to ${s.chain.name}. Starting observation...`);
+                window.log('success', `Fully connected to ${s.chain.name}. Starting to watch for opportunities...`);
 
             } catch (e) {
                 if (!current(s)) return;
@@ -3974,7 +4116,7 @@
 
         function resetView() {
             const priceRows = document.getElementById('priceRows');
-            if (priceRows) priceRows.innerHTML = '<tr><td colspan="5" class="text-center text-secondary">Press Start to begin</td></tr>';
+            if (priceRows) priceRows.innerHTML = '<tr><td colspan="5" class="text-center text-secondary">Press Start to begin watching the market</td></tr>';
             const trackedEl = document.getElementById('trackedTokensCount');
             if (trackedEl) trackedEl.textContent = '0';
         }
@@ -3987,7 +4129,7 @@
             if (state.manuallyStopped || !state.activeSession) {
                 sb.disabled = false;
                 stopb.disabled = true;
-                sb.innerHTML = '<span class="loading-spinner" id="startSpinner" style="display:none;"></span>Start';
+                sb.innerHTML = '<span class="loading-spinner" id="startSpinner" style="display:none;"></span>Start Trading';
                 return;
             }
             if (!state.activeSession?.connected) {
@@ -4121,7 +4263,7 @@
                 'Token': p.token,
                 'Type': p.type,
                 'Description': getPatternDescription(p),
-                'Win Rate (%)': p.winRate.toFixed(1),
+                'Success Rate (%)': p.winRate.toFixed(1),
                 'Avg Profitability (%)': p.avgProfitability.toFixed(1),
                 'Occurrences': p.occurrences,
                 'Total Trades': p.totalTrades,
@@ -4147,15 +4289,15 @@
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = 'active-patterns-' + new Date().toISOString().split('T')[0] + '.csv';
+            link.download = 'trading-opportunities-' + new Date().toISOString().split('T')[0] + '.csv';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            showToast('success', 'Active patterns exported!');
+            showToast('success', 'Trading opportunities exported!');
         }
 
         function clearTradeHistory() {
-            if (!confirm('Clear all trade history?')) return;
+            if (!confirm('Clear all trade history? This cannot be undone.')) return;
 
             state.trades = [];
             state.portfolio.positions = [];
@@ -4178,18 +4320,18 @@
         }
 
         function clearPatterns() {
-            if (!confirm('Clear all active patterns?')) return;
+            if (!confirm('Clear all trading opportunities?')) return;
             state.activePatterns.clear();
             state.patternStats = { totalPatterns: 0, buyPatterns: 0, sellPatterns: 0, tokensWithPatterns: 0 };
             renderPatterns();
             updatePatternStats();
-            showToast('success', 'Active patterns cleared!');
+            showToast('success', 'Trading opportunities cleared!');
         }
 
         function clearLogs() {
             state.logs = [];
             const lc = document.getElementById('logContainer');
-            if (lc) lc.innerHTML = '<div class="log-entry log-info">[INFO] Logs cleared</div>';
+            if (lc) lc.innerHTML = '<div class="log-entry log-info">[INFO] Activity log cleared</div>';
         }
 
         function downloadLogs() {
@@ -4198,7 +4340,7 @@
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = 'scalper-logs-' + new Date().toISOString().split('T')[0] + '.log';
+            link.download = 'trader-activity-' + new Date().toISOString().split('T')[0] + '.log';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -4219,7 +4361,7 @@
             state.settings.maxTimeWindow = parseInt(document.getElementById('maxTimeWindow').value) || 300;
             state.settings.minOccurrences = parseInt(document.getElementById('minOccurrences').value) || 2;
             saveSettings();
-            showToast('success', 'Detection settings saved!');
+            showToast('success', 'Opportunity finder settings saved!');
             if (state.isRunning) {
                 stopPatternDetection();
                 startPatternDetection();
@@ -4233,7 +4375,7 @@
             state.settings.minProfitability = parseFloat(document.getElementById('minProfitability').value) || 0.1;
             state.settings.maxPatternsPerToken = parseInt(document.getElementById('maxPatternsPerToken').value) || 5;
             saveSettings();
-            showToast('success', 'Validation settings saved!');
+            showToast('success', 'Opportunity quality settings saved!');
             if (state.isRunning) {
                 stopPatternDetection();
                 startPatternDetection();
@@ -4251,7 +4393,7 @@
             saveSettings();
             updateStartingEthDisplay();
             updateTradeAmountDisplay();
-            showToast('success', 'Trade settings saved!');
+            showToast('success', 'Budget settings saved!');
         }
 
         function saveAdvancedSettings() {
@@ -4262,19 +4404,19 @@
             state.settings.gasLimit = parseInt(document.getElementById('gasLimit').value) || 200000;
             state.settings.preventSequentialTrades = document.getElementById('preventSequentialTrades').checked;
             saveSettings();
-            showToast('success', 'Advanced settings saved!');
+            showToast('success', 'Safety settings saved!');
         }
 
         function saveStorageSettings() {
             state.settings.priceHistoryDuration = parseInt(document.getElementById('priceHistoryDuration').value) || 24;
             state.settings.maxPriceHistory = parseInt(document.getElementById('maxPriceHistory').value) || 10000;
             saveSettings();
-            showToast('success', 'Storage settings saved!');
+            showToast('success', 'Data settings saved!');
         }
 
         function saveSettings() {
             try {
-                localStorage.setItem('purePatternScalperSettings', JSON.stringify(state.settings));
+                localStorage.setItem('easyPatternTraderSettings', JSON.stringify(state.settings));
                 window.log('info', 'Settings saved');
             } catch (e) {
                 window.log('warning', `Could not save settings: ${e.message}. Running in private mode.`);
@@ -4284,7 +4426,7 @@
 
         async function loadSettings() {
             try {
-                const savedSettings = localStorage.getItem('purePatternScalperSettings');
+                const savedSettings = localStorage.getItem('easyPatternTraderSettings');
                 if (savedSettings) {
                     state.settings = { ...state.settings, ...JSON.parse(savedSettings) };
                 }
@@ -4411,7 +4553,7 @@
                         priceHistory: state.priceHistory,
                         activePatterns: Array.from(state.activePatterns.values())
                     };
-                    localStorage.setItem('purePatternScalperBackup', JSON.stringify(backupData));
+                    localStorage.setItem('easyPatternTraderBackup', JSON.stringify(backupData));
                 } catch (e) {
                     console.error('Auto-backup failed:', e);
                 }
@@ -4441,7 +4583,7 @@
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = 'pure-pattern-scalper-backup-' + new Date().toISOString().split('T')[0] + '.json';
+                link.download = 'easy-trader-backup-' + new Date().toISOString().split('T')[0] + '.json';
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
@@ -4495,7 +4637,7 @@
         }
 
         function clearAllData() {
-            if (!confirm('Clear ALL data? This cannot be undone.')) return;
+            if (!confirm('Clear ALL data? This cannot be undone. All your settings and history will be lost.')) return;
 
             try {
                 localStorage.clear();
@@ -4613,7 +4755,7 @@
         // ============================================
         async function saveAllTrades() {
             try {
-                localStorage.setItem('purePatternScalperTrades', JSON.stringify(state.trades));
+                localStorage.setItem('easyPatternTraderTrades', JSON.stringify(state.trades));
             } catch (error) {
                 console.error('Save trades error:', error);
             }
@@ -4621,7 +4763,7 @@
 
         async function saveLogs() {
             try {
-                localStorage.setItem('purePatternScalperLogs', JSON.stringify(state.logs));
+                localStorage.setItem('easyPatternTraderLogs', JSON.stringify(state.logs));
             } catch (error) {
                 console.error('Save logs error:', error);
             }
@@ -4637,7 +4779,7 @@
                     updatePriceUI();
                     showToast('success', 'Prices refreshed!');
                 } else {
-                    showToast('warning', 'Not connected. Start bot first.');
+                    showToast('warning', 'Not connected. Start trading first.');
                 }
                 updatePriceUpdateStatus(state.activeSession?.connected ? 'success' : 'error');
             } catch (error) {
