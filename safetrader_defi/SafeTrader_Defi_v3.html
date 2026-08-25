@@ -2139,7 +2139,8 @@
                     }
                 }
             }
-
+            
+            const tradeAmountETH = calculateTradeAmount();
             const avgProfitability = totalTrades > 0 ? (totalProfit / tradeAmountETH / totalTrades * 100) : 0;
 
             return {
