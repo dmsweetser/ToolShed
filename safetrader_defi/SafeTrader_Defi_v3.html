@@ -1305,9 +1305,9 @@
 
         // Trading Budget Configuration
         let STARTING_ETH = 0.0033; // How much ETH you're starting with. $10 is about 0.0033 ETH when ETH is at $3000.
-        let TRADE_AMOUNT_PERCENT = 10; // What percentage of your budget to use for each trade. 10% of $10 = $1 per trade.
-        let MIN_TRADE_AMOUNT_ETH = 0.00001; // Never trade below this amount. Prevents trading with amounts that aren't worth the fees.
-        let MAX_TRADES = 3; // How many trades can be open at the same time. Limits exposure to any single token.
+        let TRADE_AMOUNT_PERCENT = 0.5; // What percentage of your budget to use for each trade. 10% of $10 = $1 per trade.
+        let MIN_TRADE_AMOUNT_ETH = 0.0003; // Never trade below this amount. Prevents trading with amounts that aren't worth the fees.
+        let MAX_TRADES = 200; // How many trades can be open at the same time. Limits exposure to any single token.
         let TRADE_COOLDOWN = 60; // Minimum seconds to wait before trading the same token again. Prevents rapid buying/selling.
 
         // Pattern Detection Configuration
