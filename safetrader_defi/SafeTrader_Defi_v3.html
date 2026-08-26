@@ -46,126 +46,6 @@
             padding: 20px;
         }
 
-        /* Wallet Connection Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 10000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            animation: fadeIn 0.3s;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-
-            to {
-                opacity: 1;
-            }
-        }
-
-        .modal-content {
-            background-color: white;
-            margin: 10% auto;
-            padding: 30px;
-            border-radius: var(--bs-border-radius);
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            animation: slideIn 0.3s;
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateY(-50px);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
-        .wallet-option {
-            display: flex;
-            align-items: center;
-            padding: 15px;
-            margin: 10px 0;
-            border: 2px solid #dee2e6;
-            border-radius: var(--bs-border-radius);
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .wallet-option:hover {
-            border-color: var(--bs-primary);
-            background-color: #f8f9fa;
-        }
-
-        .wallet-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            margin-right: 15px;
-            background-size: cover;
-        }
-
-        .wallet-info {
-            flex: 1;
-        }
-
-        .wallet-name {
-            font-weight: 600;
-            color: var(--bs-dark);
-        }
-
-        .wallet-description {
-            font-size: 0.85rem;
-            color: #6c757d;
-        }
-
-        .wallet-check {
-            width: 24px;
-            height: 24px;
-            border: 2px solid #ccc;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .wallet-option.selected .wallet-check {
-            background: var(--bs-primary);
-            border-color: var(--bs-primary);
-            color: white;
-        }
-
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .close-modal {
-            position: absolute;
-            right: 20px;
-            top: 20px;
-            font-size: 24px;
-            cursor: pointer;
-            color: #6c757d;
-        }
-
-        .close-modal:hover {
-            color: var(--bs-dark);
-        }
-
         /* Constants Section Styling */
         .constants-section {
             margin-bottom: 20px;
@@ -810,78 +690,11 @@
             font-weight: 600;
             font-size: 1.1rem;
         }
-
-        /* Wallet Address Display */
-        .wallet-address {
-            font-family: monospace;
-            font-size: 0.85rem;
-            background: #f8f9fa;
-            padding: 4px 8px;
-            border-radius: 4px;
-            margin-left: 10px;
-        }
-
-        .network-badge {
-            display: inline-block;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            background: rgba(13, 110, 253, 0.1);
-            color: var(--bs-primary);
-            margin-left: 5px;
-        }
     </style>
 </head>
 
 <body>
     <div class="toast-container" id="toastContainer"></div>
-
-    <!-- Wallet Connection Modal -->
-    <div id="walletModal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal" onclick="closeWalletModal()">&times;</span>
-            <h2 style="margin-bottom: 20px;">Connect Wallet</h2>
-            <p style="color: #6c757d; margin-bottom: 20px;">
-                Select a wallet provider to connect to this application.
-                You need a wallet to trade on Uniswap.
-            </p>
-
-            <div class="wallet-option" onclick="connectMetaMask()">
-                <div class="wallet-icon" style="background: #f6851b;"></div>
-                <div class="wallet-info">
-                    <div class="wallet-name">MetaMask</div>
-                    <div class="wallet-description">Connect to your MetaMask wallet</div>
-                </div>
-                <div class="wallet-check" id="metaMaskCheck"></div>
-            </div>
-
-            <div class="wallet-option" onclick="connectWalletConnect()">
-                <div class="wallet-icon" style="background: #3b99fc;"></div>
-                <div class="wallet-info">
-                    <div class="wallet-name">WalletConnect</div>
-                    <div class="wallet-description">Connect with WalletConnect</div>
-                </div>
-                <div class="wallet-check" id="walletConnectCheck"></div>
-            </div>
-
-            <div class="wallet-option" onclick="connectCoinbase()">
-                <div class="wallet-icon" style="background: #1652f0;"></div>
-                <div class="wallet-info">
-                    <div class="wallet-name">Coinbase Wallet</div>
-                    <div class="wallet-description">Connect to your Coinbase Wallet</div>
-                </div>
-                <div class="wallet-check" id="coinbaseCheck"></div>
-            </div>
-
-            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
-                <p style="color: #6c757d; font-size: 0.85rem;">
-                    <strong>Note:</strong> This application only supports Arbitrum, Ethereum, Base, Optimism, and
-                    Polygon networks.
-                    Make sure your wallet is configured to use one of these networks.
-                </p>
-            </div>
-        </div>
-    </div>
 
     <div class="container">
         <header class="text-center mb-2">
@@ -911,7 +724,6 @@
                         <div class="d-flex align-center gap-1 mb-1">
                             <span class="status-indicator status-disconnected" id="statusIndicator"></span>
                             <span id="botStatusText">Not Running</span>
-                            <span id="walletStatus" class="wallet-address" style="display: none;"></span>
                         </div>
                         <div class="connection-status" id="connectionStatus">
                             <div class="status-item status-disconnected" id="blockchainStatus">
@@ -924,13 +736,10 @@
                             </div>
                         </div>
                         <div class="d-flex gap-1 mt-2">
-                            <button class="btn btn-primary btn-sm" id="connectWalletBtn" onclick="openWalletModal()">
-                                Connect Wallet
-                            </button>
+                            <button class="btn btn-primary btn-sm" id="connectWalletBtn"
+                                onclick="connectWallet()">Connect Wallet</button>
                             <button class="btn btn-warning btn-sm" id="toggleLiveModeBtn" onclick="toggleLiveMode()"
-                                disabled>
-                                Live Mode: OFF
-                            </button>
+                                disabled>Live Mode: OFF</button>
                             <button class="btn btn-success btn-sm" id="startBotBtn" onclick="startBot()">
                                 <span class="loading-spinner" id="startSpinner" style="display:none;"></span>Start
                                 Trading
@@ -1293,6 +1102,7 @@
             <div class="card">
                 <div class="card-header">Configuration Constants</div>
                 <div class="card-body">
+
                     <!-- Network Configuration -->
                     <div class="constants-category">
                         <h3>Market Connection</h3>
@@ -1487,43 +1297,43 @@
         // ============================================
         // Configuration Constants
         // ============================================
-        const APP_VERSION = '4.2.0';
+        const APP_VERSION = '4.1.0';
 
         // Network Configuration
-        let BLOCKCHAIN_NETWORK = 'arbitrum';
-        const UNISWAP_VERSION = 'v3';
+        let BLOCKCHAIN_NETWORK = 'arbitrum'; // Which blockchain to monitor for trading opportunities. Arbitrum has the lowest fees.
+        const UNISWAP_VERSION = 'v3'; // Which version of Uniswap to use for trading. V3 has the most tokens and activity.
 
         // Trading Budget Configuration
-        let STARTING_ETH = 0.0033;
-        let TRADE_AMOUNT_PERCENT = 0.5;
-        let MIN_TRADE_AMOUNT_ETH = 0.0003;
-        let MAX_TRADES = 200;
-        let TRADE_COOLDOWN = 60;
+        let STARTING_ETH = 0.0033; // How much ETH you're starting with. $10 is about 0.0033 ETH when ETH is at $3000.
+        let TRADE_AMOUNT_PERCENT = 0.5; // What percentage of your budget to use for each trade. 10% of $10 = $1 per trade.
+        let MIN_TRADE_AMOUNT_ETH = 0.0003; // Never trade below this amount. Prevents trading with amounts that aren't worth the fees.
+        let MAX_TRADES = 200; // How many trades can be open at the same time. Limits exposure to any single token.
+        let TRADE_COOLDOWN = 60; // Minimum seconds to wait before trading the same token again. Prevents rapid buying/selling.
 
         // Pattern Detection Configuration
-        let MIN_PRICE_CHANGE = 1.0;
-        let MIN_TIME_WINDOW = 10;
-        let MAX_TIME_WINDOW = 300;
-        let MIN_OCCURRENCES = 2;
+        let MIN_PRICE_CHANGE = 1.0; // How much a price needs to move (percentage) before the system pays attention.
+        let MIN_TIME_WINDOW = 10; // How long a price movement must take to be considered (in seconds).
+        let MAX_TIME_WINDOW = 300; // The longest time a pattern can take to form (in seconds).
+        let MIN_OCCURRENCES = 2; // How many times a pattern must appear before trading on it.
 
         // Pattern Validation Configuration
-        let MIN_WIN_RATE = 60;
-        let BACKTEST_PERIOD = 24;
-        let TARGET_PROFIT_PERCENT = 1.0;
-        let MIN_PROFITABILITY = 1.5;
-        let MAX_PATTERNS_PER_TOKEN = 5;
+        let MIN_WIN_RATE = 60; // Only use patterns that have worked this often in testing (percentage).
+        let BACKTEST_PERIOD = 24; // How much past price history to use when testing patterns (in hours).
+        let TARGET_PROFIT_PERCENT = 1.0; // Sell when the trade makes this much profit (percentage).
+        let MIN_PROFITABILITY = 1.5; // Only use patterns that have made at least this much profit on average in testing.
+        let MAX_PATTERNS_PER_TOKEN = 5; // How many different patterns to track for each token.
 
         // Safety Configuration
-        let MAX_SLIPPAGE = 0.5;
-        let MIN_PROFIT_PERCENT = 0.5;
-        let MAX_POSITION_AGE = 600;
-        let MAX_GAS_PRICE = 200;
-        let GAS_LIMIT = 200000;
-        let PREVENT_SEQUENTIAL_TRADES = true;
+        let MAX_SLIPPAGE = 0.5; // Maximum price change allowed when executing a trade. Prevents bad trades when prices move fast.
+        let MIN_PROFIT_PERCENT = 0.5; // Don't close a trade unless it's made at least this much profit.
+        let MAX_POSITION_AGE = 600; // If a trade hasn't hit your profit target by this time, sell it anyway (in seconds).
+        let MAX_GAS_PRICE = 200; // Don't trade if network fees are higher than this (in gwei).
+        let GAS_LIMIT = 200000; // Estimate of how much computational work each trade requires.
+        let PREVENT_SEQUENTIAL_TRADES = true; // Prevents buying and selling the same token too quickly in a row, which can lose money to fees.
 
         // Data Configuration
-        let PRICE_HISTORY_DURATION = 24;
-        let MAX_PRICE_HISTORY = 10000;
+        let PRICE_HISTORY_DURATION = 24; // How many hours of price history to remember for finding patterns.
+        let MAX_PRICE_HISTORY = 10000; // How many price data points to keep for each token.
 
         // Derived Constants
         const POOL_FEES = { LOW: 500, MEDIUM: 3000, HIGH: 10000 };
@@ -1536,10 +1346,8 @@
             arbitrum: {
                 name: "Arbitrum One",
                 chainId: 42161,
-                chainIdHex: "0xa4b1",
                 ws: "wss://arbitrum-one-rpc.publicnode.com",
                 factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
-                routerAddress: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
                 wrappedNative: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
                 quoteMode: "native",
                 quoteLabel: "ETH",
@@ -1548,10 +1356,8 @@
             ethereum: {
                 name: "Ethereum Mainnet",
                 chainId: 1,
-                chainIdHex: "0x1",
                 ws: "wss://ethereum-rpc.publicnode.com",
                 factory: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
-                routerAddress: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
                 wrappedNative: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
                 quoteMode: "native",
                 quoteLabel: "ETH",
@@ -1560,10 +1366,8 @@
             base: {
                 name: "Base",
                 chainId: 8453,
-                chainIdHex: "0x2105",
                 ws: "wss://base-rpc.publicnode.com",
                 factory: "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
-                routerAddress: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
                 wrappedNative: "0x4200000000000000000000000000000000000006",
                 quoteMode: "native",
                 quoteLabel: "ETH",
@@ -1572,10 +1376,8 @@
             optimism: {
                 name: "Optimism",
                 chainId: 10,
-                chainIdHex: "0xa",
                 ws: "wss://optimism-rpc.publicnode.com",
                 factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
-                routerAddress: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
                 wrappedNative: "0x4200000000000000000000000000000000000006",
                 quoteMode: "native",
                 quoteLabel: "ETH",
@@ -1584,10 +1386,8 @@
             polygon: {
                 name: "Polygon",
                 chainId: 137,
-                chainIdHex: "0x89",
                 ws: "wss://polygon-bor-rpc.publicnode.com",
                 factory: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
-                routerAddress: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
                 wrappedNative: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
                 quoteMode: "native",
                 quoteLabel: "WPOL",
@@ -1648,9 +1448,7 @@
             provider: null,
             signer: null,
             sessionSerial: 0,
-            activeSession: null,
-            connectedAddress: null,
-            connectedChainId: null
+            activeSession: null
         };
 
         let equityChart = null;
@@ -1724,288 +1522,6 @@
         }
 
         // ============================================
-        // Wallet Connection Functions
-        // ============================================
-
-        // Open wallet connection modal
-        function openWalletModal() {
-            document.getElementById('walletModal').style.display = 'block';
-        }
-
-        // Close wallet connection modal
-        function closeWalletModal() {
-            document.getElementById('walletModal').style.display = 'none';
-            // Clear any selection
-            document.querySelectorAll('.wallet-check').forEach(el => {
-                el.innerHTML = '';
-            });
-        }
-
-        // Check if MetaMask is installed
-        function isMetaMaskInstalled() {
-            return typeof window.ethereum !== 'undefined' && window.ethereum.isMetaMask;
-        }
-
-        // Connect to MetaMask
-        async function connectMetaMask() {
-            if (!isMetaMaskInstalled()) {
-                showToast('error', 'MetaMask is not installed. Please install MetaMask extension from the Chrome Web Store.');
-                return;
-            }
-
-            try {
-                closeWalletModal();
-                showLoading('connectWalletBtn');
-
-                // Request account access
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-
-                if (accounts.length === 0) {
-                    hideLoading('connectWalletBtn');
-                    showToast('error', 'No accounts found in MetaMask. Please create or import an account.');
-                    return;
-                }
-
-                // Create provider and signer
-                state.provider = new ethers.BrowserProvider(window.ethereum);
-                state.signer = await state.provider.getSigner();
-
-                // Get the connected account
-                state.connectedAddress = accounts[0];
-                state.walletConnected = true;
-
-                // Get chain ID
-                const network = await state.provider.getNetwork();
-                state.connectedChainId = network.chainId;
-
-                // Update UI
-                updateWalletUI();
-
-                // Setup event listeners
-                setupWalletEventListeners();
-
-                // Check if we need to switch network
-                await checkAndSwitchNetwork();
-
-                hideLoading('connectWalletBtn');
-                showToast('success', `Connected to MetaMask: ${shortenAddress(state.connectedAddress)}`);
-
-                // Enable live mode button
-                document.getElementById('toggleLiveModeBtn').disabled = false;
-
-            } catch (error) {
-                hideLoading('connectWalletBtn');
-                console.error('MetaMask connection error:', error);
-                showToast('error', `Failed to connect to MetaMask: ${error.message || String(error)}`);
-            }
-        }
-
-        // Connect using WalletConnect
-        async function connectWalletConnect() {
-            showToast('error', 'WalletConnect integration requires additional libraries. Please use MetaMask or another supported wallet.');
-        }
-
-        // Connect to Coinbase Wallet
-        async function connectCoinbase() {
-            showToast('error', 'Coinbase Wallet integration requires additional libraries. Please use MetaMask or another supported wallet.');
-        }
-
-        // Setup wallet event listeners
-        function setupWalletEventListeners() {
-            if (!window.ethereum) return;
-
-            // Account changed
-            window.ethereum.on('accountsChanged', async (accounts) => {
-                if (accounts.length === 0) {
-                    // User disconnected
-                    disconnectWallet();
-                } else {
-                    // User switched accounts
-                    state.connectedAddress = accounts[0];
-                    state.signer = await state.provider.getSigner();
-                    updateWalletUI();
-                    showToast('info', `Account changed to: ${shortenAddress(state.connectedAddress)}`);
-                }
-            });
-
-            // Chain changed
-            window.ethereum.on('chainChanged', async (chainId) => {
-                const chainIdNum = parseInt(chainId, 16);
-                state.connectedChainId = chainIdNum;
-
-                // Check if the new chain is supported
-                const chainKey = getChainKeyFromId(chainIdNum);
-                if (chainKey) {
-                    state.currentChainKey = chainKey;
-                    BLOCKCHAIN_NETWORK = chainKey;
-                    updateNetworkSelect();
-                    updateWalletUI();
-                    showToast('info', `Network changed to: ${CHAINS[chainKey].name}`);
-
-                    // If bot is running, restart session
-                    if (state.isRunning) {
-                        restartUniswapSession();
-                    }
-                } else {
-                    showToast('warning', `Unsupported network. Please switch to a supported network (Arbitrum, Ethereum, Base, Optimism, Polygon).`);
-                }
-            });
-
-            // Disconnect event
-            window.ethereum.on('disconnect', () => {
-                disconnectWallet();
-            });
-        }
-
-        // Disconnect wallet
-        function disconnectWallet() {
-            state.walletConnected = false;
-            state.connectedAddress = null;
-            state.connectedChainId = null;
-            state.signer = null;
-            state.provider = null;
-
-            updateWalletUI();
-            showToast('info', 'Wallet disconnected');
-
-            // Disable live mode if it was enabled
-            if (state.liveMode) {
-                state.liveMode = false;
-                document.getElementById('toggleLiveModeBtn').textContent = 'Live Mode: OFF';
-                document.getElementById('toggleLiveModeBtn').className = 'btn btn-warning btn-sm';
-            }
-
-            // Disable live mode button
-            document.getElementById('toggleLiveModeBtn').disabled = true;
-        }
-
-        // Update wallet UI
-        function updateWalletUI() {
-            const connectBtn = document.getElementById('connectWalletBtn');
-            const walletStatus = document.getElementById('walletStatus');
-            const toggleLiveBtn = document.getElementById('toggleLiveModeBtn');
-
-            if (state.walletConnected && state.connectedAddress) {
-                if (connectBtn) {
-                    connectBtn.textContent = 'Connected';
-                    connectBtn.onclick = disconnectWallet;
-                }
-                if (walletStatus) {
-                    walletStatus.style.display = 'inline';
-                    walletStatus.textContent = `${shortenAddress(state.connectedAddress)}`;
-
-                    // Add network badge
-                    const chainKey = state.currentChainKey || getChainKeyFromId(state.connectedChainId);
-                    if (chainKey && CHAINS[chainKey]) {
-                        walletStatus.innerHTML = `${shortenAddress(state.connectedAddress)} <span class="network-badge">${CHAINS[chainKey].name}</span>`;
-                    }
-                }
-                if (toggleLiveBtn) {
-                    toggleLiveBtn.disabled = false;
-                }
-            } else {
-                if (connectBtn) {
-                    connectBtn.textContent = 'Connect Wallet';
-                    connectBtn.onclick = openWalletModal;
-                }
-                if (walletStatus) {
-                    walletStatus.style.display = 'none';
-                    walletStatus.textContent = '';
-                }
-                if (toggleLiveBtn) {
-                    toggleLiveBtn.disabled = true;
-                }
-            }
-        }
-
-        // Shorten address for display
-        function shortenAddress(address) {
-            if (!address) return '';
-            return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-        }
-
-        // Get chain key from chain ID
-        function getChainKeyFromId(chainId) {
-            for (const [key, chain] of Object.entries(CHAINS)) {
-                if (chain.chainId === chainId) {
-                    return key;
-                }
-            }
-            return null;
-        }
-
-        // Update network select dropdown
-        function updateNetworkSelect() {
-            const networkSelect = document.getElementById('networkSelect');
-            if (networkSelect && state.currentChainKey) {
-                networkSelect.value = state.currentChainKey;
-            }
-        }
-
-        // Check and switch network if needed
-        async function checkAndSwitchNetwork() {
-            if (!state.connectedChainId) return;
-
-            const currentChainKey = getChainKeyFromId(state.connectedChainId);
-            const targetChainKey = state.currentChainKey;
-
-            if (currentChainKey !== targetChainKey) {
-                // Need to switch network
-                const targetChain = CHAINS[targetChainKey];
-                if (!targetChain) return;
-
-                try {
-                    await window.ethereum.request({
-                        method: 'wallet_switchEthereumChain',
-                        params: [{ chainId: targetChain.chainIdHex }]
-                    });
-                    showToast('success', `Switched to ${targetChain.name}`);
-                } catch (switchError) {
-                    // This error code indicates that the chain has not been added to MetaMask
-                    if (switchError.code === 4902) {
-                        try {
-                            await window.ethereum.request({
-                                method: 'wallet_addEthereumChain',
-                                params: [{
-                                    chainId: targetChain.chainIdHex,
-                                    chainName: targetChain.name,
-                                    nativeCurrency: {
-                                        name: targetChain.quoteLabel,
-                                        symbol: targetChain.quoteLabel,
-                                        decimals: 18
-                                    },
-                                    rpcUrls: [targetChain.ws.replace('wss://', 'https://').replace('ws://', 'https://')],
-                                    blockExplorerUrls: getBlockExplorerUrls(targetChainKey)
-                                }]
-                            });
-                            // After adding, try to switch again
-                            await window.ethereum.request({
-                                method: 'wallet_switchEthereumChain',
-                                params: [{ chainId: targetChain.chainIdHex }]
-                            });
-                        } catch (addError) {
-                            showToast('error', `Failed to add network: ${addError.message || String(addError)}`);
-                        }
-                    } else {
-                        showToast('error', `Failed to switch network: ${switchError.message || String(switchError)}`);
-                    }
-                }
-            }
-        }
-
-        // Get block explorer URLs for each chain
-        function getBlockExplorerUrls(chainKey) {
-            const explorers = {
-                arbitrum: ['https://arbiscan.io'],
-                ethereum: ['https://etherscan.io'],
-                base: ['https://basescan.org'],
-                optimism: ['https://optimistic.etherscan.io'],
-                polygon: ['https://polygonscan.com']
-            };
-            return explorers[chainKey] || [];
-        }
-
-        // ============================================
         // Utility Functions
         // ============================================
         function norm(a) { return String(a).toLowerCase(); }
@@ -2024,11 +1540,6 @@
             updateStartingEthDisplay();
             updateTradeAmountDisplay();
             updateConstantsDisplay();
-
-            // Check if MetaMask is already connected
-            if (isMetaMaskInstalled() && window.ethereum.isConnected()) {
-                connectMetaMask();
-            }
         });
 
         function initializeApp() {
@@ -2099,11 +1610,6 @@
                 if (state.isRunning) restartUniswapSession();
                 updateConnectionStatus();
                 updateConstantsDisplay();
-
-                // If wallet is connected, check if we need to switch network
-                if (state.walletConnected) {
-                    checkAndSwitchNetwork();
-                }
             });
         }
 
@@ -2176,10 +1682,8 @@
         }
 
         // ============================================
-        // All the existing functions from the original code
-        // (They remain unchanged but are included for completeness)
+        // Trade Amount Calculation
         // ============================================
-
         function calculateTradeAmount() {
             const gasPrice = state.currentGasPrice || MAX_GAS_PRICE;
             const multiplier = 1;
@@ -2234,9 +1738,9 @@
             }
         }
 
-        // All other functions from the original code remain the same
-        // (startPatternDetection, stopPatternDetection, detectAllPatterns, etc.)
-
+        // ============================================
+        // Pattern Detection
+        // ============================================
         function startPatternDetection() {
             if (state.patternDetectionActive) return;
             state.patternDetectionActive = true;
@@ -2652,107 +2156,9 @@
             container.innerHTML = html;
         }
 
-        // All remaining functions from the original code
-        // (executeTrade, updatePortfolioForTrade, updateDashboard, etc.)
-
-        async function executeTrade(token, action, patternDescription = 'Manual', amountETH = null, pattern = null) {
-            if (!state.isRunning) return null;
-
-            if (amountETH === null) {
-                amountETH = calculateTradeAmount();
-            }
-
-            const currentPrice = state.prices[token];
-            if (!currentPrice) {
-                return null;
-            }
-
-            if (amountETH <= 0) {
-                return null;
-            }
-
-            const totalOpenPositions = state.portfolio.positions.filter(p => p.status === 'open').length;
-            if (totalOpenPositions >= MAX_TRADES) {
-                return null;
-            }
-
-            const lastTradeTime = state.lastTradeTimes[token];
-            if (lastTradeTime && (Date.now() - lastTradeTime) < (TRADE_COOLDOWN * 1000)) {
-                return null;
-            }
-
-            const tokenSymbol = token;
-            const tokenAmount = amountETH / currentPrice;
-            const poolInfo = await getEnhancedPoolInfo(tokenSymbol);
-            if (!poolInfo) {
-                return null;
-            }
-
-            const currentGasPrice = state.currentGasPrice || MAX_GAS_PRICE;
-
-            if (action === 'sell') {
-                const tokenBalance = state.portfolio.balances[tokenSymbol] || 0;
-                if (tokenBalance <= 0) {
-                    return null;
-                }
-                const sellableAmount = Math.min(tokenAmount, tokenBalance);
-                if (sellableAmount <= 0) {
-                    return null;
-                }
-            }
-
-            let tradeResult;
-            if (state.liveMode && state.walletConnected && state.signer) {
-                tradeResult = await executeLiveTrade(tokenSymbol, action, tokenAmount, currentPrice, poolInfo, currentGasPrice);
-            } else {
-                tradeResult = await simulateRealisticTrade(
-                    tokenSymbol, action, tokenAmount, currentPrice, poolInfo, 0, currentGasPrice
-                );
-            }
-
-            if (!tradeResult.success) {
-                const failedTrade = createTradeObject(
-                    tokenSymbol, action, currentPrice, tokenAmount, amountETH,
-                    patternDescription, 'failed', tradeResult.reason,
-                    tradeResult.gasUsed, tradeResult.gasPrice, tradeResult.feeAmount,
-                    tradeResult.priceImpact, tradeResult.slippage, pattern
-                );
-                state.trades.push(failedTrade);
-                state.portfolio.failedTrades++;
-                state.portfolio.totalTrades++;
-                updateDashboard();
-                return failedTrade;
-            }
-
-            if (PREVENT_SEQUENTIAL_TRADES && state.lastTradedToken === tokenSymbol) {
-                return null;
-            }
-
-            const trade = createTradeObject(
-                tokenSymbol, action, tradeResult.executionPrice, tradeResult.tokenAmount,
-                tradeResult.amountETH, patternDescription, state.liveMode ? 'open' : 'open', null, tradeResult.gasUsed,
-                tradeResult.gasPrice, tradeResult.feeAmount, tradeResult.priceImpact, tradeResult.slippage, pattern
-            );
-
-            updatePortfolioForTrade(trade, action, tradeResult);
-            state.trades.push(trade);
-            state.portfolio.totalTrades++;
-            state.lastTradedToken = tokenSymbol;
-            state.lastTradeTimes[tokenSymbol] = Date.now();
-
-            if (action === 'sell') {
-                state.openBuyOrders.delete(tokenSymbol);
-                await settleTrade(trade);
-            }
-
-            updateDashboard();
-            updatePortfolioUI();
-            updateEquityChart();
-            updateTradeAmountDisplay();
-
-            return trade;
-        }
-
+        // ============================================
+        // Trade Execution & Portfolio Management
+        // ============================================
         function createTradeObject(token, action, price, tokenAmount, amountETH, pattern, status, reason = null,
             gasUsed = 0, gasPrice = 0, feeAmount = 0, priceImpact = 0, slippage = 0, patternObj = null) {
             return {
@@ -2860,88 +2266,6 @@
                 GMX: { liquidity: 40000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'GMX' }
             };
             return defaults[token] || { liquidity: 75000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: token };
-        }
-
-        async function executeLiveTrade(tokenSymbol, action, tokenAmount, currentPrice, poolInfo, gasPriceGwei) {
-            try {
-                const chain = CHAINS[state.currentChainKey];
-                if (!chain) {
-                    return {
-                        success: false,
-                        tokenAmount,
-                        amountETH: tokenAmount * currentPrice,
-                        executionPrice: currentPrice,
-                        gasUsed: 0,
-                        gasPrice: gasPriceGwei,
-                        feeAmount: 0,
-                        priceImpact: 0,
-                        slippage: 0,
-                        reason: 'Unsupported network'
-                    };
-                }
-
-                const routerAddress = chain.routerAddress;
-                const router = new ethers.Contract(routerAddress, [
-                    "function swapExactETHForTokens(uint amountOutMin, address[] path, address to, uint deadline) external payable returns (uint[] amounts)",
-                    "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] path, address to, uint deadline) external returns (uint[] amounts)"
-                ], state.signer);
-
-                const path = [poolInfo.token0, poolInfo.token1];
-                const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-                let tx;
-
-                if (action === 'buy') {
-                    tx = await router.swapExactETHForTokens(
-                        Math.floor(tokenAmount * (1 - (MAX_SLIPPAGE / 100)) * 1e18),
-                        path,
-                        await state.signer.getAddress(),
-                        deadline,
-                        { value: ethers.parseEther(tokenAmount.toString()), gasLimit: GAS_LIMIT }
-                    );
-                } else {
-                    const tokenContract = new ethers.Contract(poolInfo.token0, ["function approve(address spender, uint256 amount) returns (bool)"], state.signer);
-                    await tokenContract.approve(routerAddress, ethers.MaxUint256);
-                    tx = await router.swapExactTokensForETH(
-                        ethers.parseEther(tokenAmount.toString()),
-                        Math.floor(tokenAmount * (1 - (MAX_SLIPPAGE / 100)) * currentPrice * 1e18),
-                        path,
-                        await state.signer.getAddress(),
-                        deadline,
-                        { gasLimit: GAS_LIMIT }
-                    );
-                }
-
-                const receipt = await tx.wait();
-                const gasUsed = receipt.gasUsed.toString();
-                const feeAmount = tokenAmount * (poolInfo.feeTier / 1000000);
-
-                return {
-                    success: true,
-                    tokenAmount,
-                    amountETH: tokenAmount * currentPrice,
-                    executionPrice: currentPrice,
-                    gasUsed: parseInt(gasUsed),
-                    gasPrice: gasPriceGwei,
-                    feeAmount,
-                    priceImpact: 0,
-                    slippage: MAX_SLIPPAGE,
-                    reason: null
-                };
-            } catch (error) {
-                console.error('Live trade execution error:', error);
-                return {
-                    success: false,
-                    tokenAmount,
-                    amountETH: tokenAmount * currentPrice,
-                    executionPrice: currentPrice,
-                    gasUsed: 0,
-                    gasPrice: gasPriceGwei,
-                    feeAmount: 0,
-                    priceImpact: 0,
-                    slippage: 0,
-                    reason: error.reason || error.message || 'Transaction failed or rejected'
-                };
-            }
         }
 
         function updatePortfolioForTrade(trade, action, tradeResult) {
@@ -3065,6 +2389,169 @@
             }
 
             updatePortfolioEquity();
+        }
+
+        async function executeTrade(token, action, patternDescription = 'Manual', amountETH = null, pattern = null) {
+            if (!state.isRunning) return null;
+
+            if (amountETH === null) {
+                amountETH = calculateTradeAmount();
+            }
+
+            const currentPrice = state.prices[token];
+            if (!currentPrice) {
+                return null;
+            }
+
+            if (amountETH <= 0) {
+                return null;
+            }
+
+            const totalOpenPositions = state.portfolio.positions.filter(p => p.status === 'open').length;
+            if (totalOpenPositions >= MAX_TRADES) {
+                return null;
+            }
+
+            const lastTradeTime = state.lastTradeTimes[token];
+            if (lastTradeTime && (Date.now() - lastTradeTime) < (TRADE_COOLDOWN * 1000)) {
+                return null;
+            }
+
+            const tokenSymbol = token;
+            const tokenAmount = amountETH / currentPrice;
+            const poolInfo = await getEnhancedPoolInfo(tokenSymbol);
+            if (!poolInfo) {
+                return null;
+            }
+
+            const currentGasPrice = state.currentGasPrice || MAX_GAS_PRICE;
+
+            if (action === 'sell') {
+                const tokenBalance = state.portfolio.balances[tokenSymbol] || 0;
+                if (tokenBalance <= 0) {
+                    return null;
+                }
+                const sellableAmount = Math.min(tokenAmount, tokenBalance);
+                if (sellableAmount <= 0) {
+                    return null;
+                }
+            }
+
+            let tradeResult;
+            if (state.liveMode && state.walletConnected && state.signer) {
+                tradeResult = await executeLiveTrade(tokenSymbol, action, tokenAmount, currentPrice, poolInfo, currentGasPrice);
+            } else {
+                tradeResult = await simulateRealisticTrade(
+                    tokenSymbol, action, tokenAmount, currentPrice, poolInfo, 0, currentGasPrice
+                );
+            }
+
+            if (!tradeResult.success) {
+                const failedTrade = createTradeObject(
+                    tokenSymbol, action, currentPrice, tokenAmount, amountETH,
+                    patternDescription, 'failed', tradeResult.reason,
+                    tradeResult.gasUsed, tradeResult.gasPrice, tradeResult.feeAmount,
+                    tradeResult.priceImpact, tradeResult.slippage, pattern
+                );
+                state.trades.push(failedTrade);
+                state.portfolio.failedTrades++;
+                state.portfolio.totalTrades++;
+                updateDashboard();
+                return failedTrade;
+            }
+
+            if (PREVENT_SEQUENTIAL_TRADES && state.lastTradedToken === tokenSymbol) {
+                return null;
+            }
+
+            const trade = createTradeObject(
+                tokenSymbol, action, tradeResult.executionPrice, tradeResult.tokenAmount,
+                tradeResult.amountETH, patternDescription, state.liveMode ? 'open' : 'open', null, tradeResult.gasUsed,
+                tradeResult.gasPrice, tradeResult.feeAmount, tradeResult.priceImpact, tradeResult.slippage, pattern
+            );
+
+            updatePortfolioForTrade(trade, action, tradeResult);
+            state.trades.push(trade);
+            state.portfolio.totalTrades++;
+            state.lastTradedToken = tokenSymbol;
+            state.lastTradeTimes[tokenSymbol] = Date.now();
+
+            if (action === 'sell') {
+                state.openBuyOrders.delete(tokenSymbol);
+                await settleTrade(trade);
+            }
+
+            updateDashboard();
+            updatePortfolioUI();
+            updateEquityChart();
+            updateTradeAmountDisplay();
+
+            return trade;
+        }
+
+        async function executeLiveTrade(tokenSymbol, action, tokenAmount, currentPrice, poolInfo, gasPriceGwei) {
+            try {
+                const routerAddress = CHAINS[state.currentChainKey]?.routerAddress || '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D';
+                const router = new ethers.Contract(routerAddress, [
+                    "function swapExactETHForTokens(uint amountOutMin, address[] path, address to, uint deadline) external payable returns (uint[] amounts)",
+                    "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] path, address to, uint deadline) external returns (uint[] amounts)"
+                ], state.signer);
+
+                const path = [poolInfo.token0, poolInfo.token1];
+                const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+                let tx;
+
+                if (action === 'buy') {
+                    tx = await router.swapExactETHForTokens(
+                        Math.floor(tokenAmount * (1 - (MAX_SLIPPAGE / 100)) * 1e18),
+                        path,
+                        await state.signer.getAddress(),
+                        deadline,
+                        { value: BigInt(Math.floor(tokenAmount * 1e18)), gasLimit: GAS_LIMIT }
+                    );
+                } else {
+                    const tokenContract = new ethers.Contract(poolInfo.token0, ["function approve(address spender, uint256 amount) returns (bool)"], state.signer);
+                    await tokenContract.approve(routerAddress, ethers.MaxUint256);
+                    tx = await router.swapExactTokensForETH(
+                        Math.floor(tokenAmount * 1e18),
+                        Math.floor(tokenAmount * (1 - (MAX_SLIPPAGE / 100)) * currentPrice * 1e18),
+                        path,
+                        await state.signer.getAddress(),
+                        deadline,
+                        { gasLimit: GAS_LIMIT }
+                    );
+                }
+
+                const receipt = await tx.wait();
+                const gasUsed = receipt.gasUsed.toNumber();
+                const feeAmount = tokenAmount * (poolInfo.feeTier / 1000000);
+
+                return {
+                    success: true,
+                    tokenAmount,
+                    amountETH: tokenAmount * currentPrice,
+                    executionPrice: currentPrice,
+                    gasUsed,
+                    gasPrice: gasPriceGwei,
+                    feeAmount,
+                    priceImpact: 0,
+                    slippage: MAX_SLIPPAGE,
+                    reason: null
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    tokenAmount,
+                    amountETH: tokenAmount * currentPrice,
+                    executionPrice: currentPrice,
+                    gasUsed: 0,
+                    gasPrice: gasPriceGwei,
+                    feeAmount: 0,
+                    priceImpact: 0,
+                    slippage: 0,
+                    reason: error.reason || error.message || 'Transaction failed or rejected'
+                };
+            }
         }
 
         async function settleTrade(trade) {
@@ -3238,6 +2725,9 @@
             });
         }
 
+        // ============================================
+        // Portfolio & UI Functions
+        // ============================================
         function getAssetCap(token) {
             if (token === 'ETH' || token === 'WETH') return 100;
             return 10;
@@ -3530,6 +3020,9 @@
             if (profitFactorEl) profitFactorEl.textContent = profitFactor;
         }
 
+        // ============================================
+        // Dashboard & UI Updates
+        // ============================================
         function updateDashboard() {
             renderDashboard();
             updateActivePositions();
@@ -3748,15 +3241,12 @@
             equityChart.update();
         }
 
+        // ============================================
+        // Bot Control Functions
+        // ============================================
         async function startBot() {
             if (state.isRunning) {
                 showToast('info', 'Trading is already running.');
-                return;
-            }
-
-            // Check if wallet is connected and on the right network
-            if (state.liveMode && !state.walletConnected) {
-                showToast('error', 'Please connect your wallet before starting live trading.');
                 return;
             }
 
@@ -3787,7 +3277,6 @@
                 hideLoading('startSpinner');
                 document.getElementById('startBotBtn').disabled = false;
                 state.isRunning = false;
-                showToast('error', `Failed to start: ${errorMsg}`);
             }
         }
 
@@ -3813,7 +3302,6 @@
                 showToast('success', 'Trading stopped!');
             } catch (error) {
                 const errorMsg = error && error.message ? error.message : String(error);
-                showToast('error', `Error stopping bot: ${errorMsg}`);
             } finally {
                 hideLoading('stopSpinner');
                 document.getElementById('stopBotBtn').disabled = false;
@@ -3843,12 +3331,26 @@
             updateConnectionStatus();
         }
 
-        function toggleLiveMode() {
-            if (!state.walletConnected) {
-                showToast('error', 'Please connect your wallet first.');
+        async function connectWallet() {
+            if (typeof window.ethereum === 'undefined') {
+                showToast('error', 'MetaMask not detected. Please install it.');
                 return;
             }
+            try {
+                state.provider = new ethers.providers.Web3Provider(window.ethereum);
+                await state.provider.send('eth_requestAccounts', []);
+                state.signer = state.provider.getSigner();
+                state.walletConnected = true;
+                document.getElementById('connectWalletBtn').textContent = 'Wallet Connected';
+                document.getElementById('connectWalletBtn').disabled = true;
+                document.getElementById('toggleLiveModeBtn').disabled = false;
+                showToast('success', 'Wallet connected successfully.');
+            } catch (error) {
+                showToast('error', 'Failed to connect wallet: ' + error.message);
+            }
+        }
 
+        function toggleLiveMode() {
             state.liveMode = !state.liveMode;
             const btn = document.getElementById('toggleLiveModeBtn');
             btn.textContent = state.liveMode ? 'Live Mode: ON' : 'Live Mode: OFF';
@@ -4034,8 +3536,7 @@
             if (!current(s)) return;
 
             try {
-                const chain = CHAINS[state.currentChainKey];
-                const p = new ethers.WebSocketProvider(chain.ws, chain.chainId);
+                const p = new ethers.WebSocketProvider(s.chain.ws, s.chain.chainId);
                 if (!current(s)) {
                     try { p.destroy(); } catch { }
                     return;
@@ -4601,11 +4102,6 @@
                 if (state.isRunning) restartUniswapSession();
                 updateConnectionStatus();
                 updateConstantsDisplay();
-
-                // If wallet is connected, check if we need to switch network
-                if (state.walletConnected) {
-                    checkAndSwitchNetwork();
-                }
             }
         }
 
@@ -4614,6 +4110,9 @@
             setTimeout(() => startUniswapSession(), 1000);
         }
 
+        // ============================================
+        // Export Functions
+        // ============================================
         function exportTradeHistory() {
             const trades = state.trades.map(trade => ({
                 'Timestamp': trade.timestamp,
