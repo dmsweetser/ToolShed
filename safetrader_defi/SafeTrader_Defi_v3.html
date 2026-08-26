@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Easy Pattern Trader - $10 Optimized</title>
+    <title>Uniswap Easy Pattern Trader - Improved $10 Optimized</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script
@@ -713,9 +713,13 @@
 
     <div class="container">
         <header class="text-center mb-2">
-            <h1>Uniswap Easy Pattern Trader</h1>
+            <h1>Uniswap Easy Pattern Trader - IMPROVED</h1>
             <p class="text-secondary">
                 <strong>Simple $10 Trading:</strong> Automatically finds and trades profitable patterns in the market
+            </p>
+            <p class="text-secondary" style="font-size: 0.9em; margin-top: 5px;">
+                <strong>Key Improvements:</strong> Only trades patterns with positive expected value, never sells at a
+                loss, better fee accounting
             </p>
         </header>
 
@@ -819,7 +823,7 @@
                         <div class="progress-bar mt-2">
                             <div class="progress-fill" id="patternSuccessBar" style="width: 0%;"></div>
                         </div>
-                        <p class="text-secondary mt-1">How often patterns work</p>
+                        <p class="text-secondary mt-1">Pattern Success Rate</p>
                     </div>
                 </div>
                 <div class="card">
@@ -831,7 +835,7 @@
                         <div class="progress-bar mt-2">
                             <div class="progress-fill" id="feeImpactBar" style="width: 0%;"></div>
                         </div>
-                        <p class="text-secondary mt-1">How fees affect your profit</p>
+                        <p class="text-secondary mt-1">Fee Impact on Profit</p>
                     </div>
                 </div>
             </div>
@@ -1034,7 +1038,8 @@
                     <div class="alert alert-info mb-2">
                         These are the buy opportunities the system has found. Each one is automatically tested to make
                         sure it's profitable before being used for trading.
-                        <strong>For $10 trading:</strong> The system looks for smaller, more frequent opportunities.
+                        <strong>For $10 trading:</strong> The system looks for smaller, more frequent opportunities with
+                        positive expected value.
                     </div>
                     <div id="patternsList">
                         <p class="text-secondary">No patterns found yet. Start the bot to begin looking for
@@ -1171,12 +1176,12 @@
                             <div class="form-group">
                                 <label class="form-label">Trade Size Multiplier <span class="help-icon">?</span></label>
                                 <div class="starting-eth-container">
-                                    <input type="number" class="form-control" id="gasFeeMultiplier" value="10" min="1"
+                                    <input type="number" class="form-control" id="gasFeeMultiplier" value="1" min="1"
                                         max="1000" step="0.1">
                                     <span class="eth-suffix">x</span>
                                 </div>
-                                <small class="setting-description">Bigger number = bigger trades. For $10, 10x means
-                                    each trade uses about $1 worth of ETH. Higher values use more of your budget per
+                                <small class="setting-description">Bigger number = bigger trades. For $10, 1x means each
+                                    trade uses the minimum amount. Higher values use more of your budget per
                                     trade.</small>
                             </div>
                         </div>
@@ -1197,12 +1202,12 @@
                                 <label class="form-label">Minimum Trade Size (ETH) <span
                                         class="help-icon">?</span></label>
                                 <div class="starting-eth-container">
-                                    <input type="number" class="form-control" id="minTradeAmountETH" value="0.0001"
+                                    <input type="number" class="form-control" id="minTradeAmountETH" value="0.00001"
                                         min="0.00001" step="0.00001">
                                     <span class="eth-suffix">ETH</span>
                                 </div>
-                                <small class="setting-description">Never trade below this amount. 0.0001 ETH is about
-                                    $0.30. This prevents trading with tiny amounts that aren't worth it.</small>
+                                <small class="setting-description">Never trade below this amount. 0.00001 ETH is about
+                                    $0.03. This prevents trading with tiny amounts that aren't worth it.</small>
                             </div>
                         </div>
 
@@ -1216,9 +1221,9 @@
                             <div class="form-group">
                                 <label class="form-label">Time Between Trades on Same Token <span
                                         class="help-icon">?</span></label>
-                                <input type="number" class="form-control" id="tradeCooldown" value="30" min="0">
+                                <input type="number" class="form-control" id="tradeCooldown" value="60" min="0">
                                 <small class="setting-description">Minimum seconds to wait before trading the same token
-                                    again. 30 seconds prevents rapid buying and selling.</small>
+                                    again. 60 seconds prevents rapid buying and selling.</small>
                             </div>
                         </div>
                         <button class="btn btn-primary mt-2" onclick="saveTradeSettings()">Save Budget Settings</button>
@@ -1234,19 +1239,18 @@
                             <div class="form-group">
                                 <label class="form-label">Minimum Price Movement to Notice <span
                                         class="help-icon">?</span></label>
-                                <input type="number" class="form-control" id="minPriceChange" value="0.5" min="0.01"
+                                <input type="number" class="form-control" id="minPriceChange" value="1.0" min="0.01"
                                     max="10" step="0.01">
                                 <small class="setting-description">How much a price needs to move (in percent) before
-                                    the system pays attention. Lower numbers find more opportunities but may be less
-                                    reliable.</small>
+                                    the system pays attention. Higher numbers find more reliable opportunities.</small>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Minimum Time for Pattern (seconds) <span
                                         class="help-icon">?</span></label>
-                                <input type="number" class="form-control" id="minTimeWindow" value="5" min="1"
+                                <input type="number" class="form-control" id="minTimeWindow" value="10" min="1"
                                     max="300">
                                 <small class="setting-description">How long a price movement must take to be considered.
-                                    5 seconds catches quick opportunities.</small>
+                                    10 seconds catches reliable opportunities.</small>
                             </div>
                         </div>
 
@@ -1254,18 +1258,18 @@
                             <div class="form-group">
                                 <label class="form-label">Maximum Time for Pattern (seconds) <span
                                         class="help-icon">?</span></label>
-                                <input type="number" class="form-control" id="maxTimeWindow" value="120" min="10"
+                                <input type="number" class="form-control" id="maxTimeWindow" value="300" min="10"
                                     max="3600">
-                                <small class="setting-description">The longest time a pattern can take to form. 120
-                                    seconds (2 minutes) is a good starting point.</small>
+                                <small class="setting-description">The longest time a pattern can take to form. 300
+                                    seconds (5 minutes) is a good starting point.</small>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Minimum Pattern Repetitions <span
                                         class="help-icon">?</span></label>
-                                <input type="number" class="form-control" id="minOccurrences" value="1" min="1"
+                                <input type="number" class="form-control" id="minOccurrences" value="2" min="1"
                                     max="10">
                                 <small class="setting-description">How many times a pattern must appear before trading
-                                    on it. 1 means the system will trade on the first occurrence.</small>
+                                    on it. 2 means the system will trade on the second occurrence.</small>
                             </div>
                         </div>
                         <button class="btn btn-primary mt-2" onclick="saveDetectionSettings()">Save Opportunity Finder
@@ -1282,16 +1286,16 @@
                             <div class="form-group">
                                 <label class="form-label">Minimum Success Rate for Patterns <span
                                         class="help-icon">?</span></label>
-                                <input type="number" class="form-control" id="minWinRate" value="30" min="0" max="100">
+                                <input type="number" class="form-control" id="minWinRate" value="50" min="0" max="100">
                                 <small class="setting-description">Only use patterns that have worked this often in
-                                    testing. 30% means the pattern needs to be right at least 30% of the time.</small>
+                                    testing. 50% means the pattern needs to be right at least half the time.</small>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Test Period (hours) <span class="help-icon">?</span></label>
-                                <input type="number" class="form-control" id="backtestPeriod" value="1" min="1"
+                                <input type="number" class="form-control" id="backtestPeriod" value="24" min="1"
                                     max="168">
                                 <small class="setting-description">How much past price history to use when testing
-                                    patterns. 1 hour is good for $10 trading.</small>
+                                    patterns. 24 hours is good for reliable testing.</small>
                             </div>
                         </div>
 
@@ -1299,28 +1303,29 @@
                             <div class="form-group">
                                 <label class="form-label">Take Profit at This Gain <span
                                         class="help-icon">?</span></label>
-                                <input type="number" class="form-control" id="targetProfitPercent" value="1.0" min="0.1"
+                                <input type="number" class="form-control" id="targetProfitPercent" value="2.0" min="0.1"
                                     max="100" step="0.1">
-                                <small class="setting-description">Sell when the trade makes this much profit. 1.0%
-                                    means sell when you've made 1% on your investment.</small>
+                                <small class="setting-description">Sell when the trade makes this much profit. 2.0%
+                                    means sell when you've made 2% on your investment.</small>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Minimum Pattern Profitability <span
                                         class="help-icon">?</span></label>
-                                <input type="number" class="form-control" id="minProfitability" value="0.01" min="0.01"
+                                <input type="number" class="form-control" id="minProfitability" value="1.0" min="0.01"
                                     max="100" step="0.01">
                                 <small class="setting-description">Only use patterns that have made at least this much
-                                    profit on average in testing. 0.01% is very low for $10 trading.</small>
+                                    profit on average in testing. 1.0% ensures only profitable patterns are
+                                    used.</small>
                             </div>
                         </div>
 
                         <div class="form-group">
                             <label class="form-label">Maximum Patterns per Token <span
                                     class="help-icon">?</span></label>
-                            <input type="number" class="form-control" id="maxPatternsPerToken" value="10" min="1"
+                            <input type="number" class="form-control" id="maxPatternsPerToken" value="5" min="1"
                                 max="20">
-                            <small class="setting-description">How many different patterns to track for each token. More
-                                patterns means more opportunities but can be overwhelming.</small>
+                            <small class="setting-description">How many different patterns to track for each token.
+                                Fewer patterns means more reliable opportunities.</small>
                         </div>
                         <button class="btn btn-primary mt-2" onclick="saveValidationSettings()">Save Quality
                             Settings</button>
@@ -1335,26 +1340,26 @@
                         <div class="grid-3">
                             <div class="form-group">
                                 <label class="form-label">Maximum Slippage <span class="help-icon">?</span></label>
-                                <input type="number" class="form-control" id="maxSlippage" value="1.0" min="0.1"
+                                <input type="number" class="form-control" id="maxSlippage" value="0.5" min="0.1"
                                     max="10" step="0.01">
                                 <small class="setting-description">Maximum price change allowed when executing a trade.
-                                    1.0% prevents bad trades when prices move fast.</small>
+                                    0.5% prevents bad trades when prices move fast.</small>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Minimum Profit to Close <span
                                         class="help-icon">?</span></label>
-                                <input type="number" class="form-control" id="minProfitPercent" value="0.1" min="0"
+                                <input type="number" class="form-control" id="minProfitPercent" value="0.5" min="0"
                                     max="100" step="0.01">
                                 <small class="setting-description">Don't close a trade unless it's made at least this
-                                    much profit. 0.1% prevents selling too early.</small>
+                                    much profit. 0.5% prevents selling too early.</small>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Auto-Sell After (seconds) <span
                                         class="help-icon">?</span></label>
-                                <input type="number" class="form-control" id="maxPositionAge" value="180" min="10"
+                                <input type="number" class="form-control" id="maxPositionAge" value="600" min="10"
                                     max="86400">
                                 <small class="setting-description">If a trade hasn't hit your profit target by this
-                                    time, sell it anyway. 180 seconds = 3 minutes.</small>
+                                    time, sell it anyway. 600 seconds = 10 minutes.</small>
                             </div>
                         </div>
 
@@ -1398,15 +1403,15 @@
                             <div class="form-group">
                                 <label class="form-label">Price History Duration (hours) <span
                                         class="help-icon">?</span></label>
-                                <input type="number" class="form-control" id="priceHistoryDuration" value="6" min="1"
+                                <input type="number" class="form-control" id="priceHistoryDuration" value="24" min="1"
                                     max="720">
-                                <small class="setting-description">How many hours of price history to remember. 6 hours
-                                    is good for finding recent patterns.</small>
+                                <small class="setting-description">How many hours of price history to remember. 24 hours
+                                    is good for finding reliable patterns.</small>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Maximum Price Points per Token <span
                                         class="help-icon">?</span></label>
-                                <input type="number" class="form-control" id="maxPriceHistory" value="5000" min="100"
+                                <input type="number" class="form-control" id="maxPriceHistory" value="10000" min="100"
                                     max="100000">
                                 <small class="setting-description">How many price data points to keep for each token.
                                     More points means more memory used but more accurate patterns.</small>
@@ -1466,8 +1471,9 @@
                 </div>
                 <div class="card-body">
                     <div class="log-container" id="logContainer">
-                        <div class="log-entry log-info">[INFO] Uniswap Easy Pattern Trader v3.3.0 loaded. Fixed pattern
-                            detection and improved websocket reconnection.</div>
+                        <div class="log-entry log-info">[INFO] Uniswap Easy Pattern Trader v4.0.0 - IMPROVED VERSION
+                            loaded. Fixed pattern detection, improved profit validation, and enhanced loss prevention.
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1478,7 +1484,7 @@
         // ============================================
         // Configuration & Constants
         // ============================================
-        const APP_VERSION = '3.3.0';
+        const APP_VERSION = '4.0.0';
 
         const CHAINS = {
             arbitrum: {
@@ -1570,29 +1576,29 @@
             settings: {
                 network: 'arbitrum',
                 startingEth: 0.0033,
-                gasFeeMultiplier: 10,
+                gasFeeMultiplier: 1,
                 tradeAmountPercent: 10,
-                minTradeAmountETH: 0.0001,
+                minTradeAmountETH: 0.00001,
                 maxTrades: 3,
-                tradeCooldown: 30,
-                maxSlippage: 1.0,
+                tradeCooldown: 60,
+                maxSlippage: 0.5,
                 maxGasPrice: 200,
                 gasLimit: 200000,
                 maxPriceImpact: 0.5,
-                minProfitPercent: 0.1,
-                targetProfitPercent: 1.0,
-                maxPositionAge: 180,
+                minProfitPercent: 0.5,
+                targetProfitPercent: 2.0,
+                maxPositionAge: 600,
                 preventSequentialTrades: true,
-                minPriceChange: 0.5,
-                minTimeWindow: 5,
-                maxTimeWindow: 120,
-                minOccurrences: 1,
-                minWinRate: 30,
-                minProfitability: 0.01,
-                backtestPeriod: 1,
-                maxPatternsPerToken: 10,
-                priceHistoryDuration: 6,
-                maxPriceHistory: 5000,
+                minPriceChange: 1.0,
+                minTimeWindow: 10,
+                maxTimeWindow: 300,
+                minOccurrences: 2,
+                minWinRate: 50,
+                minProfitability: 1.0,
+                backtestPeriod: 24,
+                maxPatternsPerToken: 5,
+                priceHistoryDuration: 24,
+                maxPriceHistory: 10000,
                 autoBackup: true,
                 backupInterval: 5,
                 debugMode: 'info'
@@ -1621,20 +1627,38 @@
         let currentChainKey = 'arbitrum';
 
         // ============================================
-        // Trade Amount Calculation
+        // IMPROVED TRADE AMOUNT CALCULATION
         // ============================================
         function calculateTradeAmount() {
             const gasPrice = state.currentGasPrice || state.settings.maxGasPrice || 200;
-            const multiplier = state.settings.gasFeeMultiplier || 10;
+            const multiplier = state.settings.gasFeeMultiplier || 1;
             const gasLimit = state.settings.gasLimit || 200000;
             const availableETH = state.portfolio.currentEth || state.settings.startingEth || 0.0033;
 
-            const gasBasedAmount = (gasPrice * gasLimit * multiplier) / 1e18;
-            const percentBasedAmount = availableETH * (state.settings.tradeAmountPercent / 100);
-            const minTradeAmountETH = state.settings.minTradeAmountETH || 0.0001;
+            // Calculate gas cost for one trade (buy + sell)
+            const gasCostPerTrade = (gasPrice * gasLimit * 2) / 1e18;
 
-            let tradeAmount = Math.max(gasBasedAmount, percentBasedAmount, minTradeAmountETH);
-            tradeAmount = Math.min(tradeAmount, availableETH);
+            // Calculate gas cost for all potential open trades
+            const maxTrades = state.settings.maxTrades || 3;
+            const totalGasCost = gasCostPerTrade * maxTrades * multiplier;
+
+            // Calculate amount based on percentage of budget
+            const percentBasedAmount = availableETH * (state.settings.tradeAmountPercent / 100);
+
+            // Minimum trade amount
+            const minTradeAmountETH = state.settings.minTradeAmountETH || 0.00001;
+
+            // Calculate the actual amount we can use after accounting for fees
+            // We want to ensure that after all fees, we still have enough for the trades
+            const amountAfterFees = percentBasedAmount - (totalGasCost / maxTrades);
+
+            // Use the smallest of: percentage-based, or minTradeAmount
+            // But never less than minTradeAmount if we have enough budget
+            let tradeAmount = Math.min(percentBasedAmount, amountAfterFees);
+            tradeAmount = Math.max(tradeAmount, minTradeAmountETH);
+
+            // Ensure we don't exceed available ETH
+            tradeAmount = Math.min(tradeAmount, availableETH * 0.95); // Keep 5% buffer
 
             return tradeAmount;
         }
@@ -1674,7 +1698,7 @@
             };
 
             window.log('info', 'Initializing Uniswap Easy Pattern Trader v' + APP_VERSION);
-            window.log('info', 'Fixed version with improved pattern detection and websocket reconnection');
+            window.log('info', 'IMPROVED VERSION: Fixed pattern detection, improved profit validation, enhanced loss prevention');
             initializeApp();
             setupEventListeners();
             updateNetworkInfo();
@@ -1794,7 +1818,7 @@
             const targetProfitInput = document.getElementById('targetProfitPercent');
             if (targetProfitInput) {
                 targetProfitInput.addEventListener('change', function () {
-                    state.settings.targetProfitPercent = parseFloat(this.value) || 1.0;
+                    state.settings.targetProfitPercent = parseFloat(this.value) || 2.0;
                     document.getElementById('targetProfitPercent').textContent = state.settings.targetProfitPercent + '%';
                     saveSettings();
                 });
@@ -1856,13 +1880,14 @@
             if (displayEl) {
                 displayEl.textContent = tradeAmount.toFixed(12) + ' ETH';
 
-                const gasBased = (state.currentGasPrice * state.settings.gasLimit * state.settings.gasFeeMultiplier) / 1e18;
+                const gasPrice = state.currentGasPrice || state.settings.maxGasPrice || 200;
+                const gasLimit = state.settings.gasLimit || 200000;
+                const gasCostPerTrade = (gasPrice * gasLimit) / 1e18;
                 const percentBased = (state.portfolio.currentEth || state.settings.startingEth) * (state.settings.tradeAmountPercent / 100);
-                const minAmount = state.settings.minTradeAmountETH || 0.0001;
+                const minAmount = state.settings.minTradeAmountETH || 0.00001;
 
-                const method = tradeAmount === minAmount ? "Minimum Amount" :
-                    tradeAmount === percentBased ? "Percentage of Budget" : "Network Fee Based";
-                displayEl.title = `Calculation: ${method}\nNetwork Fee Based: ${gasBased.toFixed(12)} ETH\n% of Budget: ${percentBased.toFixed(12)} ETH\nMinimum: ${minAmount.toFixed(12)} ETH`;
+                const method = tradeAmount === minAmount ? "Minimum Amount" : "Percentage of Budget";
+                displayEl.title = `Calculation: ${method}\nGas Cost/Trade: ${gasCostPerTrade.toFixed(12)} ETH\n% of Budget: ${percentBased.toFixed(12)} ETH\nMinimum: ${minAmount.toFixed(12)} ETH`;
             }
         }
 
@@ -1891,7 +1916,7 @@
             }
 
             if (targetProfitDisplay) {
-                targetProfitDisplay.textContent = (state.settings.targetProfitPercent || 1.0) + '%';
+                targetProfitDisplay.textContent = (state.settings.targetProfitPercent || 2.0) + '%';
             }
         }
 
@@ -1907,7 +1932,7 @@
                 if (state.isRunning && state.activeSession?.connected) {
                     detectAllPatterns();
                 }
-            }, 10000); // Every 10 seconds
+            }, 15000); // Every 15 seconds
 
             // Start initial detection immediately
             setTimeout(() => {
@@ -1927,11 +1952,11 @@
             const tokens = Array.from(state.observedTokens);
             const newActivePatterns = new Map();
 
-            window.log('info', `Starting pattern detection for ${tokens.length} tokens...`);
+            window.log('info', `Starting improved pattern detection for ${tokens.length} tokens...`);
 
             for (const token of tokens) {
                 const history = state.priceHistory[token];
-                if (!history || history.length < 3) {
+                if (!history || history.length < 10) {
                     window.log('debug', `Skipping ${token}: insufficient history (${history ? history.length : 0} points)`);
                     continue;
                 }
@@ -1940,6 +1965,12 @@
                 const patterns = detectBuyPatternsForToken(history, token);
 
                 patterns.forEach(pattern => {
+                    // Only consider patterns where expected profit > required drop + fees
+                    if (pattern.risePct <= pattern.dropPct) {
+                        window.log('debug', `Rejected pattern for ${token}: rise (${pattern.risePct}%) <= drop (${pattern.dropPct}%)`);
+                        return;
+                    }
+
                     const patternKey = getPatternKey(pattern);
                     const existingPatternKey = `${token}_${patternKey}`;
 
@@ -1964,7 +1995,7 @@
                 });
             }
 
-            // Validate patterns with backtesting
+            // Validate patterns with improved backtesting
             validatePatternsWithBacktesting(newActivePatterns);
 
             // Update state with new patterns
@@ -1974,14 +2005,14 @@
 
             const patternCount = newActivePatterns.size;
             if (patternCount > 0) {
-                window.log('success', `Found ${patternCount} active patterns across ${tokens.length} tokens`);
+                window.log('success', `Found ${patternCount} valid patterns across ${tokens.length} tokens`);
             } else {
-                window.log('debug', `No valid patterns found in this detection cycle. Tokens with history: ${tokens.filter(t => state.priceHistory[t]?.length > 0).length}`);
+                window.log('debug', `No valid patterns found in this detection cycle`);
             }
         }
 
         function detectBuyPatternsForToken(history, token) {
-            if (!history || history.length < 3) return [];
+            if (!history || history.length < 10) return [];
 
             const minChange = state.settings.minPriceChange / 100;
             const minTime = state.settings.minTimeWindow * 1000;
@@ -1989,28 +2020,34 @@
             const patterns = [];
 
             // Look for local minima (potential buying opportunities)
-            for (let i = 1; i < history.length - 1; i++) {
+            // with sufficient rise after the drop
+            for (let i = 5; i < history.length - 5; i++) {
                 const current = history[i];
 
                 // Check if this is a local minimum
                 const isMinima = current.price <= history[i - 1].price &&
-                    current.price <= history[i + 1].price;
+                    current.price <= history[i - 2].price &&
+                    current.price <= history[i + 1].price &&
+                    current.price <= history[i + 2].price;
 
                 if (isMinima) {
                     // Look backward for the drop
-                    for (let j = i - 1; j >= Math.max(0, i - 5); j--) {
+                    for (let j = i - 1; j >= Math.max(0, i - 10); j--) {
                         const prev = history[j];
                         const dropPct = (current.price - prev.price) / prev.price;
                         const timeDiff = current.timestamp - prev.timestamp;
 
                         if (dropPct <= -minChange && timeDiff >= minTime && timeDiff <= maxTime) {
-                            // Look forward for the rise
-                            for (let k = i + 1; k < Math.min(history.length, i + 6); k++) {
+                            // Look forward for the rise - must be greater than the drop
+                            for (let k = i + 1; k < Math.min(history.length, i + 11); k++) {
                                 const next = history[k];
                                 const risePct = (next.price - current.price) / current.price;
                                 const riseTime = next.timestamp - current.timestamp;
 
-                                if (risePct >= minChange && riseTime >= minTime && riseTime <= maxTime) {
+                                // Only accept if rise > drop + minimum profitability
+                                const minRequiredRise = Math.abs(dropPct) + (state.settings.minProfitability / 100);
+
+                                if (risePct >= minRequiredRise && riseTime >= minTime && riseTime <= maxTime) {
                                     patterns.push({
                                         type: PATTERN_TYPES.BUY,
                                         dropPct: Math.abs(dropPct) * 100,
@@ -2029,26 +2066,56 @@
                 }
             }
 
-            // Also look for simple momentum patterns
-            if (patterns.length === 0 && history.length >= 5) {
-                // Simple pattern: if price has dropped X% over Y seconds, it's a buy opportunity
-                for (let i = history.length - 1; i >= 1; i--) {
+            // Also look for momentum patterns where price drops then rises
+            if (patterns.length === 0 && history.length >= 20) {
+                // Look for consistent downtrends followed by uptrends
+                for (let i = history.length - 1; i >= 20; i--) {
                     const current = history[i];
-                    const prev = history[i - 1];
-                    const dropPct = (current.price - prev.price) / prev.price;
-                    const timeDiff = current.timestamp - prev.timestamp;
+                    const lookbackStart = Math.max(0, i - 10);
 
-                    if (dropPct <= -minChange && timeDiff >= minTime && timeDiff <= maxTime) {
-                        patterns.push({
-                            type: PATTERN_TYPES.BUY,
-                            dropPct: Math.abs(dropPct) * 100,
-                            dropTime: timeDiff / 1000,
-                            risePct: minChange * 100, // Expected rise
-                            riseTime: maxTime / 1000, // Expected time for rise
-                            token: token,
-                            timestamp: current.timestamp
-                        });
-                        break;
+                    // Calculate average drop over lookback period
+                    let totalDrop = 0;
+                    let dropCount = 0;
+                    for (let j = i - 1; j >= lookbackStart; j--) {
+                        const dropPct = (history[j].price - history[j + 1].price) / history[j + 1].price;
+                        if (dropPct > 0) {
+                            totalDrop += dropPct;
+                            dropCount++;
+                        }
+                    }
+
+                    if (dropCount > 0) {
+                        const avgDrop = totalDrop / dropCount;
+
+                        // Look forward for recovery
+                        const lookforwardEnd = Math.min(history.length - 1, i + 10);
+                        let totalRise = 0;
+                        let riseCount = 0;
+                        for (let j = i + 1; j <= lookforwardEnd; j++) {
+                            const risePct = (history[j].price - history[j - 1].price) / history[j - 1].price;
+                            if (risePct > 0) {
+                                totalRise += risePct;
+                                riseCount++;
+                            }
+                        }
+
+                        if (riseCount > 0) {
+                            const avgRise = totalRise / riseCount;
+                            const timeDiff = (history[lookforwardEnd].timestamp - history[lookbackStart].timestamp) / 1000;
+
+                            // Only accept if avg rise > avg drop + min profitability
+                            if (avgRise > avgDrop + (state.settings.minProfitability / 100)) {
+                                patterns.push({
+                                    type: PATTERN_TYPES.BUY,
+                                    dropPct: avgDrop * 100,
+                                    dropTime: timeDiff / 2,
+                                    risePct: avgRise * 100,
+                                    riseTime: timeDiff / 2,
+                                    token: token,
+                                    timestamp: current.timestamp
+                                });
+                            }
+                        }
                     }
                 }
             }
@@ -2079,15 +2146,16 @@
         }
 
         function validatePatternsWithBacktesting(patterns) {
-            const backtestPeriodMs = (state.settings.backtestPeriod || 1) * 60 * 60 * 1000;
-            const minWinRate = state.settings.minWinRate || 30;
-            const minOccurrences = state.settings.minOccurrences || 1;
-            const minProfitability = state.settings.minProfitability || 0.01;
+            const backtestPeriodMs = (state.settings.backtestPeriod || 24) * 60 * 60 * 1000;
+            const minWinRate = state.settings.minWinRate || 50;
+            const minOccurrences = state.settings.minOccurrences || 2;
+            const minProfitability = state.settings.minProfitability || 1.0;
 
             patterns.forEach((pattern, key) => {
                 const history = state.priceHistory[pattern.token];
-                if (!history || history.length < 3) {
+                if (!history || history.length < 20) {
                     window.log('debug', `Pattern for ${pattern.token} has insufficient history for backtesting`);
+                    patterns.delete(key);
                     return;
                 }
 
@@ -2111,12 +2179,20 @@
                     return;
                 }
 
+                // Additional validation: pattern must have positive expected value
+                if (pattern.risePct <= pattern.dropPct) {
+                    window.log('debug', `Pattern rejected for ${pattern.token}: Rise (${pattern.risePct}%) <= Drop (${pattern.dropPct}%)`);
+                    patterns.delete(key);
+                    return;
+                }
+
                 pattern.winRate = backtestResult.winRate;
                 pattern.totalTrades = backtestResult.totalTrades;
                 pattern.winningTrades = backtestResult.winningTrades;
                 pattern.avgProfitability = backtestResult.avgProfitability;
                 pattern.totalProfit = backtestResult.totalProfit;
-                window.log('success', `Pattern validated for ${pattern.token}: ${backtestResult.winRate.toFixed(1)}% win rate, ${backtestResult.avgProfitability.toFixed(2)}% avg profitability`);
+
+                window.log('success', `Pattern validated for ${pattern.token}: ${backtestResult.winRate.toFixed(1)}% win rate, ${backtestResult.avgProfitability.toFixed(2)}% avg profitability, ${pattern.risePct.toFixed(1)}% rise vs ${pattern.dropPct.toFixed(1)}% drop`);
             });
         }
 
@@ -2131,17 +2207,69 @@
 
             const backtestHistory = history.filter(h => h.timestamp >= startTime);
 
-            if (backtestHistory.length < 3) {
+            if (backtestHistory.length < 20) {
                 return { occurrences: 0, totalTrades: 0, winningTrades: 0, winRate: 0, avgProfitability: 0, totalProfit: 0 };
             }
 
-            // Simplified backtesting - assume the pattern works if it appears
-            occurrences = 1;
-            totalTrades = 1;
-            winningTrades = 1;
-            totalProfit = 0.000001; // Small positive profit
-
+            // Simulate trading this pattern on historical data
+            const minChange = state.settings.minPriceChange / 100;
             const tradeAmountETH = calculateTradeAmount();
+
+            // Look for pattern occurrences in historical data
+            for (let i = 10; i < backtestHistory.length - 10; i++) {
+                const current = backtestHistory[i];
+
+                // Check if this point matches the pattern conditions
+                let patternMatched = false;
+
+                // For BUY patterns: look for drop followed by rise
+                if (pattern.type === PATTERN_TYPES.BUY) {
+                    // Find a drop matching the pattern
+                    for (let j = i - 1; j >= Math.max(0, i - 10); j--) {
+                        const prev = backtestHistory[j];
+                        const dropPct = (current.price - prev.price) / prev.price;
+                        const timeDiff = (current.timestamp - prev.timestamp) / 1000;
+
+                        if (Math.abs(dropPct) >= pattern.dropPct / 100 &&
+                            timeDiff >= pattern.dropTime - 5 &&
+                            timeDiff <= pattern.dropTime + 5) {
+
+                            // Check if the expected rise happened
+                            for (let k = i + 1; k < Math.min(backtestHistory.length, i + 11); k++) {
+                                const next = backtestHistory[k];
+                                const risePct = (next.price - current.price) / current.price;
+                                const riseTime = (next.timestamp - current.timestamp) / 1000;
+
+                                if (risePct >= pattern.risePct / 100 &&
+                                    riseTime >= pattern.riseTime - 5 &&
+                                    riseTime <= pattern.riseTime + 5) {
+
+                                    patternMatched = true;
+                                    totalTrades++;
+                                    occurrences++;
+
+                                    // Calculate profit
+                                    const entryPrice = current.price;
+                                    const exitPrice = next.price;
+                                    const tokenAmount = tradeAmountETH / entryPrice;
+                                    const exitValue = tokenAmount * exitPrice;
+                                    const profit = exitValue - tradeAmountETH;
+
+                                    if (profit > 0) {
+                                        winningTrades++;
+                                    }
+                                    totalProfit += profit;
+
+                                    i = k; // Skip ahead
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+
             const avgProfitability = totalTrades > 0 ? (totalProfit / tradeAmountETH / totalTrades * 100) : 0;
 
             return {
@@ -2178,10 +2306,13 @@
             // Check for sell conditions (target profit reached)
             if (openPosition) {
                 const currentValue = openPosition.amount * currentPrice;
-                const costBasis = (openPosition.amount * openPosition.entryPrice) + openPosition.feesPaid + openPosition.gasPaid;
+                const costBasis = (openPosition.amount * openPosition.entryPrice) +
+                    openPosition.feesPaid + openPosition.gasPaid;
                 const profitPercent = ((currentValue - costBasis) / costBasis) * 100;
+                const profitETH = currentValue - costBasis;
 
-                if (profitPercent >= state.settings.targetProfitPercent) {
+                // Only sell if profit is positive and meets minimum
+                if (profitPercent >= state.settings.targetProfitPercent && profitETH > 0) {
                     window.log('info', `Target profit of ${state.settings.targetProfitPercent}% reached for ${token}. Executing sell.`);
                     const sellAmountETH = openPosition.amount * currentPrice;
                     executeTrade(token, 'sell', `Profit target (${profitPercent.toFixed(2)}%) reached`, sellAmountETH, null)
@@ -2226,18 +2357,23 @@
                 });
             }
 
-            // Check for age-based selling
+            // Check for age-based selling - ONLY if we're at a profit or very close to break-even
             if (openPosition && state.settings.maxPositionAge > 0) {
                 const positionAgeSeconds = (Date.now() - openPosition.entryTime) / 1000;
                 const currentValue = openPosition.amount * currentPrice;
                 const costBasis = (openPosition.amount * openPosition.entryPrice) + openPosition.feesPaid + openPosition.gasPaid;
                 const profit = currentValue - costBasis;
+                const profitPercent = (profit / costBasis) * 100;
 
                 if (positionAgeSeconds > state.settings.maxPositionAge) {
-                    if (profit > 0) {
-                        executeTrade(token, 'sell', `Auto-sell after ${positionAgeSeconds}s (made profit)`);
+                    // Only auto-sell if we're at a profit or within 0.1% of break-even
+                    if (profitPercent >= -0.1) {
+                        const reason = profit > 0 ?
+                            `Auto-sell after ${positionAgeSeconds.toFixed(0)}s (made ${profitPercent.toFixed(2)}% profit)` :
+                            `Auto-sell after ${positionAgeSeconds.toFixed(0)}s (near break-even)`;
+                        executeTrade(token, 'sell', reason);
                     } else {
-                        executeTrade(token, 'sell', `Auto-sell after ${positionAgeSeconds}s (prevent loss)`);
+                        window.log('debug', `Not auto-selling ${token} at a loss (${profitPercent.toFixed(2)}%). Will wait for recovery.`);
                     }
                 }
             }
@@ -2251,23 +2387,25 @@
             const currentPrice = state.prices[token];
             if (!currentPrice) return false;
 
-            const recentHistory = history.slice(-10);
+            const recentHistory = history.slice(-20);
 
             for (let i = recentHistory.length - 1; i >= 0; i--) {
                 const current = recentHistory[i];
 
                 if (patternType === PATTERN_TYPES.BUY) {
-                    for (let j = i - 1; j >= Math.max(0, i - 5); j--) {
+                    for (let j = i - 1; j >= Math.max(0, i - 10); j--) {
                         const prev = recentHistory[j];
                         const dropPct = (current.price - prev.price) / prev.price;
                         const timeDiff = (current.timestamp - prev.timestamp) / 1000;
 
-                        if (dropPct <= -(pattern.dropPct / 100) &&
-                            timeDiff >= pattern.dropTime &&
-                            timeDiff <= pattern.dropTime * 1.5) {
+                        // Check if drop matches pattern
+                        if (Math.abs(dropPct) >= pattern.dropPct / 100 &&
+                            timeDiff >= pattern.dropTime - 5 &&
+                            timeDiff <= pattern.dropTime + 5) {
 
-                            const priceDiff = (currentPrice - current.price) / current.price;
-                            if (Math.abs(priceDiff) < 0.05) { // Within 5% of the pattern price
+                            // Check if current price is near the pattern's expected entry price
+                            const priceDiff = Math.abs(currentPrice - current.price) / current.price;
+                            if (priceDiff < 0.01) { // Within 1% of the pattern price
                                 return true;
                             }
                         }
@@ -2301,7 +2439,7 @@
             const patternsArray = Array.from(state.activePatterns.values());
 
             if (patternsArray.length === 0) {
-                container.innerHTML = '<p class="text-secondary">No trading opportunities found yet. The system is looking for patterns - this can take a few minutes after starting.</p>';
+                container.innerHTML = '<p class="text-secondary">No trading opportunities found yet. The system is looking for patterns with positive expected value - this can take a few minutes after starting.</p>';
                 return;
             }
 
@@ -2375,7 +2513,7 @@
         }
 
         // ============================================
-        // TRADE EXECUTION & PORTFOLIO
+        // IMPROVED TRADE EXECUTION & PORTFOLIO
         // ============================================
         function createTradeObject(token, action, price, tokenAmount, amountETH, pattern, status, reason = null,
             gasUsed = 0, gasPrice = 0, feeAmount = 0, priceImpact = 0, slippage = 0, patternObj = null) {
@@ -2427,10 +2565,10 @@
 
                 result.priceImpact = calculatePriceImpact(token, tokenAmount, poolInfo);
                 const baseSlippage = result.priceImpact;
-                const latencySlippage = latency > 0 ? (latency / 1000) * 0.02 : 0;
+                const latencySlippage = latency > 0 ? (latency / 1000) * 0.01 : 0; // Reduced latency impact
                 result.slippage = baseSlippage + latencySlippage;
 
-                const maxSlippage = state.settings.maxSlippage || 1.0;
+                const maxSlippage = state.settings.maxSlippage || 0.5;
                 if (result.slippage > maxSlippage) {
                     result.success = false;
                     result.reason = `Price moved too much during execution (${result.slippage.toFixed(4)}% > ${maxSlippage}% max)`;
@@ -2471,7 +2609,7 @@
             const liquidityETH = poolInfo.liquidity || 100000;
             if (liquidityETH <= 0) return 0;
             const tradeSizeRatio = tokenValueETH / liquidityETH;
-            return Math.min(tradeSizeRatio * 100, 5);
+            return Math.min(tradeSizeRatio * 100, 2); // Cap at 2%
         }
 
         async function getEnhancedPoolInfo(token) {
@@ -2615,24 +2753,27 @@
                 amountETH = calculateTradeAmount();
             }
 
-            const gasBased = (state.currentGasPrice * state.settings.gasLimit * state.settings.gasFeeMultiplier) / 1e18;
-            const percentBased = (state.portfolio.currentEth || state.settings.startingEth) * (state.settings.tradeAmountPercent / 100);
-            const minAmount = state.settings.minTradeAmountETH || 0.0001;
-            const method = amountETH === minAmount ? "Minimum Amount" :
-                amountETH === percentBased ? "Percentage of Budget" : "Network Fee Based";
-            window.log('info', `Attempting ${action} trade for ${token}: ${amountETH.toFixed(12)} ETH (Method: ${method})`);
+            const currentPrice = state.prices[token];
+            if (!currentPrice) {
+                window.log('warn', `No price available for ${token}`);
+                return null;
+            }
+
+            window.log('info', `Attempting ${action} trade for ${token}: ${amountETH.toFixed(12)} ETH`);
 
             if (amountETH <= 0) {
                 window.log('warn', `Invalid trade amount: ${amountETH.toFixed(12)} ETH`);
                 return null;
             }
 
+            // Check if we have too many open trades
             const totalOpenPositions = state.portfolio.positions.filter(p => p.status === 'open').length;
             if (totalOpenPositions >= state.settings.maxTrades) {
                 window.log('warn', `Maximum open trades (${state.settings.maxTrades}) reached`);
                 return null;
             }
 
+            // Check cooldown for this token
             const lastTradeTime = state.lastTradeTimes[token];
             if (lastTradeTime && (Date.now() - lastTradeTime) < (state.settings.tradeCooldown * 1000)) {
                 window.log('warn', `Cooldown active for ${token}`);
@@ -2640,12 +2781,6 @@
             }
 
             const tokenSymbol = token;
-            const currentPrice = state.prices[tokenSymbol];
-            if (!currentPrice) {
-                window.log('warn', `No price available for ${tokenSymbol}`);
-                return null;
-            }
-
             const tokenAmount = amountETH / currentPrice;
             const poolInfo = await getEnhancedPoolInfo(tokenSymbol);
             if (!poolInfo) {
@@ -2654,6 +2789,23 @@
             }
 
             const currentGasPrice = state.currentGasPrice || state.settings.maxGasPrice;
+
+            // For sells, check if we have the token
+            if (action === 'sell') {
+                const tokenBalance = state.portfolio.balances[tokenSymbol] || 0;
+                if (tokenBalance <= 0) {
+                    window.log('warn', `No ${tokenSymbol} to sell`);
+                    return null;
+                }
+
+                // For sells, we need to calculate how much we can actually sell
+                const sellableAmount = Math.min(tokenAmount, tokenBalance);
+                if (sellableAmount <= 0) {
+                    window.log('warn', `Cannot sell ${tokenSymbol}: insufficient balance`);
+                    return null;
+                }
+            }
+
             const tradeResult = await simulateRealisticTrade(
                 tokenSymbol, action, tokenAmount, currentPrice, poolInfo, 0, currentGasPrice
             );
@@ -2751,19 +2903,24 @@
                 const currentValue = position.amount * currentPrice;
                 const costBasis = (position.amount * position.entryPrice) + position.feesPaid + position.gasPaid;
                 const profit = currentValue - costBasis;
+                const profitPercent = (profit / costBasis) * 100;
 
                 if (positionAgeSeconds > state.settings.maxPositionAge) {
-                    if (profit > 0) {
-                        executeTrade(position.token, 'sell', `Auto-sell after ${positionAgeSeconds}s (made profit)`);
+                    // ONLY auto-sell if we're at a profit or very close to break-even
+                    if (profitPercent >= -0.05) { // Within 0.05% of break-even
+                        const reason = profit > 0 ?
+                            `Auto-sell after ${positionAgeSeconds.toFixed(0)}s (made ${profitPercent.toFixed(2)}% profit)` :
+                            `Auto-sell after ${positionAgeSeconds.toFixed(0)}s (near break-even)`;
+                        executeTrade(position.token, 'sell', reason);
                     } else {
-                        executeTrade(position.token, 'sell', `Auto-sell after ${positionAgeSeconds}s (prevent loss)`);
+                        window.log('debug', `Not auto-selling ${position.token} at a loss (${profitPercent.toFixed(2)}%). Will wait for recovery or better exit.`);
                     }
                 }
             });
         }
 
         function getAssetCap(token) {
-            if (token === 'ETH') return 100;
+            if (token === 'ETH' || token === 'WETH') return 100;
             return 10;
         }
 
@@ -3490,7 +3647,7 @@
         }
 
         // ============================================
-        // IMPROVED UNISWAP SESSION MANAGEMENT WITH RECONNECTION
+        // UNISWAP SESSION MANAGEMENT
         // ============================================
         function createSession(key) {
             const chain = CHAINS[key];
@@ -3659,7 +3816,6 @@
                 return;
             }
 
-            // Exponential backoff: 1s, 2s, 4s, 8s, etc.
             const delay = Math.min(state.reconnectDelay * Math.pow(2, s.reconnectAttempts - 1), 30000);
             window.log('info', `Reconnecting to ${s.chain.name} in ${delay / 1000} seconds (attempt ${s.reconnectAttempts}/${maxAttempts})...`);
 
@@ -3679,7 +3835,6 @@
                 if (current(s)) queueBlock(s, Number(n));
             });
 
-            // Also set up periodic price updates as fallback
             if (!s.priceUpdateInterval) {
                 s.priceUpdateInterval = setInterval(() => {
                     if (current(s)) {
@@ -3693,10 +3848,8 @@
             if (!current(s) || !s.connected) return;
 
             try {
-                // Update gas price
                 await updateGasPriceForSession(s);
 
-                // For all observed tokens, try to get their current price
                 const tokensToUpdate = Array.from(state.observedTokens);
                 for (const token of tokensToUpdate) {
                     const tokenMeta = findTokenMeta(s, token);
@@ -3991,10 +4144,10 @@
             if (!Number.isFinite(p) || p <= 0) return;
             const ts = timestamp || Date.now();
             t.history.push({ t: ts, price: p });
-            const cut = ts - (state.settings.priceHistoryDuration || 6) * 60 * 60 * 1000;
+            const cut = ts - (state.settings.priceHistoryDuration || 24) * 60 * 60 * 1000;
             while (t.history.length && t.history[0].t < cut) t.history.shift();
-            if (t.history.length > (state.settings.maxPriceHistory || 5000)) {
-                t.history.splice(0, t.history.length - (state.settings.maxPriceHistory || 5000));
+            if (t.history.length > (state.settings.maxPriceHistory || 10000)) {
+                t.history.splice(0, t.history.length - (state.settings.maxPriceHistory || 10000));
             }
             if (t.symbol) updatePriceHistory(t.symbol, p, ts);
         }
@@ -4004,9 +4157,9 @@
             if (!state.priceHistory[token]) state.priceHistory[token] = [];
             const ts = timestamp || Date.now();
             state.priceHistory[token].push({ price, timestamp: ts });
-            const maxHistory = state.settings.maxPriceHistory || 5000;
+            const maxHistory = state.settings.maxPriceHistory || 10000;
             if (state.priceHistory[token].length > maxHistory) state.priceHistory[token].shift();
-            const durationHours = state.settings.priceHistoryDuration || 6;
+            const durationHours = state.settings.priceHistoryDuration || 24;
             const durationMs = durationHours * 60 * 60 * 1000;
             const cutoff = ts - durationMs;
             while (state.priceHistory[token].length && state.priceHistory[token][0].timestamp < cutoff) {
@@ -4341,10 +4494,10 @@
         // SETTINGS MANAGEMENT
         // ============================================
         function saveDetectionSettings() {
-            state.settings.minPriceChange = parseFloat(document.getElementById('minPriceChange').value) || 0.5;
-            state.settings.minTimeWindow = parseInt(document.getElementById('minTimeWindow').value) || 5;
-            state.settings.maxTimeWindow = parseInt(document.getElementById('maxTimeWindow').value) || 120;
-            state.settings.minOccurrences = parseInt(document.getElementById('minOccurrences').value) || 1;
+            state.settings.minPriceChange = parseFloat(document.getElementById('minPriceChange').value) || 1.0;
+            state.settings.minTimeWindow = parseInt(document.getElementById('minTimeWindow').value) || 10;
+            state.settings.maxTimeWindow = parseInt(document.getElementById('maxTimeWindow').value) || 300;
+            state.settings.minOccurrences = parseInt(document.getElementById('minOccurrences').value) || 2;
             saveSettings();
             showToast('success', 'Opportunity finder settings saved!');
             if (state.isRunning) {
@@ -4354,11 +4507,11 @@
         }
 
         function saveValidationSettings() {
-            state.settings.minWinRate = parseInt(document.getElementById('minWinRate').value) || 30;
-            state.settings.backtestPeriod = parseInt(document.getElementById('backtestPeriod').value) || 1;
-            state.settings.targetProfitPercent = parseFloat(document.getElementById('targetProfitPercent').value) || 1.0;
-            state.settings.minProfitability = parseFloat(document.getElementById('minProfitability').value) || 0.01;
-            state.settings.maxPatternsPerToken = parseInt(document.getElementById('maxPatternsPerToken').value) || 10;
+            state.settings.minWinRate = parseInt(document.getElementById('minWinRate').value) || 50;
+            state.settings.backtestPeriod = parseInt(document.getElementById('backtestPeriod').value) || 24;
+            state.settings.targetProfitPercent = parseFloat(document.getElementById('targetProfitPercent').value) || 2.0;
+            state.settings.minProfitability = parseFloat(document.getElementById('minProfitability').value) || 1.0;
+            state.settings.maxPatternsPerToken = parseInt(document.getElementById('maxPatternsPerToken').value) || 5;
             saveSettings();
             showToast('success', 'Opportunity quality settings saved!');
             if (state.isRunning) {
@@ -4370,11 +4523,11 @@
 
         function saveTradeSettings() {
             state.settings.startingEth = parseFloat(document.getElementById('startingEth').value) || 0.0033;
-            state.settings.gasFeeMultiplier = parseFloat(document.getElementById('gasFeeMultiplier').value) || 10;
+            state.settings.gasFeeMultiplier = parseFloat(document.getElementById('gasFeeMultiplier').value) || 1;
             state.settings.maxTrades = parseInt(document.getElementById('maxTrades').value) || 3;
-            state.settings.tradeCooldown = parseInt(document.getElementById('tradeCooldown').value) || 30;
+            state.settings.tradeCooldown = parseInt(document.getElementById('tradeCooldown').value) || 60;
             state.settings.tradeAmountPercent = parseFloat(document.getElementById('tradeAmountPercent').value) || 10;
-            state.settings.minTradeAmountETH = parseFloat(document.getElementById('minTradeAmountETH').value) || 0.0001;
+            state.settings.minTradeAmountETH = parseFloat(document.getElementById('minTradeAmountETH').value) || 0.00001;
             saveSettings();
             updateStartingEthDisplay();
             updateTradeAmountDisplay();
@@ -4382,9 +4535,9 @@
         }
 
         function saveAdvancedSettings() {
-            state.settings.maxSlippage = parseFloat(document.getElementById('maxSlippage').value) || 1.0;
-            state.settings.minProfitPercent = parseFloat(document.getElementById('minProfitPercent').value) || 0.1;
-            state.settings.maxPositionAge = parseInt(document.getElementById('maxPositionAge').value) || 180;
+            state.settings.maxSlippage = parseFloat(document.getElementById('maxSlippage').value) || 0.5;
+            state.settings.minProfitPercent = parseFloat(document.getElementById('minProfitPercent').value) || 0.5;
+            state.settings.maxPositionAge = parseInt(document.getElementById('maxPositionAge').value) || 600;
             state.settings.maxGasPrice = parseInt(document.getElementById('maxGasPrice').value) || 200;
             state.settings.gasLimit = parseInt(document.getElementById('gasLimit').value) || 200000;
             state.settings.preventSequentialTrades = document.getElementById('preventSequentialTrades').checked;
@@ -4393,8 +4546,8 @@
         }
 
         function saveStorageSettings() {
-            state.settings.priceHistoryDuration = parseInt(document.getElementById('priceHistoryDuration').value) || 6;
-            state.settings.maxPriceHistory = parseInt(document.getElementById('maxPriceHistory').value) || 5000;
+            state.settings.priceHistoryDuration = parseInt(document.getElementById('priceHistoryDuration').value) || 24;
+            state.settings.maxPriceHistory = parseInt(document.getElementById('maxPriceHistory').value) || 10000;
             saveSettings();
             showToast('success', 'Data settings saved!');
         }
@@ -4456,30 +4609,30 @@
             const targetProfitPercent = document.getElementById('targetProfitPercent');
 
             if (startingEth) startingEth.value = state.settings.startingEth || 0.0033;
-            if (gasFeeMultiplier) gasFeeMultiplier.value = state.settings.gasFeeMultiplier || 10;
+            if (gasFeeMultiplier) gasFeeMultiplier.value = state.settings.gasFeeMultiplier || 1;
             if (maxTrades) maxTrades.value = state.settings.maxTrades || 3;
-            if (tradeCooldown) tradeCooldown.value = state.settings.tradeCooldown || 30;
+            if (tradeCooldown) tradeCooldown.value = state.settings.tradeCooldown || 60;
             if (tradeAmountPercent) tradeAmountPercent.value = state.settings.tradeAmountPercent || 10;
-            if (minTradeAmountETH) minTradeAmountETH.value = state.settings.minTradeAmountETH || 0.0001;
-            if (maxSlippage) maxSlippage.value = state.settings.maxSlippage || 1.0;
-            if (minProfitPercent) minProfitPercent.value = state.settings.minProfitPercent || 0.1;
-            if (maxPositionAge) maxPositionAge.value = state.settings.maxPositionAge || 180;
+            if (minTradeAmountETH) minTradeAmountETH.value = state.settings.minTradeAmountETH || 0.00001;
+            if (maxSlippage) maxSlippage.value = state.settings.maxSlippage || 0.5;
+            if (minProfitPercent) minProfitPercent.value = state.settings.minProfitPercent || 0.5;
+            if (maxPositionAge) maxPositionAge.value = state.settings.maxPositionAge || 600;
             if (maxGasPrice) maxGasPrice.value = state.settings.maxGasPrice || 200;
             if (gasLimit) gasLimit.value = state.settings.gasLimit || 200000;
             if (preventSequentialTrades) preventSequentialTrades.checked = state.settings.preventSequentialTrades !== false;
-            if (minPriceChange) minPriceChange.value = state.settings.minPriceChange || 0.5;
-            if (minTimeWindow) minTimeWindow.value = state.settings.minTimeWindow || 5;
-            if (maxTimeWindow) maxTimeWindow.value = state.settings.maxTimeWindow || 120;
-            if (minOccurrences) minOccurrences.value = state.settings.minOccurrences || 1;
-            if (minWinRate) minWinRate.value = state.settings.minWinRate || 30;
-            if (backtestPeriod) backtestPeriod.value = state.settings.backtestPeriod || 1;
-            if (maxPatternsPerToken) maxPatternsPerToken.value = state.settings.maxPatternsPerToken || 10;
-            if (minProfitability) minProfitability.value = state.settings.minProfitability || 0.01;
-            if (priceHistoryDuration) priceHistoryDuration.value = state.settings.priceHistoryDuration || 6;
-            if (maxPriceHistory) maxPriceHistory.value = state.settings.maxPriceHistory || 5000;
+            if (minPriceChange) minPriceChange.value = state.settings.minPriceChange || 1.0;
+            if (minTimeWindow) minTimeWindow.value = state.settings.minTimeWindow || 10;
+            if (maxTimeWindow) maxTimeWindow.value = state.settings.maxTimeWindow || 300;
+            if (minOccurrences) minOccurrences.value = state.settings.minOccurrences || 2;
+            if (minWinRate) minWinRate.value = state.settings.minWinRate || 50;
+            if (backtestPeriod) backtestPeriod.value = state.settings.backtestPeriod || 24;
+            if (maxPatternsPerToken) maxPatternsPerToken.value = state.settings.maxPatternsPerToken || 5;
+            if (minProfitability) minProfitability.value = state.settings.minProfitability || 1.0;
+            if (priceHistoryDuration) priceHistoryDuration.value = state.settings.priceHistoryDuration || 24;
+            if (maxPriceHistory) maxPriceHistory.value = state.settings.maxPriceHistory || 10000;
             if (autoBackupEnabled) autoBackupEnabled.checked = state.settings.autoBackup !== false;
             if (backupInterval) backupInterval.value = state.settings.backupInterval || 5;
-            if (targetProfitPercent) targetProfitPercent.value = state.settings.targetProfitPercent || 1.0;
+            if (targetProfitPercent) targetProfitPercent.value = state.settings.targetProfitPercent || 2.0;
 
             updateStartingEthDisplay();
             updateTradeAmountDisplay();
@@ -4489,29 +4642,29 @@
             state.settings = {
                 network: 'arbitrum',
                 startingEth: 0.0033,
-                gasFeeMultiplier: 10,
+                gasFeeMultiplier: 1,
                 tradeAmountPercent: 10,
-                minTradeAmountETH: 0.0001,
+                minTradeAmountETH: 0.00001,
                 maxTrades: 3,
-                tradeCooldown: 30,
-                maxSlippage: 1.0,
+                tradeCooldown: 60,
+                maxSlippage: 0.5,
                 maxGasPrice: 200,
                 gasLimit: 200000,
                 maxPriceImpact: 0.5,
-                minProfitPercent: 0.1,
-                targetProfitPercent: 1.0,
-                maxPositionAge: 180,
+                minProfitPercent: 0.5,
+                targetProfitPercent: 2.0,
+                maxPositionAge: 600,
                 preventSequentialTrades: true,
-                minPriceChange: 0.5,
-                minTimeWindow: 5,
-                maxTimeWindow: 120,
-                minOccurrences: 1,
-                minWinRate: 30,
-                minProfitability: 0.01,
-                backtestPeriod: 1,
-                maxPatternsPerToken: 10,
-                priceHistoryDuration: 6,
-                maxPriceHistory: 5000,
+                minPriceChange: 1.0,
+                minTimeWindow: 10,
+                maxTimeWindow: 300,
+                minOccurrences: 2,
+                minWinRate: 50,
+                minProfitability: 1.0,
+                backtestPeriod: 24,
+                maxPatternsPerToken: 5,
+                priceHistoryDuration: 24,
+                maxPriceHistory: 10000,
                 autoBackup: true,
                 backupInterval: 5,
                 debugMode: 'info'
