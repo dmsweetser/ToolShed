@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Easy Pattern Trader - Improved $10 Optimized</title>
+    <title>Uniswap Easy Pattern Trader - Optimized</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script
@@ -713,13 +713,9 @@
 
     <div class="container">
         <header class="text-center mb-2">
-            <h1>Uniswap Easy Pattern Trader - IMPROVED</h1>
+            <h1>Uniswap Easy Pattern Trader</h1>
             <p class="text-secondary">
                 <strong>Simple $10 Trading:</strong> Automatically finds and trades profitable patterns in the market
-            </p>
-            <p class="text-secondary" style="font-size: 0.9em; margin-top: 5px;">
-                <strong>Key Improvements:</strong> Only trades patterns with positive expected value, never sells at a
-                loss, better fee accounting
             </p>
         </header>
 
@@ -756,6 +752,8 @@
                             </div>
                         </div>
                         <div class="d-flex gap-1 mt-2">
+                            <button class="btn btn-primary btn-sm" id="connectWalletBtn" onclick="connectWallet()">Connect Wallet</button>
+                            <button class="btn btn-warning btn-sm" id="toggleLiveModeBtn" onclick="toggleLiveMode()" disabled>Live Mode: OFF</button>
                             <button class="btn btn-success btn-sm" id="startBotBtn" onclick="startBot()">
                                 <span class="loading-spinner" id="startSpinner" style="display:none;"></span>Start
                                 Trading
@@ -1471,8 +1469,7 @@
                 </div>
                 <div class="card-body">
                     <div class="log-container" id="logContainer">
-                        <div class="log-entry log-info">[INFO] Uniswap Easy Pattern Trader v4.0.0 - IMPROVED VERSION
-                            loaded. Fixed pattern detection, improved profit validation, and enhanced loss prevention.
+                        <div class="log-entry log-info">[INFO] Uniswap Easy Pattern Trader v4.0.0 loaded.
                         </div>
                     </div>
                 </div>
@@ -2766,14 +2763,12 @@
                 return null;
             }
 
-            // Check if we have too many open trades
             const totalOpenPositions = state.portfolio.positions.filter(p => p.status === 'open').length;
             if (totalOpenPositions >= state.settings.maxTrades) {
                 window.log('warn', `Maximum open trades (${state.settings.maxTrades}) reached`);
                 return null;
             }
 
-            // Check cooldown for this token
             const lastTradeTime = state.lastTradeTimes[token];
             if (lastTradeTime && (Date.now() - lastTradeTime) < (state.settings.tradeCooldown * 1000)) {
                 window.log('warn', `Cooldown active for ${token}`);
@@ -2790,15 +2785,12 @@
 
             const currentGasPrice = state.currentGasPrice || state.settings.maxGasPrice;
 
-            // For sells, check if we have the token
             if (action === 'sell') {
                 const tokenBalance = state.portfolio.balances[tokenSymbol] || 0;
                 if (tokenBalance <= 0) {
                     window.log('warn', `No ${tokenSymbol} to sell`);
                     return null;
                 }
-
-                // For sells, we need to calculate how much we can actually sell
                 const sellableAmount = Math.min(tokenAmount, tokenBalance);
                 if (sellableAmount <= 0) {
                     window.log('warn', `Cannot sell ${tokenSymbol}: insufficient balance`);
@@ -2806,9 +2798,14 @@
                 }
             }
 
-            const tradeResult = await simulateRealisticTrade(
-                tokenSymbol, action, tokenAmount, currentPrice, poolInfo, 0, currentGasPrice
-            );
+            let tradeResult;
+            if (state.liveMode && state.walletConnected && state.signer) {
+                tradeResult = await executeLiveTrade(tokenSymbol, action, tokenAmount, currentPrice, poolInfo, currentGasPrice);
+            } else {
+                tradeResult = await simulateRealisticTrade(
+                    tokenSymbol, action, tokenAmount, currentPrice, poolInfo, 0, currentGasPrice
+                );
+            }
 
             if (!tradeResult.success) {
                 const failedTrade = createTradeObject(
@@ -2830,7 +2827,7 @@
 
             const trade = createTradeObject(
                 tokenSymbol, action, tradeResult.executionPrice, tradeResult.tokenAmount,
-                tradeResult.amountETH, patternDescription, 'open', null, tradeResult.gasUsed,
+                tradeResult.amountETH, patternDescription, state.liveMode ? 'open' : 'open', null, tradeResult.gasUsed,
                 tradeResult.gasPrice, tradeResult.feeAmount, tradeResult.priceImpact, tradeResult.slippage, pattern
             );
 
@@ -2853,6 +2850,71 @@
             window.log('success', `Successfully executed ${action} trade for ${tokenSymbol}: ${tradeResult.tokenAmount.toFixed(6)} tokens at ${tradeResult.executionPrice.toFixed(8)} ETH`);
 
             return trade;
+        }
+
+        async function executeLiveTrade(tokenSymbol, action, tokenAmount, currentPrice, poolInfo, gasPriceGwei) {
+            try {
+                const routerAddress = CHAINS[state.currentChainKey]?.routerAddress || '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'; // Uniswap V2 Router default
+                const router = new ethers.Contract(routerAddress, [
+                    "function swapExactETHForTokens(uint amountOutMin, address[] path, address to, uint deadline) external payable returns (uint[] amounts)",
+                    "function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] path, address to, uint deadline) external returns (uint[] amounts)"
+                ], state.signer);
+
+                const path = [poolInfo.token0, poolInfo.token1];
+                const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+                let tx;
+
+                if (action === 'buy') {
+                    tx = await router.swapExactETHForTokens(
+                        Math.floor(tokenAmount * (1 - (state.settings.maxSlippage / 100)) * 1e18),
+                        path,
+                        await state.signer.getAddress(),
+                        deadline,
+                        { value: BigInt(Math.floor(tokenAmount * 1e18)), gasLimit: state.settings.gasLimit }
+                    );
+                } else {
+                    const tokenContract = new ethers.Contract(poolInfo.token0, ["function approve(address spender, uint256 amount) returns (bool)"], state.signer);
+                    await tokenContract.approve(routerAddress, ethers.MaxUint256);
+                    tx = await router.swapExactTokensForETH(
+                        Math.floor(tokenAmount * 1e18),
+                        Math.floor(tokenAmount * (1 - (state.settings.maxSlippage / 100)) * currentPrice * 1e18),
+                        path,
+                        await state.signer.getAddress(),
+                        deadline,
+                        { gasLimit: state.settings.gasLimit }
+                    );
+                }
+
+                const receipt = await tx.wait();
+                const gasUsed = receipt.gasUsed.toNumber();
+                const feeAmount = tokenAmount * (poolInfo.feeTier / 1000000);
+                
+                return {
+                    success: true,
+                    tokenAmount,
+                    amountETH: tokenAmount * currentPrice,
+                    executionPrice: currentPrice,
+                    gasUsed,
+                    gasPrice: gasPriceGwei,
+                    feeAmount,
+                    priceImpact: 0,
+                    slippage: state.settings.maxSlippage,
+                    reason: null
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    tokenAmount,
+                    amountETH: tokenAmount * currentPrice,
+                    executionPrice: currentPrice,
+                    gasUsed: 0,
+                    gasPrice: gasPriceGwei,
+                    feeAmount: 0,
+                    priceImpact: 0,
+                    slippage: 0,
+                    reason: error.reason || error.message || 'Transaction failed or rejected'
+                };
+            }
         }
 
         async function settleTrade(trade) {
@@ -3553,6 +3615,36 @@
                 if (bsi) bsi.innerHTML = '<span class="badge badge-secondary">Stopped</span>';
             }
             updateConnectionStatus();
+        }
+
+        async function connectWallet() {
+            if (typeof window.ethereum === 'undefined') {
+                showToast('error', 'MetaMask not detected. Please install it.');
+                return;
+            }
+            try {
+                state.provider = new ethers.providers.Web3Provider(window.ethereum);
+                await state.provider.send('eth_requestAccounts', []);
+                state.signer = state.provider.getSigner();
+                state.walletConnected = true;
+                document.getElementById('connectWalletBtn').textContent = 'Wallet Connected';
+                document.getElementById('connectWalletBtn').disabled = true;
+                document.getElementById('toggleLiveModeBtn').disabled = false;
+                showToast('success', 'Wallet connected successfully.');
+                window.log('success', 'Wallet connected.');
+            } catch (error) {
+                showToast('error', 'Failed to connect wallet: ' + error.message);
+                window.log('error', 'Wallet connection failed: ' + error.message);
+            }
+        }
+
+        function toggleLiveMode() {
+            state.liveMode = !state.liveMode;
+            const btn = document.getElementById('toggleLiveModeBtn');
+            btn.textContent = state.liveMode ? 'Live Mode: ON' : 'Live Mode: OFF';
+            btn.className = state.liveMode ? 'btn btn-danger btn-sm' : 'btn btn-warning btn-sm';
+            showToast(state.liveMode ? 'success' : 'warning', state.liveMode ? 'Live Mode enabled. Real transactions will be executed.' : 'Live Mode disabled. Using simulation.');
+            window.log(state.liveMode ? 'success' : 'info', 'Live Mode toggled: ' + state.liveMode);
         }
 
         async function testConnection() {
