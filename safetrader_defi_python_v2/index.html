@@ -1294,476 +1294,237 @@
     </div>
 
     <script>
-        // Backend-synced frontend logic
-        let equityChart = null;
-        let state = {
-            isRunning: false,
-            liveMode: false,
-            network: 'arbitrum',
-            startTime: null,
-            uptimeInterval: null
+    // Frontend-only logic - communicates with Python backend
+    let ws = null;
+    let equityChart = null;
+    let state = { isRunning: false, liveMode: false, network: 'arbitrum', startTime: null };
+
+    document.addEventListener('DOMContentLoaded', function () {
+        setupEventListeners();
+        initializeCharts();
+        connectWebSocket();
+    });
+
+    function connectWebSocket() {
+        ws = new WebSocket(`ws://${location.host}`);
+        ws.onopen = () => {
+            console.log('Connected to backend');
+            updateBotStatus();
         };
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'state_update') {
+                state = data.state;
+                updateUI(data.state);
+            }
+        };
+        ws.onclose = () => setTimeout(connectWebSocket, 3000);
+    }
 
-        document.addEventListener('DOMContentLoaded', function () {
-            setupEventListeners();
-            fetchConfig();
-            initializeCharts();
-            updateConstantsDisplay();
+    function setupEventListeners() {
+        document.querySelectorAll('.nav-tabs .nav-link').forEach(link =>
+            link.addEventListener('click', function () {
+                switchTab(this.getAttribute('data-tab'));
+            })
+        );
+        document.getElementById('networkSelect').addEventListener('change', function () {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'switch_network', network: this.value }));
+            }
         });
+    }
 
-        function setupEventListeners() {
-            document.querySelectorAll('.nav-tabs .nav-link').forEach(link =>
-                link.addEventListener('click', function () {
-                    switchTab(this.getAttribute('data-tab'));
-                })
-            );
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.nav-link').forEach(l => {
+            l.classList.remove('active');
+            if (l.getAttribute('data-tab') === tab) l.classList.add('active');
+        });
+        document.getElementById(tab).classList.add('active');
+    }
 
-            document.getElementById('networkSelect').addEventListener('change', function () {
-                state.network = this.value;
-                updateNetworkInfo();
-                updateConstantsDisplay();
+    function initializeCharts() {
+        const equityCtx = document.getElementById('equityChartCanvas');
+        if (equityCtx) {
+            equityChart = new Chart(equityCtx, {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: 'Portfolio Value (ETH)', data: [], borderColor: '#0d6efd', backgroundColor: 'rgba(13, 110, 253, 0.1)', borderWidth: 2, fill: true, tension: 0.1, pointRadius: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, type: 'linear', title: { display: true, text: 'ETH Value' }, ticks: { callback: v => v.toFixed(12) } }, x: { type: 'linear', title: { display: true, text: 'Trade #' }, ticks: { callback: (v, i) => i } } }, plugins: { tooltip: { callbacks: { label: ctx => ctx.parsed.y.toFixed(12) + ' ETH' } }, legend: { display: false } } }
             });
         }
+    }
 
-        async function fetchConfig() {
-            try {
-                const res = await fetch('/api/config');
-                const data = await res.json();
-                state.liveMode = data.liveMode || false;
-                document.getElementById('toggleLiveModeBtn').disabled = !state.liveMode;
-                document.getElementById('toggleLiveModeBtn').textContent = state.liveMode ? 'Live Mode: ON' : 'Live Mode: OFF';
-                document.getElementById('toggleLiveModeBtn').className = state.liveMode ? 'btn btn-danger btn-sm' : 'btn btn-warning btn-sm';
-                updateNetworkInfo();
-                updateDashboard();
-            } catch (e) {
-                console.error('Failed to fetch config:', e);
-            }
+    function updateUI(s) {
+        document.getElementById('displayNetwork').textContent = s.network;
+        document.getElementById('displayStartingEth').textContent = (s.startingEth || 0).toFixed(6) + ' ETH';
+        document.getElementById('displayTradePercent').textContent = (s.tradeAmountPercent || 10) + '%';
+        document.getElementById('displayMinTrade').textContent = (s.minTradeAmountEth || 0.00001).toFixed(5) + ' ETH';
+        document.getElementById('displayMaxTrades').textContent = s.maxTrades || 3;
+        document.getElementById('displayCooldown').textContent = (s.tradeCooldown || 60) + ' seconds';
+        document.getElementById('displayMinPriceChange').textContent = (s.minPriceChange || 1.0) + '%';
+        document.getElementById('displayMinTimeWindow').textContent = (s.minTimeWindow || 10) + ' seconds';
+        document.getElementById('displayMaxTimeWindow').textContent = (s.maxTimeWindow || 300) + ' seconds';
+        document.getElementById('displayMinOccurrences').textContent = s.minOccurrences || 2;
+        document.getElementById('displayMinWinRate').textContent = (s.minWinRate || 60) + '%';
+        document.getElementById('displayBacktestPeriod').textContent = (s.backtestPeriod || 24) + ' hours';
+        document.getElementById('displayTargetProfit').textContent = (s.targetProfitPercent || 1.0) + '%';
+        document.getElementById('displayMinProfitability').textContent = (s.minProfitability || 1.5) + '%';
+        document.getElementById('displayMaxPatterns').textContent = s.maxPatternsPerToken || 5;
+        document.getElementById('displayMaxSlippage').textContent = (s.maxSlippage || 0.5) + '%';
+        document.getElementById('displayMinProfit').textContent = (s.minProfitPercent || 0.5) + '%';
+        document.getElementById('displayMaxPositionAge').textContent = (s.maxPositionAge || 600) + ' seconds';
+        document.getElementById('displayMaxGasPrice').textContent = (s.maxGasPrice || 200) + ' gwei';
+        document.getElementById('displayGasLimit').textContent = s.gasLimit || 200000;
+        document.getElementById('displayPreventSequential').textContent = s.preventSequentialTrades !== undefined ? s.preventSequentialTrades : 'true';
+        document.getElementById('displayPriceHistoryDuration').textContent = (s.priceHistoryDuration || 24) + ' hours';
+        document.getElementById('displayMaxPriceHistory').textContent = s.maxPriceHistory || 10000;
+
+        updateBotStatus();
+        updateDashboard(s);
+        updatePortfolioUI(s);
+        updateEquityChart(s);
+        updateAssetAllocationDisplay(s);
+    }
+
+    function updateBotStatus() {
+        const si = document.getElementById('statusIndicator');
+        const st = document.getElementById('botStatusText');
+        const sb = document.getElementById('startBotBtn');
+        const stopb = document.getElementById('stopBotBtn');
+        const bsi = document.getElementById('botStatusIndicator');
+        if (state.isRunning) {
+            si.className = 'status-indicator status-running';
+            st.textContent = 'Running';
+            sb.disabled = true;
+            stopb.disabled = false;
+            bsi.innerHTML = '<span class="badge badge-success">Running</span>';
+        } else {
+            si.className = 'status-indicator status-stopped';
+            st.textContent = 'Not Running';
+            sb.disabled = false;
+            stopb.disabled = true;
+            bsi.innerHTML = '<span class="badge badge-secondary">Stopped</span>';
         }
+    }
 
-        function updateNetworkInfo() {
-            const networkEl = document.getElementById('currentNetwork');
-            if (networkEl) networkEl.textContent = state.network.charAt(0).toUpperCase() + state.network.slice(1);
-        }
-
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.querySelectorAll('.nav-link').forEach(l => {
-                l.classList.remove('active');
-                if (l.getAttribute('data-tab') === tab) l.classList.add('active');
+    function updateDashboard(s) {
+        document.getElementById('trackedTokensCount').textContent = s.trackedTokensCount || 0;
+        document.getElementById('totalPatterns').textContent = s.totalPatterns || 0;
+        document.getElementById('buyPatternsCount').textContent = s.buyPatterns || 0;
+        document.getElementById('tokensWithPatterns').textContent = s.tokensWithPatterns || 0;
+        document.getElementById('activePatternsCount').textContent = s.totalPatterns || 0;
+        document.getElementById('gasSpent').textContent = (s.gasSpent || 0).toFixed(12) + ' ETH';
+        document.getElementById('dexFees').textContent = (s.dexFees || 0).toFixed(12) + ' ETH';
+        document.getElementById('totalFees').textContent = (s.totalFees || 0).toFixed(12) + ' ETH';
+        const priceRows = document.getElementById('priceRows');
+        if (priceRows && s.prices) {
+            let html = '';
+            Object.entries(s.prices).forEach(([token, price]) => {
+                html += `<tr><td><strong>${token}</strong></td><td>${price.toFixed(12)}</td><td class="price-change price-up">0.00%</td><td>0</td><td>Never</td></tr>`;
             });
-            document.getElementById(tab).classList.add('active');
-            if (tab === 'trades') renderFullTradeHistory();
-            else if (tab === 'dashboard') {
-                renderDashboard();
-                updateEquityChart();
-            }
-            else if (tab === 'portfolio') updatePortfolioUI();
-            else if (tab === 'patterns') renderPatterns();
-            else if (tab === 'constants') updateConstantsDisplay();
+            priceRows.innerHTML = html || '<tr><td colspan="5" class="text-center text-secondary">Press Start to begin watching the market</td></tr>';
         }
+    }
 
-        function initializeCharts() {
-            const equityCtx = document.getElementById('equityChartCanvas');
-            if (equityCtx) {
-                equityChart = new Chart(equityCtx, {
-                    type: 'line',
-                    data: {
-                        labels: [],
-                        datasets: [{
-                            label: 'Portfolio Value (ETH)',
-                            data: [],
-                            borderColor: '#0d6efd',
-                            backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.1,
-                            pointRadius: 0
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: false,
-                                type: 'linear',
-                                title: { display: true, text: 'ETH Value' },
-                                ticks: { callback: function (value) { return value.toFixed(12); } }
-                            },
-                            x: {
-                                type: 'linear',
-                                title: { display: true, text: 'Trade #' },
-                                ticks: { callback: function (value, index) { return index; } }
-                            }
-                        },
-                        plugins: {
-                            tooltip: {
-                                callbacks: {
-                                    label: function (context) {
-                                        return context.parsed.y.toFixed(12) + ' ETH';
-                                    }
-                                }
-                            },
-                            legend: { display: false }
-                        }
-                    }
-                });
-            }
-        }
+    function updatePortfolioUI(s) {
+        document.getElementById('startingEthDisplay').textContent = (s.startingEth || 0).toFixed(12) + ' ETH';
+        document.getElementById('currentEth').textContent = (s.currentEth || 0).toFixed(12) + ' ETH';
+        document.getElementById('realizedPnL').textContent = (s.realizedPnL || 0).toFixed(12) + ' ETH';
+        document.getElementById('unrealizedPnL').textContent = (s.unrealizedPnL || 0).toFixed(12) + ' ETH';
+        const netPnL = (s.realizedPnL || 0) + (s.unrealizedPnL || 0);
+        document.getElementById('netPnL').textContent = netPnL.toFixed(12) + ' ETH';
+        const ret = s.startingEth > 0 ? (netPnL / s.startingEth * 100).toFixed(2) + '%' : '0.00%';
+        document.getElementById('portfolioReturn').textContent = ret;
+    }
 
-        function updateConstantsDisplay() {
-            document.getElementById('displayNetwork').textContent = state.network;
-            document.getElementById('displayStartingEth').textContent = '0.0033 ETH';
-            document.getElementById('displayTradePercent').textContent = '10%';
-            document.getElementById('displayMinTrade').textContent = '0.00001 ETH';
-            document.getElementById('displayMaxTrades').textContent = '3';
-            document.getElementById('displayCooldown').textContent = '60 seconds';
-            document.getElementById('displayMinPriceChange').textContent = '1.0%';
-            document.getElementById('displayMinTimeWindow').textContent = '10 seconds';
-            document.getElementById('displayMaxTimeWindow').textContent = '300 seconds';
-            document.getElementById('displayMinOccurrences').textContent = '2';
-            document.getElementById('displayMinWinRate').textContent = '60%';
-            document.getElementById('displayBacktestPeriod').textContent = '24 hours';
-            document.getElementById('displayTargetProfit').textContent = '1.0%';
-            document.getElementById('displayMinProfitability').textContent = '1.5%';
-            document.getElementById('displayMaxPatterns').textContent = '5';
-            document.getElementById('displayMaxSlippage').textContent = '0.5%';
-            document.getElementById('displayMinProfit').textContent = '0.5%';
-            document.getElementById('displayMaxPositionAge').textContent = '600 seconds';
-            document.getElementById('displayMaxGasPrice').textContent = '200 gwei';
-            document.getElementById('displayGasLimit').textContent = '200000';
-            document.getElementById('displayPreventSequential').textContent = 'true';
-            document.getElementById('displayPriceHistoryDuration').textContent = '24 hours';
-            document.getElementById('displayMaxPriceHistory').textContent = '10000';
-        }
+    function updateEquityChart(s) {
+        if (!equityChart || !s.equityHistory) return;
+        equityChart.data.labels = s.equityHistory.map((_, i) => i);
+        equityChart.data.datasets[0].data = s.equityHistory.map(p => p.ethValue);
+        equityChart.update();
+    }
 
-        function updateBotStatus() {
-            const si = document.getElementById('statusIndicator');
-            const st = document.getElementById('botStatusText');
-            const sb = document.getElementById('startBotBtn');
-            const stopb = document.getElementById('stopBotBtn');
-            const bsi = document.getElementById('botStatusIndicator');
-
-            if (state.isRunning) {
-                if (si) si.className = 'status-indicator status-running';
-                if (st) st.textContent = 'Running';
-                if (sb) sb.disabled = true;
-                if (stopb) stopb.disabled = false;
-                if (bsi) bsi.innerHTML = '<span class="badge badge-success">Running</span>';
-            } else {
-                if (si) si.className = 'status-indicator status-stopped';
-                if (st) st.textContent = 'Not Running';
-                if (sb) sb.disabled = false;
-                if (stopb) stopb.disabled = true;
-                if (bsi) bsi.innerHTML = '<span class="badge badge-secondary">Stopped</span>';
-            }
-            updateConnectionStatus();
-        }
-
-        function updateConnectionStatus() {
-            const us = document.getElementById('blockchainStatus');
-            const ps = document.getElementById('priceFeedStatus');
-            const connected = state.isRunning;
-
-            if (us) {
-                us.className = `status-item ${connected ? 'status-connected' : 'status-disconnected'}`;
-                us.innerHTML = connected ? 'Market Connection \u2713' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Market Connection';
-            }
-            if (ps) {
-                ps.className = `status-item ${connected ? 'status-connected' : 'status-disconnected'}`;
-                ps.innerHTML = connected ? 'Price Updates \u2713' : '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Price Updates';
-            }
-        }
-
-        function startUptimeTimer() {
-            if (state.uptimeInterval) clearInterval(state.uptimeInterval);
-            state.uptimeInterval = setInterval(updateUptime, 1000);
-        }
-
-        function updateUptime() {
-            if (!state.startTime) {
-                document.getElementById('uptime').textContent = '00:00:00';
-                return;
-            }
-            const now = new Date();
-            const diff = now - state.startTime;
-            const h = Math.floor(diff / (1000 * 60 * 60));
-            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            const s = Math.floor((diff % (1000 * 60)) / 1000);
-            document.getElementById('uptime').textContent = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-        }
-
-        async function connectWallet() {
-            showToast('info', 'Backend handles wallet connection via PRIVATE_KEY env variable.');
-            document.getElementById('connectWalletBtn').textContent = 'Wallet Connected';
-            document.getElementById('connectWalletBtn').disabled = true;
-            document.getElementById('toggleLiveModeBtn').disabled = false;
-        }
-
-        function toggleLiveMode() {
-            state.liveMode = !state.liveMode;
-            const btn = document.getElementById('toggleLiveModeBtn');
-            btn.textContent = state.liveMode ? 'Live Mode: ON' : 'Live Mode: OFF';
-            btn.className = state.liveMode ? 'btn btn-danger btn-sm' : 'btn btn-warning btn-sm';
-            showToast(state.liveMode ? 'success' : 'warning', state.liveMode ? 'Live Mode enabled. Real transactions will be executed.' : 'Live Mode disabled. Using simulation.');
-        }
-
-        async function startBot() {
-            if (state.isRunning) {
-                showToast('info', 'Trading is already running.');
-                return;
-            }
-            showLoading('startSpinner');
-            document.getElementById('startBotBtn').disabled = true;
-            try {
-                state.isRunning = true;
-                state.startTime = new Date();
-                startUptimeTimer();
-                updateBotStatus();
-                showToast('success', `Started! Watching ${state.network} for trading opportunities.`);
-            } catch (error) {
-                hideLoading('startSpinner');
-                document.getElementById('startBotBtn').disabled = false;
-                state.isRunning = false;
-            }
-        }
-
-        async function stopBot() {
-            if (!state.isRunning) {
-                showToast('info', 'Trading is not running.');
-                return;
-            }
-            showLoading('stopSpinner');
-            document.getElementById('stopBotBtn').disabled = true;
-            try {
-                state.isRunning = false;
-                if (state.uptimeInterval) clearInterval(state.uptimeInterval);
-                updateBotStatus();
-                showToast('success', 'Trading stopped!');
-            } finally {
-                hideLoading('stopSpinner');
-                document.getElementById('stopBotBtn').disabled = false;
-            }
-        }
-
-        async function testConnection() {
-            showToast('info', 'Connection test simulated via backend.');
-        }
-
-        function showToast(type, message, duration = 5000) {
-            const container = document.getElementById('toastContainer');
-            if (!container) return;
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            const icons = { success: '\u2713', error: '\u2717', warning: '\u26A0', info: '\u2139' };
-            const icon = icons[type] || '\u2139';
-            toast.innerHTML = `
-                <span class="toast-icon">${icon}</span>
-                <span class="toast-message">${message}</span>
-                <span class="toast-close" onclick="this.parentElement.remove()">&times;</span>
-            `;
-            container.appendChild(toast);
-            setTimeout(() => {
-                toast.classList.add('hiding');
-                setTimeout(() => toast.remove(), 300);
-            }, duration);
-        }
-
-        function updatePriceUpdateStatus(status) {
-            const el = document.getElementById('priceFeedStatus');
-            if (!el) return;
-            if (status === 'success') {
-                el.className = 'status-item status-connected';
-                el.innerHTML = 'Price Updates \u2713';
-            } else if (status === 'error') {
-                el.className = 'status-item status-disconnected';
-                el.innerHTML = '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Price Updates';
-            } else {
-                el.className = 'status-item status-disconnected';
-                el.innerHTML = '<span class="loading-spinner" style="width:10px;height:10px;border-width:1.5px;"></span> Price Updates';
-            }
-        }
-
-        function showLoading(elementId) {
-            const spinner = document.getElementById(elementId);
-            if (spinner) spinner.style.display = 'inline-block';
-        }
-
-        function hideLoading(elementId) {
-            const spinner = document.getElementById(elementId);
-            if (spinner) spinner.style.display = 'none';
-        }
-
-        async function updateDashboard() {
-            try {
-                const res = await fetch('/api/dashboard');
-                const data = await res.json();
-                document.getElementById('trackedTokensCount').textContent = Object.keys(data.prices).length;
-                document.getElementById('totalPatterns').textContent = data.stats.totalPatterns;
-                document.getElementById('buyPatternsCount').textContent = data.stats.buyPatterns;
-                document.getElementById('tokensWithPatterns').textContent = data.stats.tokensWithPatterns;
-                document.getElementById('activePatternsCount').textContent = data.stats.totalPatterns;
-                document.getElementById('gasSpent').textContent = data.stats.gasSpent.toFixed(12) + ' ETH';
-                document.getElementById('dexFees').textContent = data.stats.dexFees.toFixed(12) + ' ETH';
-                document.getElementById('totalFees').textContent = data.stats.totalFees.toFixed(12) + ' ETH';
-                renderDashboard();
-            } catch (e) {
-                console.error('Dashboard fetch failed:', e);
-            }
-        }
-
-        function renderDashboard() {
-            const priceRows = document.getElementById('priceRows');
-            if (priceRows) priceRows.innerHTML = '<tr><td colspan="5" class="text-center text-secondary">Press Start to begin watching the market</td></tr>';
-        }
-
-        function updateActivePositions() {
-            const activePositions = document.getElementById('activePositions');
-            if (activePositions) activePositions.innerHTML = '<p class="text-secondary">No open investments</p>';
-            const activeCountEl = document.getElementById('activeCount');
-            if (activeCountEl) activeCountEl.textContent = '0';
-        }
-
-        function renderRecentTrades() {
-            const recentTradesEl = document.getElementById('recentTrades');
-            if (recentTradesEl) recentTradesEl.innerHTML = '<tr><td colspan="7" class="text-center text-secondary">No trades yet</td></tr>';
-        }
-
-        function updatePnLDisplay() {
-            const netPnLEl = document.getElementById('netPnL');
-            if (netPnLEl) {
-                netPnLEl.textContent = '0.000000 ETH';
-                netPnLEl.className = 'value';
-            }
-        }
-
-        function updateStatistics() {
-            const totalTradesEl = document.getElementById('totalTrades');
-            const winRateEl = document.getElementById('winRate');
-            const totalPnLEl = document.getElementById('totalPnL');
-            const totalFeesEl = document.getElementById('totalFeesHistory');
-            const bestTradeEl = document.getElementById('bestTrade');
-            const worstTradeEl = document.getElementById('worstTrade');
-
-            if (totalTradesEl) totalTradesEl.textContent = '0';
-            if (winRateEl) winRateEl.textContent = '0%';
-            if (totalPnLEl) totalPnLEl.textContent = '0.000000 ETH';
-            if (totalFeesEl) totalFeesEl.textContent = '0.000000 ETH';
-            if (bestTradeEl) bestTradeEl.textContent = '0.000000 ETH';
-            if (worstTradeEl) worstTradeEl.textContent = '0.000000 ETH';
-        }
-
-        function renderFullTradeHistory() {
-            const fullTradeHistory = document.getElementById('fullTradeHistory');
-            if (fullTradeHistory) fullTradeHistory.innerHTML = '<tr><td colspan="9" class="text-center text-secondary">No trade history</td></tr>';
-        }
-
-        function updateEquityChart() {
-            if (!equityChart) return;
-            equityChart.data.labels = [];
-            equityChart.data.datasets[0].data = [];
-            equityChart.update();
-        }
-
-        function toggleEquityChartType() {
-            if (!equityChart) return;
-            const currentType = equityChart.options.scales.y.type;
-            equityChart.options.scales.y.type = (currentType === 'linear' ? 'logarithmic' : 'linear');
-            equityChart.options.scales.y.title.text = (currentType === 'linear' ? 'ETH Value (Log)' : 'ETH Value');
-            equityChart.update();
-        }
-
-        function updatePortfolioUI() {
-            const startingEthDisplay = document.getElementById('startingEthDisplay');
-            const currentEthEl = document.getElementById('currentEth');
-            const realizedPnLEl = document.getElementById('realizedPnL');
-            const unrealizedPnLEl = document.getElementById('unrealizedPnL');
-            const netPnLEl = document.getElementById('netPnL');
-            const portfolioReturnEl = document.getElementById('portfolioReturn');
-            const gasSpentEl = document.getElementById('gasSpent');
-            const dexFeesEl = document.getElementById('dexFees');
-            const totalFeesEl = document.getElementById('totalFees');
-            const feeImpactBarEl = document.getElementById('feeImpactBar');
-
-            if (startingEthDisplay) startingEthDisplay.textContent = '0.003300 ETH';
-            if (currentEthEl) currentEthEl.textContent = '0.003300 ETH';
-            if (realizedPnLEl) { realizedPnLEl.textContent = '0.000000 ETH'; realizedPnLEl.className = 'value price-up'; }
-            if (unrealizedPnLEl) { unrealizedPnLEl.textContent = '0.000000 ETH'; unrealizedPnLEl.className = 'value'; }
-            if (netPnLEl) { netPnLEl.textContent = '0.000000 ETH'; netPnLEl.className = 'value'; }
-            if (portfolioReturnEl) { portfolioReturnEl.textContent = '0.00%'; portfolioReturnEl.className = 'value'; }
-            if (gasSpentEl) gasSpentEl.textContent = '0.000000 ETH';
-            if (dexFeesEl) dexFeesEl.textContent = '0.000000 ETH';
-            if (totalFeesEl) totalFeesEl.textContent = '0.000000 ETH';
-            if (feeImpactBarEl) feeImpactBarEl.style.width = '0%';
-        }
-
-        function updateAssetAllocationDisplay() {
-            const container = document.getElementById('assetAllocation');
-            if (!container) return;
-            container.innerHTML = '<p class="text-secondary">No allocation data</p>';
-        }
-
-        function switchNetwork() {
-            const networkSelect = document.getElementById('networkSelect');
-            if (networkSelect) {
-                state.network = networkSelect.value;
-                updateNetworkInfo();
-                updateConstantsDisplay();
-            }
-        }
-
-        function refreshPrices() {
-            showLoading('priceRefreshSpinner');
-            try {
-                if (state.isRunning) {
-                    updateDashboard();
-                    showToast('success', 'Prices refreshed!');
-                } else {
-                    showToast('warning', 'Not connected. Start trading first.');
-                }
-                updatePriceUpdateStatus(state.isRunning ? 'success' : 'error');
-            } catch (error) {
-                updatePriceUpdateStatus('error');
-            } finally {
-                hideLoading('priceRefreshSpinner');
-            }
-        }
-
-        function exportTradeHistory() {
-            showToast('info', 'Export simulated. Backend handles CSV generation.');
-        }
-
-        function exportPatterns() {
-            showToast('info', 'Export simulated. Backend handles CSV generation.');
-        }
-
-        function clearTradeHistory() {
-            if (!confirm('Clear all trade history? This cannot be undone.')) return;
-            state.trades = [];
-            renderFullTradeHistory();
-            updateDashboard();
-            updatePortfolioUI();
-            updateEquityChart();
-            showToast('success', 'Trade history cleared!');
-        }
-
-        function clearPatterns() {
-            if (!confirm('Clear all trading opportunities?')) return;
-            renderPatterns();
-            showToast('success', 'Trading opportunities cleared!');
-        }
-
-        function renderPatterns() {
-            const container = document.getElementById('patternsList');
-            if (!container) return;
-            container.innerHTML = '<p class="text-secondary">No trading opportunities found yet. The system is looking for patterns with positive expected value - this can take a few minutes after starting.</p>';
-        }
-
-        window.addEventListener('beforeunload', function () {
-            state.isRunning = false;
-            if (state.uptimeInterval) clearInterval(state.uptimeInterval);
+    function updateAssetAllocationDisplay(s) {
+        const container = document.getElementById('assetAllocation');
+        if (!container || !s.balances) { container.innerHTML = '<p class="text-secondary">No allocation data</p>'; return; }
+        let html = '';
+        Object.entries(s.balances).forEach(([token, amount]) => {
+            if (amount > 0) html += `<div class="allocation-item"><strong>${token}:</strong> <span>${amount.toFixed(6)}</span></div>`;
         });
-    </script>
+        container.innerHTML = html || '<p class="text-secondary">No active allocations</p>';
+    }
+
+    async function connectWallet() {
+        showToast('info', 'Backend handles wallet connection via PRIVATE_KEY env variable.');
+        document.getElementById('connectWalletBtn').textContent = 'Wallet Connected';
+        document.getElementById('connectWalletBtn').disabled = true;
+        document.getElementById('toggleLiveModeBtn').disabled = false;
+    }
+
+    function toggleLiveMode() {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'toggle_live_mode' }));
+        }
+    }
+
+    async function startBot() {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'start_bot' }));
+        }
+    }
+
+    async function stopBot() {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'stop_bot' }));
+        }
+    }
+
+    async function testConnection() {
+        showToast('info', 'Connection test simulated via backend.');
+    }
+
+    function showToast(type, message, duration = 5000) {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        const icons = { success: '\u2713', error: '\u2717', warning: '\u26A0', info: '\u2139' };
+        toast.innerHTML = `<span class="toast-icon">${icons[type] || '\u2139'}</span><span class="toast-message">${message}</span><span class="toast-close" onclick="this.parentElement.remove()">&times;</span>`;
+        container.appendChild(toast);
+        setTimeout(() => { toast.classList.add('hiding'); setTimeout(() => toast.remove(), 300); }, duration);
+    }
+
+    function showLoading(elementId) {
+        const spinner = document.getElementById(elementId);
+        if (spinner) spinner.style.display = 'inline-block';
+    }
+
+    function hideLoading(elementId) {
+        const spinner = document.getElementById(elementId);
+        if (spinner) spinner.style.display = 'none';
+    }
+
+    function refreshPrices() {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'refresh_prices' }));
+        }
+    }
+
+    function clearTradeHistory() {
+        if (!confirm('Clear all trade history? This cannot be undone.')) return;
+        if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'clear_trade_history' }));
+    }
+
+    function clearPatterns() {
+        if (!confirm('Clear all trading opportunities?')) return;
+        if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'clear_patterns' }));
+    }
+
+    window.addEventListener('beforeunload', function () {
+        state.isRunning = false;
+        if (ws) ws.close();
+    });
+</script>
 </body>
 
 </html>
