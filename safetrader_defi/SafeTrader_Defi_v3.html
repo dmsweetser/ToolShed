@@ -3332,12 +3332,13 @@
         }
 
         async function connectWallet() {
-            if (typeof window.ethereum === 'undefined') {
-                showToast('error', 'MetaMask not detected. Please install it.');
+            if (!window.ethereum) {
+                showToast('error', 'MetaMask not detected. Ensure it is installed, enabled, and not blocked by browser privacy extensions. Also, ensure the page is opened via http/https, not file://.');
                 return;
             }
             try {
-                state.provider = new ethers.providers.Web3Provider(window.ethereum);
+                // Fixed for ethers v6.x (uses ethers.Web3Provider, not ethers.providers.Web3Provider)
+                state.provider = new ethers.Web3Provider(window.ethereum);
                 await state.provider.send('eth_requestAccounts', []);
                 state.signer = state.provider.getSigner();
                 state.walletConnected = true;
