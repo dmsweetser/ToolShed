@@ -1,6 +1,4 @@
 flask==3.0.0
-flask-socketio==5.3.6
-eventlet==0.35.1
-web3==6.15.0
 python-dotenv==1.0.0
+web3==6.15.0
 requests==2.31.0
