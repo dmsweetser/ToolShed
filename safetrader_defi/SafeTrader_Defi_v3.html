@@ -690,6 +690,11 @@
             font-weight: 600;
             font-size: 1.1rem;
         }
+
+        .value {
+            font-family: monospace;
+            font-size: 1rem;
+        }
     </style>
 </head>
 
@@ -1020,8 +1025,8 @@
                 </div>
                 <div class="card-body" style="max-height: 500px; overflow-y: auto;">
                     <div class="alert alert-info mb-2">
-                        These are the buy opportunities the system has found. Each one is automatically tested to make
-                        sure it's profitable before being used for trading.
+                        These are the buy opportunities the system has found. Each one is automatically tested to ensure
+                        it's profitable before being used for trading.
                         <strong>For $10 trading:</strong> The system looks for smaller, more frequent opportunities with
                         positive expected value.
                     </div>
@@ -1102,7 +1107,6 @@
             <div class="card">
                 <div class="card-header">Configuration Constants</div>
                 <div class="card-body">
-
                     <!-- Network Configuration -->
                     <div class="constants-category">
                         <h3>Market Connection</h3>
@@ -1300,40 +1304,40 @@
         const APP_VERSION = '4.1.0';
 
         // Network Configuration
-        let BLOCKCHAIN_NETWORK = 'arbitrum'; // Which blockchain to monitor for trading opportunities. Arbitrum has the lowest fees.
-        const UNISWAP_VERSION = 'v3'; // Which version of Uniswap to use for trading. V3 has the most tokens and activity.
+        let BLOCKCHAIN_NETWORK = 'arbitrum';
+        const UNISWAP_VERSION = 'v3';
 
         // Trading Budget Configuration
-        let STARTING_ETH = 0.0033; // How much ETH you're starting with. $10 is about 0.0033 ETH when ETH is at $3000.
-        let TRADE_AMOUNT_PERCENT = 0.5; // What percentage of your budget to use for each trade. 10% of $10 = $1 per trade.
-        let MIN_TRADE_AMOUNT_ETH = 0.0003; // Never trade below this amount. Prevents trading with amounts that aren't worth the fees.
-        let MAX_TRADES = 200; // How many trades can be open at the same time. Limits exposure to any single token.
-        let TRADE_COOLDOWN = 60; // Minimum seconds to wait before trading the same token again. Prevents rapid buying/selling.
+        let STARTING_ETH = 0.0033;
+        let TRADE_AMOUNT_PERCENT = 0.5;
+        let MIN_TRADE_AMOUNT_ETH = 0.0003;
+        let MAX_TRADES = 5;
+        let TRADE_COOLDOWN = 60;
 
         // Pattern Detection Configuration
-        let MIN_PRICE_CHANGE = 1.0; // How much a price needs to move (percentage) before the system pays attention.
-        let MIN_TIME_WINDOW = 10; // How long a price movement must take to be considered (in seconds).
-        let MAX_TIME_WINDOW = 300; // The longest time a pattern can take to form (in seconds).
-        let MIN_OCCURRENCES = 3; // How many times a pattern must appear before trading on it.
+        let MIN_PRICE_CHANGE = 1.0;
+        let MIN_TIME_WINDOW = 10;
+        let MAX_TIME_WINDOW = 300;
+        let MIN_OCCURRENCES = 3;
 
         // Pattern Validation Configuration
-        let MIN_WIN_RATE = 60; // Only use patterns that have worked this often in testing (percentage).
-        let BACKTEST_PERIOD = 24; // How much past price history to use when testing patterns (in hours).
-        let TARGET_PROFIT_PERCENT = 1.0; // Sell when the trade makes this much profit (percentage).
-        let MIN_PROFITABILITY = 1.5; // Only use patterns that have made at least this much profit on average in testing.
-        let MAX_PATTERNS_PER_TOKEN = 5; // How many different patterns to track for each token.
+        let MIN_WIN_RATE = 60;
+        let BACKTEST_PERIOD = 24;
+        let TARGET_PROFIT_PERCENT = 1.0;
+        let MIN_PROFITABILITY = 1.5;
+        let MAX_PATTERNS_PER_TOKEN = 5;
 
         // Safety Configuration
-        let MAX_SLIPPAGE = 0.5; // Maximum price change allowed when executing a trade. Prevents bad trades when prices move fast.
-        let MIN_PROFIT_PERCENT = 0.5; // Don't close a trade unless it's made at least this much profit.
-        let MAX_POSITION_AGE = 600; // If a trade hasn't hit your profit target by this time, sell it anyway (in seconds).
-        let MAX_GAS_PRICE = 200; // Don't trade if network fees are higher than this (in gwei).
-        let GAS_LIMIT = 200000; // Estimate of how much computational work each trade requires.
-        let PREVENT_SEQUENTIAL_TRADES = true; // Prevents buying and selling the same token too quickly in a row, which can lose money to fees.
+        let MAX_SLIPPAGE = 0.5;
+        let MIN_PROFIT_PERCENT = 0.5;
+        let MAX_POSITION_AGE = 600;
+        let MAX_GAS_PRICE = 200;
+        let GAS_LIMIT = 200000;
+        let PREVENT_SEQUENTIAL_TRADES = true;
 
         // Data Configuration
-        let PRICE_HISTORY_DURATION = 24; // How many hours of price history to remember for finding patterns.
-        let MAX_PRICE_HISTORY = 10000; // How many price data points to keep for each token.
+        let PRICE_HISTORY_DURATION = 24;
+        let MAX_PRICE_HISTORY = 10000;
 
         // Derived Constants
         const POOL_FEES = { LOW: 500, MEDIUM: 3000, HIGH: 10000 };
@@ -1468,6 +1472,20 @@
             'USDT': { address: null, decimals: 6, symbol: 'USDT', name: 'Tether' }
         };
 
+        // ============================================
+        // Initialization
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function () {
+            initializeKnownTokens();
+            initializeApp();
+            setupEventListeners();
+            updateNetworkInfo();
+            initializeCharts();
+            updateStartingEthDisplay();
+            updateTradeAmountDisplay();
+            updateConstantsDisplay();
+        });
+
         function initializeKnownTokens() {
             const networkTokens = {
                 arbitrum: {
@@ -1520,27 +1538,6 @@
                 }
             }
         }
-
-        // ============================================
-        // Utility Functions
-        // ============================================
-        function norm(a) { return String(a).toLowerCase(); }
-        function short(a) { if (!a) return ''; return a.substring(0, 6) + '...' + a.substring(a.length - 4); }
-        function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
-
-        // ============================================
-        // Initialization
-        // ============================================
-        document.addEventListener('DOMContentLoaded', function () {
-            initializeKnownTokens();
-            initializeApp();
-            setupEventListeners();
-            updateNetworkInfo();
-            initializeCharts();
-            updateStartingEthDisplay();
-            updateTradeAmountDisplay();
-            updateConstantsDisplay();
-        });
 
         function initializeApp() {
             updateUI();
@@ -1860,54 +1857,6 @@
                                 }
                             }
                             break;
-                        }
-                    }
-                }
-            }
-
-            if (patterns.length === 0 && history.length >= 20) {
-                for (let i = history.length - 1; i >= 20; i--) {
-                    const current = history[i];
-                    const lookbackStart = Math.max(0, i - 10);
-
-                    let totalDrop = 0;
-                    let dropCount = 0;
-                    for (let j = i - 1; j >= lookbackStart; j--) {
-                        const dropPct = (history[j].price - history[j + 1].price) / history[j + 1].price;
-                        if (dropPct > 0) {
-                            totalDrop += dropPct;
-                            dropCount++;
-                        }
-                    }
-
-                    if (dropCount > 0) {
-                        const avgDrop = totalDrop / dropCount;
-                        const lookforwardEnd = Math.min(history.length - 1, i + 10);
-                        let totalRise = 0;
-                        let riseCount = 0;
-                        for (let j = i + 1; j <= lookforwardEnd; j++) {
-                            const risePct = (history[j].price - history[j - 1].price) / history[j - 1].price;
-                            if (risePct > 0) {
-                                totalRise += risePct;
-                                riseCount++;
-                            }
-                        }
-
-                        if (riseCount > 0) {
-                            const avgRise = totalRise / riseCount;
-                            const timeDiff = (history[lookforwardEnd].timestamp - history[lookbackStart].timestamp) / 1000;
-
-                            if (avgRise > avgDrop + (MIN_PROFITABILITY / 100)) {
-                                patterns.push({
-                                    type: PATTERN_TYPES.BUY,
-                                    dropPct: avgDrop * 100,
-                                    dropTime: timeDiff / 2,
-                                    risePct: avgRise * 100,
-                                    riseTime: timeDiff / 2,
-                                    token: token,
-                                    timestamp: current.timestamp
-                                });
-                            }
                         }
                     }
                 }
@@ -3333,11 +3282,10 @@
 
         async function connectWallet() {
             if (!window.ethereum) {
-                showToast('error', 'MetaMask not detected. Ensure it is installed, enabled, and not blocked by browser privacy extensions. Also, ensure the page is opened via http/https, not file://.');
+                showToast('error', 'MetaMask not detected. Ensure it is installed, enabled, and not blocked by browser privacy extensions.');
                 return;
             }
             try {
-                // Fixed for ethers v6.x (uses ethers.Web3Provider, not ethers.providers.Web3Provider)
                 state.provider = new ethers.Web3Provider(window.ethereum);
                 await state.provider.send('eth_requestAccounts', []);
                 state.signer = state.provider.getSigner();
@@ -3879,6 +3827,8 @@
             s.pairPrices.get(b).set(a, { price: 1 / p, updatedAt: ts });
         }
 
+        function norm(a) { return String(a).toLowerCase(); }
+
         function isStable(s, address) {
             address = norm(address);
             return s.chain.stables.some(x => norm(x) === address);
@@ -3992,6 +3942,8 @@
             s.metadataInFlight.set(key, promise);
             return promise;
         }
+
+        function short(a) { if (!a) return ''; return a.substring(0, 6) + '...' + a.substring(a.length - 4); }
 
         async function loadPool(s, address) {
             if (!current(s)) return null;
@@ -4253,6 +4205,8 @@
         function closeWebSockets() {
             if (state.activeSession) destroySession(state.activeSession);
         }
+
+        function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
         window.addEventListener('beforeunload', function () {
             state.isRunning = false;
