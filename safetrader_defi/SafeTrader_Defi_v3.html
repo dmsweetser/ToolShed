@@ -1483,6 +1483,7 @@
         // Initialization
         // ============================================
         document.addEventListener('DOMContentLoaded', function () {
+            restoreBackup();
             initializeKnownTokens();
             initializeApp();
             setupEventListeners();
@@ -2282,6 +2283,7 @@
                         patternObj: trade.patternObj
                     };
                     state.portfolio.positions.push(position);
+                    backupData();
                 } else {
                     position.amount += tradeResult.tokenAmount;
                     position.usdValue += tradeResult.amountETH;
@@ -4226,13 +4228,67 @@
             if (state.activeSession) destroySession(state.activeSession);
         }
 
-        window.addEventListener('beforeunload', function () {
+        window.addEventListener('beforeunload', function (e) {
+            // Cancel the event
+            e.preventDefault();
+
+            // Set the returnValue property to display a warning message
+            e.returnValue = 'Warning: You may lose unsaved data if you close or refresh this page. Please ensure you have backed up your data.';
+
+            // For modern browsers
+            return e.returnValue;
+        });
+        // Show browser warning when user tries to close/refresh
+        window.addEventListener('beforeunload', function (e) {
+            // Only show warning if the bot is running or has unsaved data
+            if (state.isRunning || state.trades.length > 0 || state.portfolio.positions.length > 0) {
+                e.preventDefault();
+                e.returnValue = 'Warning: You may lose unsaved data if you close or refresh this page. Please ensure you have backed up your data.';
+                return e.returnValue;
+            }
+        });
+
+        // Backup data AFTER the user confirms they want to leave
+        window.addEventListener('unload', function () {
+            // Only backup if the bot was running or has data
+            if (state.isRunning || state.trades.length > 0 || state.portfolio.positions.length > 0) {
+                backupData();
+                shutdownBot();
+            }
+        });
+
+        // Backup function (same as before)
+        function backupData() {
+            const backup = {
+                trades: state.trades,
+                portfolio: state.portfolio,
+                activePatterns: Array.from(state.activePatterns.values()),
+                lastBackup: new Date().toISOString()
+            };
+            localStorage.setItem('uniswapTraderBackup', JSON.stringify(backup));
+            // Note: showToast won't work here since the page is unloading
+        }
+
+        // Restore from backup (optional, for future sessions)
+        function restoreBackup() {
+            const backup = localStorage.getItem('uniswapTraderBackup');
+            if (backup) {
+                const data = JSON.parse(backup);
+                state.trades = data.trades || [];
+                state.portfolio = data.portfolio || {};
+                state.activePatterns = new Map(data.activePatterns?.map(p => [getPatternKey(p), p]) || []);
+                showToast('success', 'Restored from backup!');
+            }
+        }
+
+        // Shutdown function (same as before)
+        function shutdownBot() {
             state.isRunning = false;
             state.manuallyStopped = true;
             stopPatternDetection();
             stopPricePolling();
             closeWebSockets();
-        });
+        }
     </script>
 </body>
 
