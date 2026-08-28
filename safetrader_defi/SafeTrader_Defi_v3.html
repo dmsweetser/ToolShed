@@ -46,7 +46,6 @@
             padding: 20px;
         }
 
-        /* Constants Section Styling */
         .constants-section {
             margin-bottom: 20px;
         }
@@ -705,7 +704,8 @@
         <header class="text-center mb-2">
             <h1>Uniswap Easy Pattern Trader</h1>
             <p class="text-secondary">
-                <strong>Simple $10 Trading:</strong> Automatically finds and trades profitable patterns in the market
+                <strong>Optimized for Background Operation:</strong> Automatically finds and trades profitable patterns
+                in the market, even when the tab is inactive.
             </p>
         </header>
 
@@ -1139,20 +1139,20 @@
                             <div class="constant-item">
                                 <div class="constant-label">TRADE_AMOUNT_PERCENT</div>
                                 <div class="constant-description">What percentage of your budget to use for each trade.
-                                    10% of $10 = $1 per trade.</div>
-                                <div class="constant-value" id="displayTradePercent">10%</div>
+                                    0.5% of $10 = $0.05 per trade.</div>
+                                <div class="constant-value" id="displayTradePercent">0.5%</div>
                             </div>
                             <div class="constant-item">
                                 <div class="constant-label">MIN_TRADE_AMOUNT_ETH</div>
                                 <div class="constant-description">Never trade below this amount. Prevents trading with
                                     amounts that aren't worth the fees.</div>
-                                <div class="constant-value" id="displayMinTrade">0.00001 ETH</div>
+                                <div class="constant-value" id="displayMinTrade">0.0003 ETH</div>
                             </div>
                             <div class="constant-item">
                                 <div class="constant-label">MAX_TRADES</div>
                                 <div class="constant-description">How many trades can be open at the same time. Limits
                                     exposure to any single token.</div>
-                                <div class="constant-value" id="displayMaxTrades">3</div>
+                                <div class="constant-value" id="displayMaxTrades">200</div>
                             </div>
                             <div class="constant-item">
                                 <div class="constant-label">TRADE_COOLDOWN</div>
@@ -1189,7 +1189,7 @@
                                 <div class="constant-label">MIN_OCCURRENCES</div>
                                 <div class="constant-description">How many times a pattern must appear before trading on
                                     it.</div>
-                                <div class="constant-value" id="displayMinOccurrences">2</div>
+                                <div class="constant-value" id="displayMinOccurrences">3</div>
                             </div>
                         </div>
                     </div>
@@ -1308,32 +1308,32 @@
         const UNISWAP_VERSION = 'v3';
 
         // Trading Budget Configuration
-        let STARTING_ETH = 0.0033;
-        let TRADE_AMOUNT_PERCENT = 0.5;
-        let MIN_TRADE_AMOUNT_ETH = 0.0003;
-        let MAX_TRADES = 5;
-        let TRADE_COOLDOWN = 60;
+        let STARTING_ETH = 0.0033; // $10 worth of ETH (assuming ETH = $3000)
+        let TRADE_AMOUNT_PERCENT = 0.5; // 0.5% of budget per trade (e.g., 0.5% of $10 = $0.05)
+        let MIN_TRADE_AMOUNT_ETH = 0.0003; // Minimum trade size to avoid dust trades
+        let MAX_TRADES = 200; // Max concurrent open trades (high for scalping)
+        let TRADE_COOLDOWN = 60; // 60 seconds between trades for the same token
 
         // Pattern Detection Configuration
-        let MIN_PRICE_CHANGE = 1.0;
-        let MIN_TIME_WINDOW = 10;
-        let MAX_TIME_WINDOW = 300;
-        let MIN_OCCURRENCES = 3;
+        let MIN_PRICE_CHANGE = 1.0; // 1% minimum price movement to consider
+        let MIN_TIME_WINDOW = 10; // 10 seconds minimum time for a pattern
+        let MAX_TIME_WINDOW = 300; // 5 minutes maximum time for a pattern
+        let MIN_OCCURRENCES = 3; // Pattern must appear 3 times before trading
 
         // Pattern Validation Configuration
-        let MIN_WIN_RATE = 60;
-        let BACKTEST_PERIOD = 24;
-        let TARGET_PROFIT_PERCENT = 1.0;
-        let MIN_PROFITABILITY = 1.5;
-        let MAX_PATTERNS_PER_TOKEN = 5;
+        let MIN_WIN_RATE = 60; // Only use patterns with ≥60% historical win rate
+        let BACKTEST_PERIOD = 24; // Test patterns over the last 24 hours
+        let TARGET_PROFIT_PERCENT = 1.0; // Take profit at 1% gain
+        let MIN_PROFITABILITY = 1.5; // Only use patterns with ≥1.5% avg profitability
+        let MAX_PATTERNS_PER_TOKEN = 5; // Track up to 5 patterns per token
 
         // Safety Configuration
-        let MAX_SLIPPAGE = 0.5;
-        let MIN_PROFIT_PERCENT = 0.5;
-        let MAX_POSITION_AGE = 600;
-        let MAX_GAS_PRICE = 200;
-        let GAS_LIMIT = 200000;
-        let PREVENT_SEQUENTIAL_TRADES = true;
+        let MAX_SLIPPAGE = 0.5; // 0.5% max slippage allowed
+        let MIN_PROFIT_PERCENT = 0.5; // Don't sell unless profit ≥0.5%
+        let MAX_POSITION_AGE = 600; // Force-sell after 10 minutes if profit target not hit
+        let MAX_GAS_PRICE = 200; // Don't trade if gas > 200 gwei
+        let GAS_LIMIT = 200000; // Estimated gas per trade
+        let PREVENT_SEQUENTIAL_TRADES = true; // Avoid rapid buy/sell on the same token
 
         // Data Configuration
         let PRICE_HISTORY_DURATION = 24;
@@ -1473,6 +1473,13 @@
         };
 
         // ============================================
+        // Utility Functions
+        // ============================================
+        function norm(a) { return String(a).toLowerCase(); }
+        function short(a) { if (!a) return ''; return a.substring(0, 6) + '...' + a.substring(a.length - 4); }
+        function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+        // ============================================
         // Initialization
         // ============================================
         document.addEventListener('DOMContentLoaded', function () {
@@ -1542,6 +1549,17 @@
         function initializeApp() {
             updateUI();
             startUptimeTimer();
+
+            // Ensure background tasks run continuously
+            document.addEventListener('visibilitychange', () => {
+                if (state.isRunning) {
+                    console.log(`Tab visibility changed to: ${document.visibilityState}`);
+                    if (document.visibilityState === 'visible') {
+                        updateDashboard();
+                        updatePortfolioUI();
+                    }
+                }
+            });
         }
 
         function initializeCharts() {
@@ -1742,12 +1760,14 @@
             if (state.patternDetectionActive) return;
             state.patternDetectionActive = true;
 
+            // Run every 15 seconds, regardless of tab activity
             state.patternDetectionTimer = setInterval(() => {
                 if (state.isRunning && state.activeSession?.connected) {
                     detectAllPatterns();
                 }
             }, 15000);
 
+            // Initial detection after 5 seconds
             setTimeout(() => {
                 if (state.isRunning && state.activeSession?.connected) detectAllPatterns();
             }, 5000);
@@ -2460,7 +2480,8 @@
                     );
                 } else {
                     const tokenContract = new ethers.Contract(poolInfo.token0, ["function approve(address spender, uint256 amount) returns (bool)"], state.signer);
-                    await tokenContract.approve(routerAddress, ethers.MaxUint256);
+                    const amountToApprove = ethers.parseUnits(tokenAmount.toString(), decimals);
+                    await tokenContract.approve(routerAddress, amountToApprove);
                     tx = await router.swapExactTokensForETH(
                         Math.floor(tokenAmount * 1e18),
                         Math.floor(tokenAmount * (1 - (MAX_SLIPPAGE / 100)) * currentPrice * 1e18),
@@ -3226,6 +3247,7 @@
                 hideLoading('startSpinner');
                 document.getElementById('startBotBtn').disabled = false;
                 state.isRunning = false;
+                showToast('error', `Failed to start: ${errorMsg}`);
             }
         }
 
@@ -3251,6 +3273,7 @@
                 showToast('success', 'Trading stopped!');
             } catch (error) {
                 const errorMsg = error && error.message ? error.message : String(error);
+                showToast('error', `Failed to stop: ${errorMsg}`);
             } finally {
                 hideLoading('stopSpinner');
                 document.getElementById('stopBotBtn').disabled = false;
@@ -3812,7 +3835,7 @@
                 }
 
             } catch (error) {
-                showToast('error', `Swap log error for ${s?.chain?.name || 'unknown'}: ${error.message || String(error)}`);
+                console.error(`Swap log error for ${s?.chain?.name || 'unknown'}:`, error);
             }
         }
 
@@ -3826,8 +3849,6 @@
             s.pairPrices.get(a).set(b, { price: p, updatedAt: ts });
             s.pairPrices.get(b).set(a, { price: 1 / p, updatedAt: ts });
         }
-
-        function norm(a) { return String(a).toLowerCase(); }
 
         function isStable(s, address) {
             address = norm(address);
@@ -3943,8 +3964,6 @@
             return promise;
         }
 
-        function short(a) { if (!a) return ''; return a.substring(0, 6) + '...' + a.substring(a.length - 4); }
-
         async function loadPool(s, address) {
             if (!current(s)) return null;
             address = norm(address);
@@ -4020,6 +4039,7 @@
                 state.priceUpdateTimer = null;
             }
 
+            // Run every 1 second to ensure background operation
             state.priceUpdateTimer = setInterval(async () => {
                 if (!state.isRunning || !state.activeSession?.connected) return;
 
@@ -4205,8 +4225,6 @@
         function closeWebSockets() {
             if (state.activeSession) destroySession(state.activeSession);
         }
-
-        function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
         window.addEventListener('beforeunload', function () {
             state.isRunning = false;

@@ -1,8 +1,0 @@
-backups
-venv
-state.json
-trades.json
-trading_bot.log
-__pycache__
-trading_bot_state.json
-uniswap_monitor.log
