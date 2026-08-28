@@ -374,46 +374,71 @@ def run_bot():
 
 @app.route('/')
 def index():
-    return render_template('SafeTrader_Defi_v3.html')
+    return render_template('templates/index.html')
 
 @app.route('/api/state')
 def get_state():
+    try:
+        trade_amount = calculate_trade_amount()
+    except Exception:
+        trade_amount = 0
     return jsonify({
         'isRunning': state.is_running,
+        'is_running': state.is_running,
         'prices': state.prices,
         'portfolio': state.portfolio,
         'patterns': state.active_patterns,
+        'active_patterns': state.active_patterns,
         'stats': state.pattern_stats,
+        'pattern_stats': {
+            'total_patterns': state.pattern_stats.get('totalPatterns', 0),
+            'buy_patterns': state.pattern_stats.get('buyPatterns', 0),
+            'sell_patterns': state.pattern_stats.get('sellPatterns', 0),
+            'tokens_with_patterns': state.pattern_stats.get('tokensWithPatterns', 0)
+        },
         'gasPrice': state.current_gas_price,
+        'current_gas_price': state.current_gas_price,
         'lastUpdate': state.last_price_update.isoformat() if state.last_price_update else None,
+        'last_price_update': state.last_price_update.isoformat() if state.last_price_update else None,
         'walletConnected': state.wallet_connected,
-        'liveMode': state.live_mode
+        'liveMode': state.live_mode,
+        'live_mode': state.live_mode,
+        'current_network': state.current_chain_key,
+        'observed_tokens': list(state.observed_tokens),
+        'trades': state.trades,
+        'constants': {
+            'BLOCKCHAIN_NETWORK': state.BLOCKCHAIN_NETWORK,
+            'STARTING_ETH': state.STARTING_ETH,
+            'TRADE_AMOUNT_PERCENT': state.TRADE_AMOUNT_PERCENT,
+            'MIN_TRADE_AMOUNT_ETH': state.MIN_TRADE_AMOUNT_ETH,
+            'MAX_TRADES': state.MAX_TRADES,
+            'TRADE_COOLDOWN': state.TRADE_COOLDOWN,
+            'MIN_PRICE_CHANGE': state.MIN_PRICE_CHANGE,
+            'MIN_TIME_WINDOW': state.MIN_TIME_WINDOW,
+            'MAX_TIME_WINDOW': state.MAX_TIME_WINDOW,
+            'MIN_OCCURRENCES': state.MIN_OCCURRENCES,
+            'MIN_WIN_RATE': state.MIN_WIN_RATE,
+            'BACKTEST_PERIOD': state.BACKTEST_PERIOD,
+            'TARGET_PROFIT_PERCENT': state.TARGET_PROFIT_PERCENT,
+            'MIN_PROFITABILITY': state.MIN_PROFITABILITY,
+            'MAX_PATTERNS_PER_TOKEN': state.MAX_PATTERNS_PER_TOKEN,
+            'MAX_SLIPPAGE': state.MAX_SLIPPAGE,
+            'MIN_PROFIT_PERCENT': state.MIN_PROFIT_PERCENT,
+            'MAX_POSITION_AGE': state.MAX_POSITION_AGE,
+            'MAX_GAS_PRICE': state.MAX_GAS_PRICE,
+            'GAS_LIMIT': state.GAS_LIMIT,
+            'PREVENT_SEQUENTIAL_TRADES': state.PREVENT_SEQUENTIAL_TRADES,
+            'PRICE_HISTORY_DURATION': state.PRICE_HISTORY_DURATION,
+            'MAX_PRICE_HISTORY': state.MAX_PRICE_HISTORY
+        },
+        'start_time': state.start_time.timestamp() if state.start_time else None,
+        'trade_amount_eth': trade_amount
     })
-
-@app.route('/api/start', methods=['POST'])
-def start_bot():
-    if state.is_running:
-        return jsonify({'status': 'already_running'})
-    threading.Thread(target=run_bot, daemon=True).start()
-    return jsonify({'status': 'started'})
-
-@app.route('/api/stop', methods=['POST'])
-def stop_bot():
-    if not state.is_running:
-        return jsonify({'status': 'not_running'})
-    state.is_running = False
-    state.manually_stopped = True
-    return jsonify({'status': 'stopped'})
 
 @app.route('/api/connect_wallet', methods=['POST'])
 def connect_wallet():
     state.wallet_connected = True
     return jsonify({'status': 'connected'})
-
-@app.route('/api/toggle_live', methods=['POST'])
-def toggle_live():
-    state.live_mode = not state.live_mode
-    return jsonify({'status': 'live_mode_on' if state.live_mode else 'live_mode_off'})
 
 @app.route('/api/switch_network', methods=['POST'])
 def switch_network():
@@ -436,6 +461,52 @@ def test_connection():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+@app.route('/api/start_bot', methods=['POST'])
+def start_bot():
+    if state.is_running:
+        return jsonify({'success': False, 'message': 'Already running'})
+    threading.Thread(target=run_bot, daemon=True).start()
+    return jsonify({'success': True, 'message': 'Started'})
+
+@app.route('/api/stop_bot', methods=['POST'])
+def stop_bot():
+    if not state.is_running:
+        return jsonify({'success': False, 'message': 'Not running'})
+    state.is_running = False
+    state.manually_stopped = True
+    return jsonify({'success': True, 'message': 'Stopped'})
+
+@app.route('/api/toggle_live_mode', methods=['POST'])
+def toggle_live_mode():
+    state.live_mode = not state.live_mode
+    return jsonify({'success': True, 'live_mode': state.live_mode, 'message': 'Mode toggled'})
+
+@app.route('/api/refresh_prices', methods=['POST'])
+def refresh_prices():
+    try:
+        update_prices_for_session()
+        return jsonify({'success': True, 'message': 'Prices refreshed'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/api/clear_trade_history', methods=['POST'])
+def clear_trade_history():
+    state.trades = []
+    return jsonify({'success': True, 'message': 'History cleared'})
+
+@app.route('/api/clear_patterns', methods=['POST'])
+def clear_patterns():
+    state.active_patterns = {}
+    return jsonify({'success': True, 'message': 'Patterns cleared'})
+
+@app.route('/api/export_trade_history')
+def export_trade_history():
+    return jsonify({'success': True, 'trades': state.trades})
+
+@app.route('/api/export_patterns')
+def export_patterns():
+    return jsonify({'success': True, 'patterns': list(state.active_patterns.values())})
+
 if __name__ == '__main__':
     initialize_known_tokens()
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=5050, debug=True)
