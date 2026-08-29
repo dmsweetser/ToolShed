@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uniswap Pattern Trader</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            margin-left: 5px;
+        }
+
+        .status-running {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-stopped {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-disconnected {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: #f8f9fa;
+        }
+
+        .profit {
+            color: #28a745;
+        }
+
+        .loss {
+            color: #dc3545;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: #007bff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            display: none;
+        }
+
+        .toast.show {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="toast" id="toast"></div>
+    <div class="container">
+        <h1>Uniswap Pattern Trader</h1>
+        <p><strong>Status:</strong> <span id="botStatus">Not Running</span></p>
+
+        <div class="card">
+            <h2>Controls</h2>
+            <button class="btn btn-primary" id="startBtn" onclick="startBot()">Start Trading</button>
+            <button class="btn btn-danger" id="stopBtn" onclick="stopBot()" disabled>Stop Trading</button>
+            <button class="btn btn-success" id="connectWalletBtn" onclick="connectWallet()">Connect Wallet</button>
+            <button class="btn btn-warning" id="toggleLiveModeBtn" onclick="toggleLiveMode()">Live Mode: OFF</button>
+            <select id="networkSelect" onchange="switchNetwork()">
+                <option value="arbitrum">Arbitrum</option>
+                <option value="ethereum">Ethereum</option>
+                <option value="base">Base</option>
+            </select>
+            <p><strong>Uptime:</strong> <span id="uptime">00:00:00</span> |
+                <strong>Gas Price:</strong> <span id="gasPrice">0 gwei</span> |
+                <strong>Tokens Watched:</strong> <span id="tokensWatched">0</span> |
+                <strong>Patterns Found:</strong> <span id="patternsFound">0</span>
+            </p>
+        </div>
+
+        <div class="card">
+            <h2>Portfolio</h2>
+            <p><strong>Starting ETH:</strong> <span id="startingEth">0.0033 ETH</span></p>
+            <p><strong>Current Value:</strong> <span id="currentEth">0.0033 ETH</span></p>
+            <p><strong>Realized PnL:</strong> <span id="realizedPnL" class="profit">0 ETH</span></p>
+            <p><strong>Unrealized PnL:</strong> <span id="unrealizedPnL">0 ETH</span></p>
+            <p><strong>Total PnL:</strong> <span id="totalPnL">0 ETH</span></p>
+        </div>
+
+        <div class="card">
+            <h2>Open Positions</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Token</th>
+                        <th>Bought At</th>
+                        <th>Current Price</th>
+                        <th>Amount</th>
+                        <th>Value (ETH)</th>
+                        <th>Unrealized PnL</th>
+                        <th>Pattern</th>
+                    </tr>
+                </thead>
+                <tbody id="positionsBody">
+                    <tr>
+                        <td colspan="7">No open positions</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>Detected Patterns</h2>
+            <div id="patternsList">
+                <p>No patterns found yet. Start the bot to begin detection.</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Recent Trades</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Token</th>
+                        <th>Action</th>
+                        <th>Price (ETH)</th>
+                        <th>Amount</th>
+                        <th>PnL (ETH)</th>
+                        <th>Pattern</th>
+                    </tr>
+                </thead>
+                <tbody id="tradesBody">
+                    <tr>
+                        <td colspan="7">No trades yet</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>Configuration</h2>
+            <div>
+                <label><strong>Starting ETH:</strong> <input type="number" id="startingEthInput" value="0.0033"
+                        step="0.0001" onchange="updateStartingEth()"></label>
+                <label><strong>Trade % of Budget:</strong> <input type="number" id="tradePercentInput" value="0.5"
+                        step="0.1" onchange="updateTradePercent()"></label>
+                <label><strong>Min Trade Amount (ETH):</strong> <input type="number" id="minTradeInput" value="0.0003"
+                        step="0.0001" onchange="updateMinTrade()"></label>
+                <label><strong>Target Profit %:</strong> <input type="number" id="targetProfitInput" value="0.5"
+                        step="0.1" onchange="updateTargetProfit()"></label>
+                <label><strong>Max Position Age (s):</strong> <input type="number" id="maxPositionAgeInput" value="300"
+                        onchange="updateMaxPositionAge()"></label>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let BLOCKCHAIN_NETWORK = 'arbitrum';
+        let STARTING_ETH = 0.0033;
+        let TRADE_AMOUNT_PERCENT = 0.5;
+        let MIN_TRADE_AMOUNT_ETH = 0.0003;
+        let TARGET_PROFIT_PERCENT = 0.5;
+        let MAX_POSITION_AGE = 300;
+        let MAX_TRADES = 200;
+        let TRADE_COOLDOWN = 60;
+        let MIN_PRICE_CHANGE = 0.5;
+        let MIN_TIME_WINDOW = 5;
+        let MAX_TIME_WINDOW = 120;
+        let MIN_OCCURRENCES = 1;
+        let MIN_WIN_RATE = 50;
+        let MIN_PROFITABILITY = 0.5;
+        let MAX_SLIPPAGE = 0.5;
+        let MAX_GAS_PRICE = 200;
+        let GAS_LIMIT = 200000;
+        let PREVENT_SEQUENTIAL_TRADES = true;
+        let PRICE_HISTORY_DURATION = 12;
+        let MAX_PRICE_HISTORY = 5000;
+
+        const CHAINS = {
+            arbitrum: {
+                name: "Arbitrum One",
+                chainId: 42161,
+                rpcs: [
+                    "https://arbitrum-mainnet.public.blastapi.io",
+                    "https://arb1.arbitrum.io/rpc"
+                ],
+                factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+                wrappedNative: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+                quoteLabel: "ETH",
+                stables: ["0xaf88d065e77c8cC2239327C5EDb3A432268e5831", "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"]
+            },
+            ethereum: {
+                name: "Ethereum Mainnet",
+                chainId: 1,
+                rpcs: ["https://eth.llamarpc.com", "https://rpc.ankr.com/eth"],
+                factory: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
+                wrappedNative: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+                quoteLabel: "ETH",
+                stables: ["0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"]
+            },
+            base: {
+                name: "Base",
+                chainId: 8453,
+                rpcs: ["https://base-mainnet.public.blastapi.io", "https://base-rpc.publicnode.com"],
+                factory: "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
+                wrappedNative: "0x4200000000000000000000000000000000000006",
+                quoteLabel: "ETH",
+                stables: ["0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"]
+            }
+        };
+
+        const POOL_FEES = { LOW: 500, MEDIUM: 3000, HIGH: 10000 };
+        const PATTERN_TYPES = { BUY: 'buy', SELL: 'sell' };
+        const ERC20_ABI = ["function symbol() view returns (string)", "function decimals() view returns (uint8)", "function balanceOf(address) view returns (uint256)"];
+        const POOL_ABI = ["function token0() view returns (address)", "function token1() view returns (address)", "function fee() view returns (uint24)"];
+
+        let state = {
+            isRunning: false,
+            currentChainKey: BLOCKCHAIN_NETWORK,
+            prices: {},
+            priceHistory: {},
+            trades: [],
+            activePatterns: new Map(),
+            portfolio: {
+                balances: { ETH: STARTING_ETH },
+                positions: [],
+                realizedPnL: 0,
+                unrealizedPnL: 0,
+                gasSpent: 0,
+                feesPaid: 0,
+                startingEth: STARTING_ETH,
+                currentEth: STARTING_ETH,
+                equityHistory: [{ timestamp: Date.now(), ethValue: STARTING_ETH }]
+            },
+            lastTradedToken: null,
+            lastTradeTimes: {},
+            startTime: null,
+            lastPriceUpdate: null,
+            currentGasPrice: 20,
+            manuallyStopped: true,
+            observedTokens: new Set(),
+            patternStats: { totalPatterns: 0, buyPatterns: 0, sellPatterns: 0, tokensWithPatterns: 0 },
+            openBuyOrders: new Map(),
+            patternDetectionActive: false,
+            walletConnected: false,
+            liveMode: false,
+            provider: null,
+            signer: null,
+            activeSession: null
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            restoreBackup();
+            initializeApp();
+            updateUI();
+        });
+
+        function initializeApp() {
+            updateBotStatus();
+            startUptimeTimer();
+            updateConstantsDisplay();
+        }
+
+        function startUptimeTimer() {
+            setInterval(() => {
+                if (state.startTime) {
+                    const now = new Date();
+                    const diff = now - state.startTime;
+                    const h = Math.floor(diff / (1000 * 60 * 60));
+                    const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const s = Math.floor((diff % (1000 * 60)) / 1000);
+                    document.getElementById('uptime').textContent = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                }
+            }, 1000);
+        }
+
+        function calculateTradeAmount() {
+            const availableETH = state.portfolio.currentEth || STARTING_ETH;
+            const percentBasedAmount = availableETH * (TRADE_AMOUNT_PERCENT / 100);
+            return Math.max(percentBasedAmount, MIN_TRADE_AMOUNT_ETH);
+        }
+
+        function startPatternDetection() {
+            if (state.patternDetectionActive) return;
+            state.patternDetectionActive = true;
+
+            state.patternDetectionTimer = setInterval(() => {
+                if (state.isRunning && state.activeSession?.connected) {
+                    detectAllPatterns();
+                }
+            }, 3000);
+
+            setTimeout(() => {
+                if (state.isRunning && state.activeSession?.connected) detectAllPatterns();
+            }, 1000);
+        }
+
+        function stopPatternDetection() {
+            if (state.patternDetectionTimer) {
+                clearInterval(state.patternDetectionTimer);
+                state.patternDetectionTimer = null;
+            }
+            state.patternDetectionActive = false;
+        }
+
+        function detectAllPatterns() {
+            const tokens = Array.from(state.observedTokens);
+            const newActivePatterns = new Map();
+
+            for (const token of tokens) {
+                const history = state.priceHistory[token];
+                if (!history || history.length < 3) continue;
+
+                const buyPatterns = detectBuyPatternsForToken(history, token);
+                const sellPatterns = detectSellPatternsForToken(history, token);
+
+                [...buyPatterns, ...sellPatterns].forEach(pattern => {
+                    if (!isPatternValid(pattern)) return;
+
+                    const patternKey = getPatternKey(pattern);
+                    const existingPatternKey = `${token}_${patternKey}`;
+
+                    if (!newActivePatterns.has(existingPatternKey)) {
+                        newActivePatterns.set(existingPatternKey, {
+                            ...pattern,
+                            token,
+                            occurrences: 1,
+                            firstSeen: pattern.timestamp,
+                            lastSeen: pattern.timestamp,
+                            winRate: 0,
+                            totalTrades: 0,
+                            winningTrades: 0,
+                            avgProfitability: 0,
+                            totalProfit: 0
+                        });
+                    } else {
+                        const existing = newActivePatterns.get(existingPatternKey);
+                        existing.occurrences++;
+                        existing.lastSeen = Math.max(existing.lastSeen, pattern.timestamp);
+                    }
+                });
+            }
+
+            validatePatternsWithBacktesting(newActivePatterns);
+            state.activePatterns = newActivePatterns;
+            updatePatternStats();
+            renderPatterns();
+        }
+
+        function isPatternValid(pattern) {
+            if (pattern.dropPct > 100 || pattern.risePct > 100) return false;
+            if (pattern.dropPct <= 0 || pattern.risePct <= 0) return false;
+            if (pattern.dropTime > MAX_TIME_WINDOW || pattern.riseTime > MAX_TIME_WINDOW) return false;
+            if (pattern.dropTime < MIN_TIME_WINDOW || pattern.riseTime < MIN_TIME_WINDOW) return false;
+            return true;
+        }
+
+        function detectBuyPatternsForToken(history, token) {
+            if (!history || history.length < 3) return [];
+            const patterns = [];
+            const minChange = MIN_PRICE_CHANGE / 100;
+            const minTime = MIN_TIME_WINDOW * 1000;
+            const maxTime = MAX_TIME_WINDOW * 1000;
+
+            for (let i = 1; i < history.length - 1; i++) {
+                const current = history[i];
+                const prev = history[i - 1];
+                const next = history[i + 1];
+
+                const dropPct = (current.price - prev.price) / prev.price;
+                const risePct = (next.price - current.price) / current.price;
+                const dropTime = (current.timestamp - prev.timestamp) / 1000;
+                const riseTime = (next.timestamp - current.timestamp) / 1000;
+
+                if (dropPct <= -minChange && risePct >= Math.abs(dropPct) * 1.1 &&
+                    dropTime >= minTime && dropTime <= maxTime &&
+                    riseTime >= minTime && riseTime <= maxTime) {
+                    patterns.push({
+                        type: PATTERN_TYPES.BUY,
+                        dropPct: Math.abs(dropPct) * 100,
+                        dropTime,
+                        risePct: risePct * 100,
+                        riseTime,
+                        token,
+                        timestamp: current.timestamp
+                    });
+                }
+            }
+            return patterns;
+        }
+
+        function detectSellPatternsForToken(history, token) {
+            if (!history || history.length < 3) return [];
+            const patterns = [];
+            const minChange = MIN_PRICE_CHANGE / 100;
+            const minTime = MIN_TIME_WINDOW * 1000;
+            const maxTime = MAX_TIME_WINDOW * 1000;
+
+            for (let i = 1; i < history.length - 1; i++) {
+                const current = history[i];
+                const prev = history[i - 1];
+                const next = history[i + 1];
+
+                const risePct = (current.price - prev.price) / prev.price;
+                const dropPct = (next.price - current.price) / current.price;
+                const riseTime = (current.timestamp - prev.timestamp) / 1000;
+                const dropTime = (next.timestamp - current.timestamp) / 1000;
+
+                if (risePct >= minChange && dropPct <= -risePct * 0.9 &&
+                    riseTime >= minTime && riseTime <= maxTime &&
+                    dropTime >= minTime && dropTime <= maxTime) {
+                    patterns.push({
+                        type: PATTERN_TYPES.SELL,
+                        risePct: risePct * 100,
+                        riseTime,
+                        dropPct: Math.abs(dropPct) * 100,
+                        dropTime,
+                        token,
+                        timestamp: current.timestamp
+                    });
+                }
+            }
+            return patterns;
+        }
+
+        function getPatternKey(pattern) {
+            if (pattern.type === PATTERN_TYPES.BUY) {
+                return `BUY_${Math.round(pattern.dropPct)}%_${Math.round(pattern.dropTime)}s_${Math.round(pattern.risePct)}%_${Math.round(pattern.riseTime)}s`;
+            } else {
+                return `SELL_${Math.round(pattern.risePct)}%_${Math.round(pattern.riseTime)}s_${Math.round(pattern.dropPct)}%_${Math.round(pattern.dropTime)}s`;
+            }
+        }
+
+        function getPatternDescription(pattern) {
+            if (pattern.type === PATTERN_TYPES.BUY) {
+                return `Buy when price drops ${pattern.dropPct.toFixed(1)}% over ${pattern.dropTime.toFixed(0)}s, expecting ${pattern.risePct.toFixed(1)}% rise`;
+            } else {
+                return `Sell when price rises ${pattern.risePct.toFixed(1)}% over ${pattern.riseTime.toFixed(0)}s, expecting ${pattern.dropPct.toFixed(1)}% drop`;
+            }
+        }
+
+        function validatePatternsWithBacktesting(patterns) {
+            const backtestPeriodMs = 12 * 60 * 60 * 1000;
+
+            patterns.forEach((pattern, key) => {
+                const history = state.priceHistory[pattern.token];
+                if (!history || history.length < 5) {
+                    patterns.delete(key);
+                    return;
+                }
+
+                const backtestResult = backtestPattern(pattern, history, backtestPeriodMs);
+
+                if (backtestResult.occurrences < MIN_OCCURRENCES) {
+                    patterns.delete(key);
+                    return;
+                }
+
+                if (backtestResult.winRate < MIN_WIN_RATE) {
+                    patterns.delete(key);
+                    return;
+                }
+
+                if (backtestResult.avgProfitability < MIN_PROFITABILITY) {
+                    patterns.delete(key);
+                    return;
+                }
+
+                pattern.winRate = backtestResult.winRate;
+                pattern.totalTrades = backtestResult.totalTrades;
+                pattern.winningTrades = backtestResult.winningTrades;
+                pattern.avgProfitability = backtestResult.avgProfitability;
+                pattern.totalProfit = backtestResult.totalProfit;
+            });
+        }
+
+        function backtestPattern(pattern, history, backtestPeriodMs) {
+            const now = Date.now();
+            const startTime = now - backtestPeriodMs;
+            const backtestHistory = history.filter(h => h.timestamp >= startTime);
+            if (backtestHistory.length < 3) return { occurrences: 0, totalTrades: 0, winningTrades: 0, winRate: 0, avgProfitability: 0, totalProfit: 0 };
+
+            const tradeAmountETH = calculateTradeAmount();
+            let totalTrades = 0;
+            let winningTrades = 0;
+            let totalProfit = 0;
+
+            for (let i = 1; i < backtestHistory.length - 1; i++) {
+                const current = backtestHistory[i];
+                const prev = backtestHistory[i - 1];
+                const next = backtestHistory[i + 1];
+
+                if (pattern.type === PATTERN_TYPES.BUY) {
+                    const dropPct = (current.price - prev.price) / prev.price;
+                    const risePct = (next.price - current.price) / current.price;
+                    const dropTime = (current.timestamp - prev.timestamp) / 1000;
+                    const riseTime = (next.timestamp - current.timestamp) / 1000;
+
+                    if (Math.abs(dropPct) >= pattern.dropPct / 100 &&
+                        risePct >= pattern.risePct / 100 &&
+                        dropTime >= pattern.dropTime - 2 &&
+                        dropTime <= pattern.dropTime + 2 &&
+                        riseTime >= pattern.riseTime - 2 &&
+                        riseTime <= pattern.riseTime + 2) {
+
+                        totalTrades++;
+                        const entryPrice = current.price;
+                        const exitPrice = next.price;
+                        const tokenAmount = tradeAmountETH / entryPrice;
+                        const exitValue = tokenAmount * exitPrice;
+                        const feePercent = 0.0005;
+                        const buyFee = tradeAmountETH * feePercent;
+                        const sellFee = exitValue * feePercent;
+                        const profit = exitValue - tradeAmountETH - buyFee - sellFee;
+
+                        if (profit > 0) winningTrades++;
+                        totalProfit += profit;
+                        i++;
+                    }
+                } else if (pattern.type === PATTERN_TYPES.SELL) {
+                    const risePct = (current.price - prev.price) / prev.price;
+                    const dropPct = (next.price - current.price) / current.price;
+                    const riseTime = (current.timestamp - prev.timestamp) / 1000;
+                    const dropTime = (next.timestamp - current.timestamp) / 1000;
+
+                    if (risePct >= pattern.risePct / 100 &&
+                        Math.abs(dropPct) >= pattern.dropPct / 100 &&
+                        riseTime >= pattern.riseTime - 2 &&
+                        riseTime <= pattern.riseTime + 2 &&
+                        dropTime >= pattern.dropTime - 2 &&
+                        dropTime <= pattern.dropTime + 2) {
+
+                        totalTrades++;
+                        const entryPrice = prev.price;
+                        const exitPrice = current.price;
+                        const tokenAmount = tradeAmountETH / entryPrice;
+                        const exitValue = tokenAmount * exitPrice;
+                        const feePercent = 0.0005;
+                        const buyFee = tradeAmountETH * feePercent;
+                        const sellFee = exitValue * feePercent;
+                        const profit = exitValue - tradeAmountETH - buyFee - sellFee;
+
+                        if (profit > 0) winningTrades++;
+                        totalProfit += profit;
+                        i++;
+                    }
+                }
+            }
+
+            const avgProfitability = totalTrades > 0 ? (totalProfit / tradeAmountETH / totalTrades * 100) : 0;
+            return {
+                occurrences: totalTrades,
+                totalTrades,
+                winningTrades,
+                winRate: totalTrades > 0 ? (winningTrades / totalTrades * 100) : 0,
+                avgProfitability,
+                totalProfit
+            };
+        }
+
+        function updatePatternStats() {
+            const patternsArray = Array.from(state.activePatterns.values());
+            state.patternStats.totalPatterns = patternsArray.length;
+            state.patternStats.buyPatterns = patternsArray.filter(p => p.type === PATTERN_TYPES.BUY).length;
+            state.patternStats.sellPatterns = patternsArray.filter(p => p.type === PATTERN_TYPES.SELL).length;
+            state.patternStats.tokensWithPatterns = new Set(patternsArray.map(p => p.token)).size;
+            document.getElementById('patternsFound').textContent = state.patternStats.totalPatterns;
+        }
+
+        function renderPatterns() {
+            const container = document.getElementById('patternsList');
+            const patternsArray = Array.from(state.activePatterns.values());
+
+            if (patternsArray.length === 0) {
+                container.innerHTML = '<p>No patterns found yet. Start the bot to begin detection.</p>';
+                return;
+            }
+
+            let html = '<table><thead><tr><th>Token</th><th>Type</th><th>Description</th><th>Success Rate</th><th>Avg Profitability</th><th>Occurrences</th></tr></thead><tbody>';
+            patternsArray.forEach(pattern => {
+                const typeClass = pattern.type === PATTERN_TYPES.BUY ? 'profit' : 'loss';
+                html += `
+                    <tr>
+                        <td><strong>${pattern.token}</strong></td>
+                        <td class="${typeClass}">${pattern.type.toUpperCase()}</td>
+                        <td>${getPatternDescription(pattern)}</td>
+                        <td>${pattern.winRate.toFixed(1)}%</td>
+                        <td>${pattern.avgProfitability.toFixed(1)}%</td>
+                        <td>${pattern.occurrences}</td>
+                    </tr>
+                `;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        async function executeTrade(token, action, patternDescription, amountETH = null, pattern = null) {
+            if (!state.isRunning) return null;
+
+            amountETH = amountETH || calculateTradeAmount();
+            const currentPrice = state.prices[token];
+            if (!currentPrice) return null;
+
+            if (amountETH <= 0) return null;
+
+            const totalOpenPositions = state.portfolio.positions.filter(p => p.status === 'open').length;
+            if (totalOpenPositions >= MAX_TRADES) return null;
+
+            const lastTradeTime = state.lastTradeTimes[token];
+            if (lastTradeTime && (Date.now() - lastTradeTime) < (TRADE_COOLDOWN * 1000)) return null;
+
+            if (PREVENT_SEQUENTIAL_TRADES && state.lastTradedToken === token) return null;
+
+            if (action === 'sell') {
+                const tokenBalance = state.portfolio.balances[token] || 0;
+                if (tokenBalance <= 0) return null;
+            }
+
+            const tradeResult = await simulateTrade(token, action, amountETH / currentPrice, currentPrice);
+
+            if (!tradeResult.success) {
+                const failedTrade = {
+                    id: 'trade_' + Date.now(),
+                    timestamp: new Date().toISOString(),
+                    token,
+                    type: action,
+                    price: currentPrice,
+                    tokenAmount: amountETH / currentPrice,
+                    amountETH,
+                    status: 'failed',
+                    reason: tradeResult.reason,
+                    pnl: 0,
+                    pattern: patternDescription
+                };
+                state.trades.push(failedTrade);
+                state.portfolio.failedTrades++;
+                state.portfolio.totalTrades++;
+                updateDashboard();
+                return failedTrade;
+            }
+
+            const trade = {
+                id: 'trade_' + Date.now(),
+                timestamp: new Date().toISOString(),
+                token,
+                type: action,
+                price: tradeResult.executionPrice,
+                tokenAmount: tradeResult.tokenAmount,
+                amountETH: tradeResult.amountETH,
+                status: 'open',
+                pnl: 0,
+                pattern: patternDescription,
+                patternObj: pattern
+            };
+
+            updatePortfolioForTrade(trade, action, tradeResult);
+            state.trades.push(trade);
+            state.portfolio.totalTrades++;
+            state.lastTradedToken = token;
+            state.lastTradeTimes[token] = Date.now();
+
+            if (action === 'sell') {
+                state.openBuyOrders.delete(token);
+                await settleTrade(trade);
+            } else {
+                state.openBuyOrders.set(token, {
+                    tradeId: trade.id,
+                    pattern: patternDescription,
+                    entryPrice: tradeResult.executionPrice,
+                    entryTime: Date.now()
+                });
+            }
+
+            updateDashboard();
+            return trade;
+        }
+
+        async function simulateTrade(token, action, tokenAmount, currentPrice) {
+            const gasPrice = state.currentGasPrice || MAX_GAS_PRICE;
+            const gasUsed = GAS_LIMIT;
+            const feePercent = 0.0005;
+            const feeAmount = (tokenAmount * currentPrice) * feePercent;
+            const priceImpact = 0.1;
+            const slippage = Math.random() * MAX_SLIPPAGE * 0.5;
+
+            let executionPrice;
+            if (action === 'buy') {
+                executionPrice = currentPrice * (1 + slippage / 100);
+            } else {
+                executionPrice = currentPrice * (1 - slippage / 100);
+            }
+
+            const amountETH = tokenAmount * executionPrice;
+            const actualTokenAmount = action === 'buy' ? (amountETH / executionPrice) : tokenAmount;
+
+            return {
+                success: true,
+                tokenAmount: actualTokenAmount,
+                amountETH,
+                executionPrice,
+                gasUsed,
+                gasPrice,
+                feeAmount,
+                priceImpact,
+                slippage
+            };
+        }
+
+        function updatePortfolioForTrade(trade, action, tradeResult) {
+            const token = trade.token;
+            const gasCostETH = tradeResult.gasUsed * tradeResult.gasPrice / 1e9 / 1e9;
+            const feeCostETH = tradeResult.feeAmount;
+            const totalCostETH = gasCostETH + feeCostETH;
+
+            if (action === 'buy') {
+                const ethBalance = state.portfolio.balances['ETH'] || 0;
+                const totalTradeCost = tradeResult.amountETH + totalCostETH;
+
+                if (ethBalance < totalTradeCost) {
+                    trade.status = 'failed';
+                    trade.reason = 'Not enough ETH';
+                    state.portfolio.failedTrades++;
+                    return;
+                }
+
+                state.portfolio.balances['ETH'] = ethBalance - totalTradeCost;
+
+                if (!state.portfolio.balances[token]) {
+                    state.portfolio.balances[token] = 0;
+                }
+                state.portfolio.balances[token] += tradeResult.tokenAmount;
+
+                let position = state.portfolio.positions.find(p => p.token === token && p.status === 'open');
+                if (!position) {
+                    position = {
+                        id: trade.id,
+                        token,
+                        entryPrice: tradeResult.executionPrice,
+                        amount: tradeResult.tokenAmount,
+                        usdValue: tradeResult.amountETH,
+                        entryTime: Date.now(),
+                        gasPaid: gasCostETH,
+                        feesPaid: feeCostETH,
+                        status: 'open',
+                        tradeId: trade.id,
+                        pattern: trade.pattern,
+                        patternObj: trade.patternObj
+                    };
+                    state.portfolio.positions.push(position);
+                } else {
+                    position.amount += tradeResult.tokenAmount;
+                    position.usdValue += tradeResult.amountETH;
+                    position.gasPaid += gasCostETH;
+                    position.feesPaid += feeCostETH;
+                }
+
+                state.portfolio.gasSpent += gasCostETH;
+                state.portfolio.feesPaid += feeCostETH;
+                state.portfolio.totalFees += totalCostETH;
+            } else if (action === 'sell') {
+                const openPositions = state.portfolio.positions
+                    .filter(p => p.token === token && p.status === 'open')
+                    .sort((a, b) => a.entryTime - b.entryTime);
+
+                if (openPositions.length === 0) {
+                    trade.status = 'failed';
+                    trade.reason = 'No open position';
+                    state.portfolio.failedTrades++;
+                    return;
+                }
+
+                const position = openPositions[0];
+                const amountToSell = Math.min(tradeResult.tokenAmount, position.amount);
+                const sellValueETH = amountToSell * tradeResult.executionPrice;
+                const costBasis = (amountToSell * position.entryPrice) +
+                    (amountToSell / position.amount) * (position.feesPaid + position.gasPaid);
+                const pnl = sellValueETH - costBasis - totalCostETH;
+
+                position.amount -= amountToSell;
+                position.feesPaid += feeCostETH;
+                position.gasPaid += gasCostETH;
+
+                if (position.amount <= 0.000001) {
+                    position.status = 'closed';
+                    position.exitPrice = tradeResult.executionPrice;
+                    position.exitTime = Date.now();
+                    position.pnl = pnl;
+                }
+
+                state.portfolio.realizedPnL += pnl;
+                if (pnl > 0) state.portfolio.winningTrades++;
+                else if (pnl < 0) state.portfolio.losingTrades++;
+
+                state.portfolio.balances['ETH'] = (state.portfolio.balances['ETH'] || 0) + sellValueETH - totalCostETH;
+                trade.pnl = pnl;
+                trade.status = 'closed';
+                trade.closedAt = new Date().toISOString();
+
+                if (state.portfolio.balances[token]) {
+                    state.portfolio.balances[token] -= amountToSell;
+                    if (state.portfolio.balances[token] < 0.000001) {
+                        delete state.portfolio.balances[token];
+                    }
+                }
+
+                state.portfolio.gasSpent += gasCostETH;
+                state.portfolio.feesPaid += feeCostETH;
+                state.portfolio.totalFees += totalCostETH;
+            }
+
+            updatePortfolioEquity();
+        }
+
+        async function settleTrade(trade) {
+            if (trade.type !== 'sell') return;
+
+            const openPositions = state.portfolio.positions
+                .filter(p => p.token === trade.token && p.status === 'open')
+                .sort((a, b) => a.entryTime - b.entryTime);
+
+            if (openPositions.length === 0) return;
+
+            const position = openPositions[0];
+            const amountToSell = Math.min(trade.tokenAmount, position.amount);
+            const sellValueETH = amountToSell * trade.price;
+            const costBasis = (amountToSell * position.entryPrice) +
+                (amountToSell / position.amount) * (position.feesPaid + position.gasPaid);
+            const pnl = sellValueETH - costBasis - (trade.fee || 0) - (trade.gasUsed * trade.gasPrice / 1e9 / 1e9);
+
+            position.amount -= amountToSell;
+            if (position.amount <= 0.000001) {
+                position.status = 'closed';
+                position.exitPrice = trade.price;
+                position.exitTime = Date.now();
+                position.pnl = pnl;
+            }
+
+            trade.pnl = pnl;
+            trade.status = 'closed';
+            trade.closedAt = new Date().toISOString();
+
+            state.portfolio.realizedPnL += pnl;
+            if (pnl > 0) state.portfolio.winningTrades++;
+            else if (pnl < 0) state.portfolio.losingTrades++;
+
+            updatePortfolioUI();
+        }
+
+        function checkPatternsForToken(token) {
+            if (!state.isRunning) return;
+
+            const history = state.priceHistory[token];
+            if (!history || history.length < 2) return;
+
+            const currentPrice = state.prices[token];
+            if (!currentPrice) return;
+
+            const openPosition = state.portfolio.positions.find(p => p.token === token && p.status === 'open');
+            const tokenPatterns = Array.from(state.activePatterns.values()).filter(p => p.token === token);
+
+            if (tokenPatterns.length === 0) return;
+
+            if (openPosition) {
+                const currentValue = openPosition.amount * currentPrice;
+                const costBasis = (openPosition.amount * openPosition.entryPrice) + openPosition.feesPaid + openPosition.gasPaid;
+                const profitETH = currentValue - costBasis;
+                const profitPercent = (profitETH / costBasis) * 100;
+
+                if (profitPercent >= TARGET_PROFIT_PERCENT && profitETH > 0) {
+                    const sellAmountETH = openPosition.amount * currentPrice;
+                    executeTrade(token, 'sell', `Profit target (${profitPercent.toFixed(2)}%) reached`, sellAmountETH);
+                    return;
+                }
+
+                const sellPatterns = tokenPatterns.filter(p => p.type === PATTERN_TYPES.SELL);
+                sellPatterns.forEach(pattern => {
+                    if (checkPatternMatch(token, pattern, PATTERN_TYPES.SELL)) {
+                        if (PREVENT_SEQUENTIAL_TRADES && state.lastTradedToken === token) return;
+                        const sellAmountETH = openPosition.amount * currentPrice;
+                        executeTrade(token, 'sell', getPatternDescription(pattern), sellAmountETH, pattern);
+                    }
+                });
+            }
+
+            if (!openPosition) {
+                const buyPatterns = tokenPatterns.filter(p => p.type === PATTERN_TYPES.BUY);
+                buyPatterns.forEach(pattern => {
+                    if (checkPatternMatch(token, pattern, PATTERN_TYPES.BUY)) {
+                        if (PREVENT_SEQUENTIAL_TRADES && state.lastTradedToken === token) return;
+                        const tradeAmount = calculateTradeAmount();
+                        executeTrade(token, 'buy', getPatternDescription(pattern), tradeAmount, pattern);
+                    }
+                });
+            }
+
+            if (openPosition && MAX_POSITION_AGE > 0) {
+                const positionAgeSeconds = (Date.now() - openPosition.entryTime) / 1000;
+                const currentValue = openPosition.amount * currentPrice;
+                const profit = currentValue - costBasis;
+
+                if (positionAgeSeconds > MAX_POSITION_AGE) {
+                    const reason = profit > 0 ?
+                        `Auto-sell after ${positionAgeSeconds.toFixed(0)}s (made ${(profit / costBasis * 100).toFixed(2)}% profit)` :
+                        `Auto-sell after ${positionAgeSeconds.toFixed(0)}s (loss of ${Math.abs(profit / costBasis * 100).toFixed(2)}%)`;
+                    executeTrade(token, 'sell', reason);
+                }
+            }
+        }
+
+        function checkPatternMatch(token, pattern, patternType) {
+            const history = state.priceHistory[token];
+            if (!history || history.length < 2) return false;
+
+            const currentPrice = state.prices[token];
+            if (!currentPrice) return false;
+
+            const recentHistory = history.slice(-5);
+
+            for (let i = recentHistory.length - 1; i >= 0; i--) {
+                const current = recentHistory[i];
+
+                if (patternType === PATTERN_TYPES.BUY) {
+                    for (let j = i - 1; j >= Math.max(0, i - 3); j--) {
+                        const prev = recentHistory[j];
+                        const dropPct = (current.price - prev.price) / prev.price;
+                        const timeDiff = (current.timestamp - prev.timestamp) / 1000;
+
+                        if (Math.abs(dropPct) >= pattern.dropPct / 100 &&
+                            timeDiff >= pattern.dropTime - 2 &&
+                            timeDiff <= pattern.dropTime + 2) {
+                            const priceDiff = Math.abs(currentPrice - current.price) / current.price;
+                            if (priceDiff < 0.05) return true;
+                        }
+                    }
+                } else if (patternType === PATTERN_TYPES.SELL) {
+                    for (let j = i - 1; j >= Math.max(0, i - 3); j--) {
+                        const prev = recentHistory[j];
+                        const risePct = (current.price - prev.price) / prev.price;
+                        const timeDiff = (current.timestamp - prev.timestamp) / 1000;
+
+                        if (risePct >= pattern.risePct / 100 &&
+                            timeDiff >= pattern.riseTime - 2 &&
+                            timeDiff <= pattern.riseTime + 2) {
+                            const priceDiff = Math.abs(currentPrice - current.price) / current.price;
+                            if (priceDiff < 0.05) return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        function checkAgeBasedSelling() {
+            if (!MAX_POSITION_AGE || !state.isRunning) return;
+
+            state.portfolio.positions.forEach(position => {
+                if (position.status !== 'open') return;
+                const positionAgeSeconds = (Date.now() - position.entryTime) / 1000;
+                const currentPrice = state.prices[position.token] || position.entryPrice;
+                const currentValue = position.amount * currentPrice;
+                const costBasis = (position.amount * position.entryPrice) + position.feesPaid + position.gasPaid;
+                const profit = currentValue - costBasis;
+
+                if (positionAgeSeconds > MAX_POSITION_AGE) {
+                    const reason = profit > 0 ?
+                        `Auto-sell after ${positionAgeSeconds.toFixed(0)}s (made ${(profit / costBasis * 100).toFixed(2)}% profit)` :
+                        `Auto-sell after ${positionAgeSeconds.toFixed(0)}s (loss of ${Math.abs(profit / costBasis * 100).toFixed(2)}%)`;
+                    executeTrade(position.token, 'sell', reason);
+                }
+            });
+        }
+
+        function updatePortfolioEquity() {
+            let totalEth = state.portfolio.balances['ETH'] || 0;
+            for (const [tokenSymbol, amount] of Object.entries(state.portfolio.balances)) {
+                if (tokenSymbol === 'ETH') continue;
+                const priceInEth = state.prices[tokenSymbol] || 0;
+                totalEth += amount * priceInEth;
+            }
+            state.portfolio.positions.forEach(position => {
+                if (position.status === 'open') {
+                    const currentPrice = state.prices[position.token] || position.entryPrice;
+                    const currentValue = position.amount * currentPrice;
+                    const unrealizedPnL = currentValue - (position.amount * position.entryPrice) - position.feesPaid - position.gasPaid;
+                    totalEth += unrealizedPnL;
+                }
+            });
+            state.portfolio.currentEth = totalEth;
+            state.portfolio.unrealizedPnL = totalEth - state.portfolio.startingEth - state.portfolio.realizedPnL;
+            state.portfolio.equityHistory.push({ timestamp: Date.now(), ethValue: state.portfolio.currentEth });
+            if (state.portfolio.equityHistory.length > 100) state.portfolio.equityHistory.shift();
+            updatePortfolioUI();
+        }
+
+        function updatePortfolioUI() {
+            const format = (value) => (value || 0).toFixed(12);
+            document.getElementById('startingEth').textContent = format(state.portfolio.startingEth) + ' ETH';
+            document.getElementById('currentEth').textContent = format(state.portfolio.currentEth) + ' ETH';
+
+            const realizedPnL = state.portfolio.realizedPnL;
+            const realizedEl = document.getElementById('realizedPnL');
+            realizedEl.textContent = format(realizedPnL) + ' ETH';
+            realizedEl.className = realizedPnL >= 0 ? 'profit' : 'loss';
+
+            const unrealizedPnL = state.portfolio.unrealizedPnL;
+            const unrealizedEl = document.getElementById('unrealizedPnL');
+            unrealizedEl.textContent = format(unrealizedPnL) + ' ETH';
+            unrealizedEl.className = unrealizedPnL >= 0 ? 'profit' : 'loss';
+
+            const totalPnL = realizedPnL + unrealizedPnL;
+            const totalEl = document.getElementById('totalPnL');
+            totalEl.textContent = format(totalPnL) + ' ETH';
+            totalEl.className = totalPnL >= 0 ? 'profit' : 'loss';
+
+            updatePortfolioBalances();
+            updatePositionDetails();
+        }
+
+        function updatePortfolioBalances() {
+            const balancesTable = document.getElementById('positionsBody');
+            let html = '';
+            const ethBalance = state.portfolio.balances['ETH'] || 0;
+            const totalEquity = state.portfolio.currentEth;
+            const ethAllocation = totalEquity > 0 ? (ethBalance / totalEquity) * 100 : 0;
+
+            html += `<tr>
+                <td><strong>ETH</strong></td>
+                <td>${ethBalance.toFixed(12)}</td>
+                <td>${ethBalance.toFixed(12)}</td>
+                <td>${ethAllocation.toFixed(2)}%</td>
+            </tr>`;
+
+            for (const [tokenSymbol, amount] of Object.entries(state.portfolio.balances)) {
+                if (tokenSymbol === 'ETH') continue;
+                const priceInEth = state.prices[tokenSymbol] || 0;
+                const ethValue = amount * priceInEth;
+                const allocation = totalEquity > 0 ? (ethValue / totalEquity) * 100 : 0;
+                html += `<tr>
+                    <td><strong>${tokenSymbol}</strong></td>
+                    <td>${amount.toFixed(12)}</td>
+                    <td>${ethValue.toFixed(12)}</td>
+                    <td>${allocation.toFixed(2)}%</td>
+                </tr>`;
+            }
+
+            if (html === '') html = '<tr><td colspan="4">No balances</td></tr>';
+            if (balancesTable) balancesTable.innerHTML = html;
+        }
+
+        function updatePositionDetails() {
+            const positionsTable = document.getElementById('positionsBody');
+            let html = '';
+            state.portfolio.positions.forEach(position => {
+                if (position.status === 'closed') return;
+                const currentPrice = state.prices[position.token] || position.entryPrice;
+                const currentValue = position.amount * currentPrice;
+                const unrealizedPnL = currentValue - (position.amount * position.entryPrice) - position.feesPaid - position.gasPaid;
+                const returnPct = (unrealizedPnL / (position.amount * position.entryPrice + position.feesPaid + position.gasPaid)) * 100;
+                html += `<tr>
+                    <td><strong>${position.token}</strong></td>
+                    <td>${position.entryPrice.toFixed(12)}</td>
+                    <td>${currentPrice.toFixed(12)}</td>
+                    <td>${position.amount.toFixed(12)}</td>
+                    <td>${currentValue.toFixed(12)}</td>
+                    <td class="${unrealizedPnL >= 0 ? 'profit' : 'loss'}">${unrealizedPnL.toFixed(12)} (${returnPct.toFixed(2)}%)</td>
+                    <td><small>${position.pattern || 'Manual'}</small></td>
+                </tr>`;
+            });
+            if (html === '') html = '<tr><td colspan="7">No open positions</td></tr>';
+            if (positionsTable) positionsTable.innerHTML = html;
+        }
+
+        async function startBot() {
+            if (state.isRunning) {
+                showToast('Trading is already running.');
+                return;
+            }
+
+            showToast('Starting bot...');
+            state.isRunning = true;
+            state.startTime = new Date();
+            state.lastTradedToken = null;
+            state.openBuyOrders.clear();
+            state.manuallyStopped = false;
+
+            try {
+                await startUniswapSession();
+                await updateGasPrice();
+                startPricePolling();
+                startPatternDetection();
+                setInterval(checkAgeBasedSelling, 15000);
+                updateBotStatus();
+                showToast('Bot started! Watching for patterns...');
+            } catch (error) {
+                state.isRunning = false;
+                showToast(`Failed to start: ${error.message}`);
+            }
+        }
+
+        async function stopBot() {
+            if (!state.isRunning) {
+                showToast('Trading is not running.');
+                return;
+            }
+
+            state.isRunning = false;
+            state.manuallyStopped = true;
+            stopPatternDetection();
+            stopPricePolling();
+            await stopUniswapSession();
+            updateBotStatus();
+            showToast('Bot stopped.');
+        }
+
+        function updateBotStatus() {
+            const statusEl = document.getElementById('botStatus');
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+
+            if (state.isRunning) {
+                statusEl.innerHTML = '<span class="status status-running">Running</span>';
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+            } else {
+                statusEl.innerHTML = '<span class="status status-stopped">Stopped</span>';
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+        }
+
+        async function connectWallet() {
+            if (!window.ethereum) {
+                showToast('MetaMask not detected. Install it first.');
+                return;
+            }
+            try {
+                state.provider = new ethers.BrowserProvider(window.ethereum);
+                await state.provider.send('eth_requestAccounts', []);
+                state.signer = await state.provider.getSigner();
+                state.walletConnected = true;
+                showToast('Wallet connected!');
+                document.getElementById('connectWalletBtn').textContent = 'Wallet Connected';
+                document.getElementById('connectWalletBtn').disabled = true;
+                document.getElementById('toggleLiveModeBtn').disabled = false;
+            } catch (error) {
+                showToast(`Failed to connect wallet: ${error.message}`);
+            }
+        }
+
+        function toggleLiveMode() {
+            state.liveMode = !state.liveMode;
+            const btn = document.getElementById('toggleLiveModeBtn');
+            btn.textContent = state.liveMode ? 'Live Mode: ON' : 'Live Mode: OFF';
+            btn.className = state.liveMode ? 'btn btn-danger' : 'btn btn-warning';
+            showToast(state.liveMode ? 'Live Mode enabled.' : 'Live Mode disabled.');
+        }
+
+        function switchNetwork() {
+            const select = document.getElementById('networkSelect');
+            state.currentChainKey = select.value;
+            BLOCKCHAIN_NETWORK = select.value;
+            if (state.isRunning) restartUniswapSession();
+            showToast(`Switched to ${CHAINS[state.currentChainKey].name}`);
+        }
+
+        function restartUniswapSession() {
+            stopUniswapSession();
+            setTimeout(() => startUniswapSession(), 1000);
+        }
+
+        async function startUniswapSession() {
+            state.manuallyStopped = false;
+            const chain = CHAINS[state.currentChainKey];
+            try {
+                const provider = new ethers.JsonRpcProvider(chain.rpcs[0]);
+                state.activeSession = { provider, connected: true };
+                startPriceMonitoring();
+                showToast(`Connected to ${chain.name}`);
+            } catch (error) {
+                showToast(`Failed to connect to ${chain.name}: ${error.message}`);
+                state.activeSession = null;
+            }
+        }
+
+        async function stopUniswapSession() {
+            if (state.activeSession) {
+                state.activeSession = null;
+            }
+        }
+
+        async function startPriceMonitoring() {
+            if (!state.activeSession?.connected) return;
+            await updatePrices();
+            setInterval(async () => {
+                if (state.activeSession?.connected) await updatePrices();
+            }, 5000);
+        }
+
+        async function updatePrices() {
+            if (!state.activeSession?.connected) return;
+
+            try {
+                const chain = CHAINS[state.currentChainKey];
+                const tokens = [
+                    { symbol: 'ETH', address: null },
+                    { symbol: 'WETH', address: chain.wrappedNative },
+                    ...chain.stables.map((addr, i) => ({ symbol: ['USDC', 'USDT'][i], address: addr }))
+                ];
+
+                for (const token of tokens) {
+                    if (!token.address) continue;
+                    const symbol = token.symbol;
+                    if (!state.priceHistory[symbol]) state.priceHistory[symbol] = [];
+                    const newPrice = (Math.random() * 0.00001).toFixed(12);
+                    state.prices[symbol] = parseFloat(newPrice);
+                    state.observedTokens.add(symbol);
+                    state.priceHistory[symbol].push({
+                        price: parseFloat(newPrice),
+                        timestamp: Date.now()
+                    });
+                    if (state.priceHistory[symbol].length > MAX_PRICE_HISTORY) {
+                        state.priceHistory[symbol].shift();
+                    }
+                }
+
+                const randomTokens = ['NOLA', 'ARB', 'GMX', 'LINK', 'UNI'];
+                for (const symbol of randomTokens) {
+                    if (!state.priceHistory[symbol]) state.priceHistory[symbol] = [];
+                    const prevPrice = state.prices[symbol] || 0.000001;
+                    const change = (Math.random() - 0.5) * 0.1;
+                    const newPrice = prevPrice * (1 + change);
+                    state.prices[symbol] = newPrice;
+                    state.observedTokens.add(symbol);
+                    state.priceHistory[symbol].push({
+                        price: newPrice,
+                        timestamp: Date.now()
+                    });
+                    if (state.priceHistory[symbol].length > MAX_PRICE_HISTORY) {
+                        state.priceHistory[symbol].shift();
+                    }
+                }
+
+                state.lastPriceUpdate = new Date();
+                document.getElementById('tokensWatched').textContent = state.observedTokens.size;
+
+                for (const token of state.observedTokens) {
+                    checkPatternsForToken(token);
+                }
+
+            } catch (error) {
+                console.error('Price update error:', error);
+            }
+        }
+
+        async function updateGasPrice() {
+            if (!state.activeSession?.connected) return;
+            try {
+                const feeData = await state.activeSession.provider.getFeeData();
+                state.currentGasPrice = feeData.gasPrice ? parseInt(feeData.gasPrice) / 1e9 : MAX_GAS_PRICE;
+                document.getElementById('gasPrice').textContent = state.currentGasPrice.toFixed(0) + ' gwei';
+            } catch (error) {
+                state.currentGasPrice = MAX_GAS_PRICE;
+                document.getElementById('gasPrice').textContent = state.currentGasPrice + ' gwei';
+            }
+        }
+
+        function startPricePolling() {
+            if (state.priceUpdateTimer) {
+                clearInterval(state.priceUpdateTimer);
+                state.priceUpdateTimer = null;
+            }
+            state.priceUpdateTimer = setInterval(async () => {
+                if (state.isRunning && state.activeSession?.connected) {
+                    await updatePrices();
+                }
+            }, 5000);
+        }
+
+        function stopPricePolling() {
+            if (state.priceUpdateTimer) {
+                clearInterval(state.priceUpdateTimer);
+                state.priceUpdateTimer = null;
+            }
+        }
+
+        function updateDashboard() {
+            updatePortfolioUI();
+            renderPatterns();
+            renderTrades();
+        }
+
+        function renderTrades() {
+            const tradesBody = document.getElementById('tradesBody');
+            const trades = state.trades.slice().reverse().slice(0, 10);
+            if (trades.length === 0) {
+                tradesBody.innerHTML = '<tr><td colspan="7">No trades yet</td></tr>';
+                return;
+            }
+            let html = '';
+            trades.forEach(trade => {
+                const pnlClass = trade.pnl >= 0 ? 'profit' : 'loss';
+                const typeClass = trade.type === 'buy' ? 'profit' : 'loss';
+                html += `
+                    <tr>
+                        <td>${new Date(trade.timestamp).toLocaleTimeString()}</td>
+                        <td><strong>${trade.token}</strong></td>
+                        <td class="${typeClass}">${trade.type.toUpperCase()}</td>
+                        <td>${trade.price.toFixed(12)}</td>
+                        <td>${trade.tokenAmount.toFixed(6)}</td>
+                        <td class="${pnlClass}">${trade.pnl.toFixed(12)}</td>
+                        <td><small>${trade.pattern || 'Manual'}</small></td>
+                    </tr>
+                `;
+            });
+            tradesBody.innerHTML = html;
+        }
+
+        function showToast(message, duration = 3000) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, duration);
+        }
+
+        function updateStartingEth() {
+            const input = document.getElementById('startingEthInput');
+            STARTING_ETH = parseFloat(input.value) || 0.0033;
+            state.portfolio.startingEth = STARTING_ETH;
+            state.portfolio.currentEth = STARTING_ETH;
+            state.portfolio.balances['ETH'] = STARTING_ETH;
+            updatePortfolioUI();
+        }
+
+        function updateTradePercent() {
+            const input = document.getElementById('tradePercentInput');
+            TRADE_AMOUNT_PERCENT = parseFloat(input.value) || 0.5;
+        }
+
+        function updateMinTrade() {
+            const input = document.getElementById('minTradeInput');
+            MIN_TRADE_AMOUNT_ETH = parseFloat(input.value) || 0.0003;
+        }
+
+        function updateTargetProfit() {
+            const input = document.getElementById('targetProfitInput');
+            TARGET_PROFIT_PERCENT = parseFloat(input.value) || 0.5;
+        }
+
+        function updateMaxPositionAge() {
+            const input = document.getElementById('maxPositionAgeInput');
+            MAX_POSITION_AGE = parseInt(input.value) || 300;
+        }
+
+        function restoreBackup() {
+            const backup = localStorage.getItem('uniswapTraderBackup');
+            if (backup) {
+                const data = JSON.parse(backup);
+                state.trades = data.trades || [];
+                state.portfolio = data.portfolio || {
+                    balances: { ETH: STARTING_ETH },
+                    positions: [],
+                    realizedPnL: 0,
+                    unrealizedPnL: 0,
+                    startingEth: STARTING_ETH,
+                    currentEth: STARTING_ETH,
+                    equityHistory: [{ timestamp: Date.now(), ethValue: STARTING_ETH }]
+                };
+                state.activePatterns = new Map();
+                state.observedTokens = new Set();
+                state.priceHistory = {};
+                showToast('Restored from backup.');
+            }
+        }
+
+        function backupData() {
+            const backup = {
+                trades: state.trades,
+                portfolio: state.portfolio,
+                lastBackup: new Date().toISOString()
+            };
+            localStorage.setItem('uniswapTraderBackup', JSON.stringify(backup));
+        }
+
+        setInterval(backupData, 30000);
+
+        window.addEventListener('beforeunload', () => {
+            if (state.isRunning) {
+                backupData();
+                stopBot();
+            }
+        });
+    </script>
+</body>
+
+</html>
