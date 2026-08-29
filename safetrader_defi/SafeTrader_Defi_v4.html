@@ -1587,7 +1587,7 @@
 
                     // Also sell if position is too old
                     const positionAgeSeconds = (Date.now() - openPosition.entryTime) / 1000;
-                    if (positionAgeSeconds > CONFIG.MAX_POSITION_AGE && profitEth > 0) {
+                    if (positionAgeSeconds > CONFIG.MAX_POSITION_AGE && profitETH > 0) {
                         const reason = `Auto-sell after ${positionAgeSeconds.toFixed(0)}s (made ${profitPercent.toFixed(2)}% profit)`
                         executeTrade(token, 'sell', reason);
                     }
