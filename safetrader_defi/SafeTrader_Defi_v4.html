@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Easy Pattern Trader</title>
+    <title>Uniswap Quick Swap Trader</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
     <style>
         body {
@@ -265,8 +265,8 @@
 <body>
     <div class="toast-container" id="toastContainer"></div>
     <div class="container">
-        <h1>Uniswap Easy Pattern Trader</h1>
-        <p><strong>Fixed Version</strong> - Automatically finds and trades profitable patterns in the market.</p>
+        <h1>Uniswap Quick Swap Trader</h1>
+        <p><strong>v6.0.0 - Quick Buy/Sell Mode</strong> - Buys dips and sells at first profit opportunity.</p>
 
         <!-- Debug Console Toggle -->
         <button id="debugToggle" onclick="toggleDebugConsole()">Toggle Debug Console</button>
@@ -275,7 +275,7 @@
                 <h2>Debug Console</h2>
                 <button class="btn btn-primary btn-sm" onclick="clearDebugConsole()">Clear Console</button>
                 <button class="btn btn-secondary btn-sm" onclick="runDiagnostics()">Run Diagnostics</button>
-                <button class="btn btn-warning btn-sm" onclick="testPatternDetection()">Test Pattern Detection</button>
+                <button class="btn btn-warning btn-sm" onclick="forceTokenDiscovery()">Force Token Discovery</button>
                 <div id="debugConsole"></div>
             </div>
         </div>
@@ -318,7 +318,7 @@
                 <p><strong>Network Fee:</strong> <span id="currentGasPrice">0.02 gwei</span></p>
                 <p><strong>Trade Size:</strong> <span id="tradeAmountDisplay">0.000000 ETH</span></p>
                 <p><strong>Tokens Watched:</strong> <span id="trackedTokensCount">0</span></p>
-                <p><strong>Active Patterns:</strong> <span id="activePatternsCount">0</span></p>
+                <p><strong>Active Buy Patterns:</strong> <span id="activePatternsCount">0</span></p>
             </div>
         </div>
 
@@ -337,10 +337,9 @@
 
             <div class="card">
                 <h3>Pattern Finder</h3>
-                <p><strong>Total Patterns Found:</strong> <span id="totalPatterns">0</span></p>
-                <p><strong>Buy Opportunities:</strong> <span id="buyPatternsCount">0</span></p>
+                <p><strong>Total Buy Patterns Found:</strong> <span id="totalPatterns">0</span></p>
                 <p><strong>Tokens with Patterns:</strong> <span id="tokensWithPatterns">0</span></p>
-                <p><strong>Profit Target:</strong> <span id="targetProfitPercent">0.5%</span></p>
+                <p><strong>Profit Target:</strong> <span id="targetProfitPercent">0.3%</span></p>
                 <p><strong>Last Detection:</strong> <span id="lastDetectionTime">Never</span></p>
             </div>
 
@@ -426,25 +425,21 @@
                 </div>
                 <div>
                     <h3>Pattern Detection</h3>
-                    <p><strong>Min Price Change:</strong> <span id="displayMinPriceChange">0.1%</span></p>
-                    <p><strong>Min Time Window:</strong> <span id="displayMinTimeWindow">5s</span></p>
-                    <p><strong>Max Time Window:</strong> <span id="displayMaxTimeWindow">300s</span></p>
+                    <p><strong>Min Price Change:</strong> <span id="displayMinPriceChange">0.05%</span></p>
+                    <p><strong>Min Time Window:</strong> <span id="displayMinTimeWindow">3s</span></p>
+                    <p><strong>Max Time Window:</strong> <span id="displayMaxTimeWindow">60s</span></p>
                     <p><strong>Min Occurrences:</strong> <span id="displayMinOccurrences">1</span></p>
                 </div>
             </div>
             <div class="grid-3" style="margin-top: 15px;">
                 <div>
-                    <h3>Pattern Validation</h3>
-                    <p><strong>Min Win Rate:</strong> <span id="displayMinWinRate">50%</span></p>
-                    <p><strong>Backtest Period:</strong> <span id="displayBacktestPeriod">1h</span></p>
-                    <p><strong>Target Profit:</strong> <span id="displayTargetProfit">0.5%</span></p>
-                    <p><strong>Min Profitability:</strong> <span id="displayMinProfitability">0.1%</span></p>
+                    <h3>Profit Targets</h3>
+                    <p><strong>Min Profit to Sell:</strong> <span id="displayMinProfit">0.3%</span></p>
+                    <p><strong>Max Position Age:</strong> <span id="displayMaxPositionAge">300s</span></p>
                 </div>
                 <div>
                     <h3>Safety</h3>
                     <p><strong>Max Slippage:</strong> <span id="displayMaxSlippage">0.5%</span></p>
-                    <p><strong>Min Profit:</strong> <span id="displayMinProfit">0.3%</span></p>
-                    <p><strong>Max Position Age:</strong> <span id="displayMaxPositionAge">300s</span></p>
                     <p><strong>Max Gas Price:</strong> <span id="displayMaxGasPrice">200 gwei</span></p>
                 </div>
                 <div>
@@ -457,8 +452,8 @@
     </div>
 
     <script>
-        // ========== FIXED CONFIGURATION ==========
-        const APP_VERSION = '5.2.0-FIXED';
+        // ========== CONFIGURATION ==========
+        const APP_VERSION = '6.0.0-QUICKSWAP';
 
         // Network Configuration
         let BLOCKCHAIN_NETWORK = 'arbitrum';
@@ -466,38 +461,35 @@
 
         // Trading Budget Configuration
         let STARTING_ETH = 0.0033;
-        let TRADE_AMOUNT_PERCENT = 0.5;
+        let TRADE_AMOUNT_PERCENT = 0.5;      // % of available ETH to use per trade
         let MIN_TRADE_AMOUNT_ETH = 0.0003;
         let MAX_TRADES = 200;
-        let TRADE_COOLDOWN = 60;
+        let TRADE_COOLDOWN = 60;              // Seconds between trades for the same token
 
-        // Pattern Detection Configuration - FIXED: More lenient thresholds
-        let MIN_PRICE_CHANGE = 0.1;  // Reduced from 0.5
-        let MIN_TIME_WINDOW = 5;
-        let MAX_TIME_WINDOW = 300;   // Increased from 120
-        let MIN_OCCURRENCES = 1;     // Reduced from 2
+        // Pattern Detection Configuration (Optimized for quick swaps)
+        let MIN_PRICE_CHANGE = 0.05;          // Reduced to catch smaller dips
+        let MIN_TIME_WINDOW = 3;              // Reduced to catch faster movements
+        let MAX_TIME_WINDOW = 60;             // Reduced to focus on quick rebounds
+        let MIN_OCCURRENCES = 1;
 
-        // Pattern Validation Configuration - FIXED: Lower requirements
-        let MIN_WIN_RATE = 50;       // Reduced from 55
-        let BACKTEST_PERIOD = 1;    // Reduced from 12 (hours)
-        let TARGET_PROFIT_PERCENT = 0.5;
-        let MIN_PROFITABILITY = 0.1; // Reduced from 0.8
-        let MAX_PATTERNS_PER_TOKEN = 5;
+        // Profit Targets
+        let MIN_PROFIT_PERCENT = 0.3;         // Sell as soon as this profit is reached
+        let MAX_POSITION_AGE = 300;           // Max time to hold a position (seconds)
 
         // Safety Configuration
         let MAX_SLIPPAGE = 0.5;
-        let MIN_PROFIT_PERCENT = 0.3;
-        let MAX_POSITION_AGE = 300;
         let MAX_GAS_PRICE = 200;
         let GAS_LIMIT = 200000;
         let PREVENT_SEQUENTIAL_TRADES = true;
 
-        // Data Configuration - FIXED: Longer history duration
-        let PRICE_HISTORY_DURATION = 24; // Increased from 12
+        // Data Configuration
+        let PRICE_HISTORY_DURATION = 24;      // Hours of price history to keep
         let MAX_PRICE_HISTORY = 5000;
 
+        // Only BUY patterns are used now
+        const PATTERN_TYPES = { BUY: 'buy' };
+
         const POOL_FEES = { LOW: 500, MEDIUM: 3000, HIGH: 10000 };
-        const PATTERN_TYPES = { BUY: 'buy', SELL: 'sell' };
 
         // Chain Configurations
         const CHAINS = {
@@ -514,7 +506,17 @@
                 wrappedNative: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
                 quoteMode: "native",
                 quoteLabel: "ETH",
-                stables: ["0xaf88d065e77c8cC2239327C5EDb3A432268e5831", "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"]
+                stables: [
+                    "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", // USDC
+                    "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"  // USDT
+                ],
+                topPools: [
+                    { token0: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", token1: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", fee: 3000 }, // WETH/USDC
+                    { token0: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", token1: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", fee: 3000 }, // WETH/USDT
+                    { token0: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", token1: "0x2f2a2543B76A416654947aaB75B4e35b52a17231", fee: 3000 }, // WETH/WBTC
+                    { token0: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", token1: "0xfa7F8980b0f1E64A2062791cc3b0871572f1F7f0", fee: 3000 }, // WETH/UNI
+                    { token0: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", token1: "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4", fee: 3000 }  // WETH/LINK
+                ]
             },
             ethereum: {
                 name: "Ethereum Mainnet",
@@ -529,7 +531,14 @@
                 wrappedNative: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
                 quoteMode: "native",
                 quoteLabel: "ETH",
-                stables: ["0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "0xdAC17F958D2ee523a2206206994597C13D831ec7"]
+                stables: [
+                    "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", // USDC
+                    "0xdAC17F958D2ee523a2206206994597C13D831ec7"  // USDT
+                ],
+                topPools: [
+                    { token0: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", token1: "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", fee: 3000 }, // WETH/USDC
+                    { token0: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", token1: "0xdAC17F958D2ee523a2206206994597C13D831ec7", fee: 3000 }  // WETH/USDT
+                ]
             },
             base: {
                 name: "Base",
@@ -544,7 +553,14 @@
                 wrappedNative: "0x4200000000000000000000000000000000000006",
                 quoteMode: "native",
                 quoteLabel: "ETH",
-                stables: ["0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42"]
+                stables: [
+                    "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC
+                    "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42"  // USDT
+                ],
+                topPools: [
+                    { token0: "0x4200000000000000000000000000000000000006", token1: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", fee: 500 }, // WETH/USDC
+                    { token0: "0x4200000000000000000000000000000000000006", token1: "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42", fee: 500 }  // WETH/USDT
+                ]
             },
             optimism: {
                 name: "Optimism",
@@ -559,7 +575,14 @@
                 wrappedNative: "0x4200000000000000000000000000000000000006",
                 quoteMode: "native",
                 quoteLabel: "ETH",
-                stables: ["0x0b2C639c533813f4AaA9D7837CAf62653d097Ff85", "0x7F5c764cBc14f9669B88837ca1490cCa17c31607"]
+                stables: [
+                    "0x0b2C639c533813f4AaA9D7837CAf62653d097Ff85", // USDC
+                    "0x7F5c764cBc14f9669B88837ca1490cCa17c31607"  // USDT
+                ],
+                topPools: [
+                    { token0: "0x4200000000000000000000000000000000000006", token1: "0x0b2C639c533813f4AaA9D7837CAf62653d097Ff85", fee: 500 }, // WETH/USDC
+                    { token0: "0x4200000000000000000000000000000000000006", token1: "0x7F5c764cBc14f9669B88837ca1490cCa17c31607", fee: 500 }  // WETH/USDT
+                ]
             },
             polygon: {
                 name: "Polygon",
@@ -574,7 +597,14 @@
                 wrappedNative: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
                 quoteMode: "native",
                 quoteLabel: "WPOL",
-                stables: ["0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"]
+                stables: [
+                    "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", // USDC
+                    "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"  // USDT
+                ],
+                topPools: [
+                    { token0: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", token1: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", fee: 500 }, // WETH/USDC
+                    { token0: "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", token1: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", fee: 500 }  // WETH/USDT
+                ]
             }
         };
 
@@ -670,7 +700,7 @@
             currentGasPrice: 0.02,
             manuallyStopped: true,
             observedTokens: new Set(),
-            patternStats: { totalPatterns: 0, buyPatterns: 0, sellPatterns: 0, tokensWithPatterns: 0 },
+            patternStats: { totalPatterns: 0, tokensWithPatterns: 0 },
             openBuyOrders: new Map(),
             patternDetectionActive: false,
             reconnectAttempts: 0,
@@ -683,7 +713,8 @@
             sessionSerial: 0,
             activeSession: null,
             currentRpcIndex: 0,
-            lastDetectionTime: null
+            lastDetectionTime: null,
+            topPoolsLoaded: false
         };
 
         // ========== DEBUG CONSOLE ==========
@@ -727,7 +758,6 @@
 
         function runDiagnostics() {
             logToDebugConsole('=== RUNNING DIAGNOSTICS ===', 'info');
-
             logToDebugConsole(`Bot Running: ${state.isRunning}`);
             logToDebugConsole(`Wallet Connected: ${state.walletConnected}`);
             logToDebugConsole(`Live Mode: ${state.liveMode}`);
@@ -735,43 +765,27 @@
             logToDebugConsole(`Session Connected: ${state.activeSession?.connected || false}`);
             logToDebugConsole(`Observed Tokens: ${Array.from(state.observedTokens).join(', ') || 'None'}`);
             logToDebugConsole(`Active Patterns: ${state.activePatterns.size}`);
+            logToDebugConsole(`Open Positions: ${state.portfolio.positions.filter(p => p.status === 'open').length}`);
+            logToDebugConsole(`Total Trades: ${state.portfolio.totalTrades}`);
 
             for (const token of Array.from(state.observedTokens)) {
                 const history = state.priceHistory[token];
-                logToDebugConsole(`Token: ${token} | Price History Length: ${history ? history.length : 0}`);
+                const price = state.prices[token];
+                logToDebugConsole(`Token: ${token} | Price: ${price ? price.toFixed(12) : 'N/A'} | History Length: ${history ? history.length : 0}`);
             }
 
             logToDebugConsole('=== DIAGNOSTICS COMPLETE ===', 'info');
         }
 
-        function testPatternDetection() {
-            logToDebugConsole('=== TESTING PATTERN DETECTION ===', 'info');
-
-            if (state.observedTokens.size === 0) {
-                logToDebugConsole('No tokens observed. Starting price monitoring...', 'warn');
-                if (state.activeSession?.connected) {
-                    updatePricesForSession(state.activeSession);
-                } else {
-                    logToDebugConsole('Session not connected. Start the bot first.', 'error');
-                }
-                return;
+        function forceTokenDiscovery() {
+            logToDebugConsole('Forcing token discovery...', 'info');
+            if (state.activeSession?.connected) {
+                discoverTopPools(state.activeSession).catch(e => {
+                    logToDebugConsole(`Token discovery failed: ${e.message}`, 'error');
+                });
+            } else {
+                logToDebugConsole('Session not connected. Start the bot first.', 'error');
             }
-
-            // Force pattern detection
-            detectAllPatterns();
-
-            // Log results
-            logToDebugConsole(`Total Patterns Found: ${state.patternStats.totalPatterns}`);
-            logToDebugConsole(`Buy Patterns: ${state.patternStats.buyPatterns}`);
-            logToDebugConsole(`Sell Patterns: ${state.patternStats.sellPatterns}`);
-            logToDebugConsole(`Tokens with Patterns: ${state.patternStats.tokensWithPatterns}`);
-
-            // Log each pattern
-            state.activePatterns.forEach((pattern, key) => {
-                logToDebugConsole(`Pattern: ${key} | Token: ${pattern.token} | Type: ${pattern.type} | Occurrences: ${pattern.occurrences}`);
-            });
-
-            logToDebugConsole('=== PATTERN DETECTION TEST COMPLETE ===', 'info');
         }
 
         // ========== UTILITY FUNCTIONS ==========
@@ -786,7 +800,7 @@
             setupEventListeners();
             updateNetworkInfo();
             updateConstantsDisplay();
-            logToDebugConsole('Uniswap Easy Pattern Trader v' + APP_VERSION + ' initialized', 'success');
+            logToDebugConsole('Uniswap Quick Swap Trader v' + APP_VERSION + ' initialized', 'success');
         });
 
         function initializeKnownTokens() {
@@ -834,10 +848,11 @@
             state.portfolio.failedTrades = 0;
             state.trades = [];
             state.activePatterns.clear();
-            state.patternStats = { totalPatterns: 0, buyPatterns: 0, sellPatterns: 0, tokensWithPatterns: 0 };
+            state.patternStats = { totalPatterns: 0, tokensWithPatterns: 0 };
             state.observedTokens.clear();
             state.prices = {};
             state.priceHistory = {};
+            state.topPoolsLoaded = false;
             updatePortfolioUI();
             updateStartingEthDisplay();
             updateTradeAmountDisplay();
@@ -864,13 +879,9 @@
             document.getElementById('displayMinTimeWindow').textContent = MIN_TIME_WINDOW + 's';
             document.getElementById('displayMaxTimeWindow').textContent = MAX_TIME_WINDOW + 's';
             document.getElementById('displayMinOccurrences').textContent = MIN_OCCURRENCES;
-            document.getElementById('displayMinWinRate').textContent = MIN_WIN_RATE + '%';
-            document.getElementById('displayBacktestPeriod').textContent = BACKTEST_PERIOD + 'h';
-            document.getElementById('displayTargetProfit').textContent = TARGET_PROFIT_PERCENT + '%';
-            document.getElementById('displayMinProfitability').textContent = MIN_PROFITABILITY + '%';
-            document.getElementById('displayMaxSlippage').textContent = MAX_SLIPPAGE + '%';
             document.getElementById('displayMinProfit').textContent = MIN_PROFIT_PERCENT + '%';
             document.getElementById('displayMaxPositionAge').textContent = MAX_POSITION_AGE + 's';
+            document.getElementById('displayMaxSlippage').textContent = MAX_SLIPPAGE + '%';
             document.getElementById('displayMaxGasPrice').textContent = MAX_GAS_PRICE + ' gwei';
             document.getElementById('displayPriceHistoryDuration').textContent = PRICE_HISTORY_DURATION + 'h';
             document.getElementById('displayMaxPriceHistory').textContent = MAX_PRICE_HISTORY;
@@ -930,10 +941,10 @@
 
             if (startingEthDisplay) startingEthDisplay.textContent = STARTING_ETH.toFixed(12) + ' ETH';
             if (currentEthEl) currentEthEl.textContent = state.portfolio.currentEth.toFixed(12) + ' ETH';
-            if (targetProfitDisplay) targetProfitDisplay.textContent = TARGET_PROFIT_PERCENT + '%';
+            if (targetProfitDisplay) targetProfitDisplay.textContent = MIN_PROFIT_PERCENT + '%';
         }
 
-        // ========== PATTERN DETECTION - FIXED ==========
+        // ========== PATTERN DETECTION (BUY ONLY) ==========
         function startPatternDetection() {
             if (state.patternDetectionActive) return;
             state.patternDetectionActive = true;
@@ -943,12 +954,12 @@
                 detectAllPatterns();
             }
 
-            // Then run every 5 seconds
+            // Then run every 3 seconds (faster for quick swaps)
             state.patternDetectionTimer = setInterval(() => {
                 if (state.isRunning && state.activeSession?.connected) {
                     detectAllPatterns();
                 }
-            }, 5000);
+            }, 3000);
         }
 
         function stopPatternDetection() {
@@ -973,11 +984,9 @@
                 }
 
                 const buyPatterns = detectBuyPatternsForToken(history, token);
-                const sellPatterns = detectSellPatternsForToken(history, token);
+                logToDebugConsole(`Found ${buyPatterns.length} buy patterns for ${token}`, 'info');
 
-                logToDebugConsole(`Found ${buyPatterns.length} buy patterns and ${sellPatterns.length} sell patterns for ${token}`, 'info');
-
-                [...buyPatterns, ...sellPatterns].forEach(pattern => {
+                buyPatterns.forEach(pattern => {
                     if (!isPatternValid(pattern)) {
                         logToDebugConsole(`Invalid pattern for ${token}: ${JSON.stringify(pattern)}`, 'warn');
                         return;
@@ -991,12 +1000,7 @@
                             token,
                             occurrences: 1,
                             firstSeen: pattern.timestamp,
-                            lastSeen: pattern.timestamp,
-                            winRate: 0,
-                            totalTrades: 0,
-                            winningTrades: 0,
-                            avgProfitability: 0,
-                            totalProfit: 0
+                            lastSeen: pattern.timestamp
                         });
                     } else {
                         const existing = newActivePatterns.get(existingPatternKey);
@@ -1006,12 +1010,8 @@
                 });
             }
 
-            // FIXED: Bypass backtesting if no history or for testing
-            if (state.observedTokens.size > 0) {
-                validatePatternsWithBacktesting(newActivePatterns);
-            } else {
-                logToDebugConsole('No tokens with history for backtesting. Using patterns without validation.', 'warn');
-            }
+            // Validate patterns with minimal backtesting
+            validatePatternsMinimal(newActivePatterns);
 
             state.activePatterns = newActivePatterns;
             updatePatternStats();
@@ -1028,7 +1028,7 @@
         function isPatternValid(pattern) {
             if (pattern.dropPct > 100 || pattern.risePct > 100) return false;
             if (pattern.dropPct < 0 || pattern.risePct < 0) return false;
-            if (pattern.dropTime > 500 || pattern.riseTime > 500) return false;
+            if (pattern.dropTime > 100 || pattern.riseTime > 100) return false;
             if (pattern.dropTime < 1 || pattern.riseTime < 1) return false;
             return true;
         }
@@ -1058,7 +1058,7 @@
                                 const next = history[k];
                                 const risePct = (next.price - current.price) / current.price;
                                 const riseTime = next.timestamp - current.timestamp;
-                                const minRequiredRise = Math.abs(dropPct) * 1.2;
+                                const minRequiredRise = Math.abs(dropPct) * 0.8; // Lower threshold for quick swaps
 
                                 if (risePct >= minRequiredRise && riseTime >= minTime && riseTime <= maxTime) {
                                     patterns.push({
@@ -1081,252 +1081,38 @@
             return patterns;
         }
 
-        function detectSellPatternsForToken(history, token) {
-            if (!history || history.length < 5) return [];
-            const minChange = MIN_PRICE_CHANGE / 100;
-            const minTime = MIN_TIME_WINDOW * 1000;
-            const maxTime = MAX_TIME_WINDOW * 1000;
-            const patterns = [];
-
-            for (let i = 2; i < history.length - 2; i++) {
-                const current = history[i];
-                const isMaxima = current.price >= history[i - 1].price &&
-                    current.price >= history[i - 2].price &&
-                    current.price >= history[i + 1].price &&
-                    current.price >= history[i + 2].price;
-
-                if (isMaxima) {
-                    for (let j = i - 1; j >= Math.max(0, i - 5); j--) {
-                        const prev = history[j];
-                        const risePct = (current.price - prev.price) / prev.price;
-                        const timeDiff = current.timestamp - prev.timestamp;
-
-                        if (risePct >= minChange && timeDiff >= minTime && timeDiff <= maxTime) {
-                            for (let k = i + 1; k < Math.min(history.length, i + 6); k++) {
-                                const next = history[k];
-                                const dropPct = (next.price - current.price) / current.price;
-                                const dropTime = next.timestamp - current.timestamp;
-                                const minRequiredDrop = risePct * 0.8;
-
-                                if (dropPct <= -minRequiredDrop && dropTime >= minTime && dropTime <= maxTime) {
-                                    patterns.push({
-                                        type: PATTERN_TYPES.SELL,
-                                        risePct: risePct * 100,
-                                        riseTime: timeDiff / 1000,
-                                        dropPct: Math.abs(dropPct) * 100,
-                                        dropTime: dropTime / 1000,
-                                        token: token,
-                                        timestamp: current.timestamp
-                                    });
-                                    break;
-                                }
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
-            return patterns;
-        }
-
         function getPatternKey(pattern) {
-            if (pattern.type === PATTERN_TYPES.BUY) {
-                const roundedDrop = Math.round(pattern.dropPct * 10) / 10;
-                const roundedRise = Math.round(pattern.risePct * 10) / 10;
-                const roundedDropTime = Math.round(pattern.dropTime);
-                const roundedRiseTime = Math.round(pattern.riseTime);
-                return `BUY_${roundedDrop}%_${roundedDropTime}s_${roundedRise}%_${roundedRiseTime}s`;
-            } else {
-                const roundedRise = Math.round(pattern.risePct * 10) / 10;
-                const roundedRiseTime = Math.round(pattern.riseTime);
-                const roundedDrop = Math.round(pattern.dropPct * 10) / 10;
-                const roundedDropTime = Math.round(pattern.dropTime);
-                return `SELL_${roundedRise}%_${roundedRiseTime}s_${roundedDrop}%_${roundedDropTime}s`;
-            }
+            const roundedDrop = Math.round(pattern.dropPct * 10) / 10;
+            const roundedRise = Math.round(pattern.risePct * 10) / 10;
+            const roundedDropTime = Math.round(pattern.dropTime);
+            const roundedRiseTime = Math.round(pattern.riseTime);
+            return `BUY_${roundedDrop}%_${roundedDropTime}s_${roundedRise}%_${roundedRiseTime}s`;
         }
 
         function getPatternDescription(pattern) {
-            if (pattern.type === PATTERN_TYPES.BUY) {
-                return `Buy when price drops ${pattern.dropPct.toFixed(1)}% over ${pattern.dropTime.toFixed(0)}s, expecting ${pattern.risePct.toFixed(1)}% rise`;
-            } else {
-                return `Sell when price rises ${pattern.risePct.toFixed(1)}% over ${pattern.riseTime.toFixed(0)}s, expecting ${pattern.dropPct.toFixed(1)}% drop`;
-            }
+            return `Buy dip: ${pattern.dropPct.toFixed(2)}% over ${pattern.dropTime.toFixed(0)}s, target ${pattern.risePct.toFixed(2)}% rise`;
         }
 
-        function validatePatternsWithBacktesting(patterns) {
-            const backtestPeriodMs = BACKTEST_PERIOD * 60 * 60 * 1000;
-
+        function validatePatternsMinimal(patterns) {
+            // Minimal validation: just ensure the pattern is structurally valid
             patterns.forEach((pattern, key) => {
-                const history = state.priceHistory[pattern.token];
-                if (!history || history.length < 10) {
-                    logToDebugConsole(`Cannot backtest pattern for ${pattern.token}: insufficient history (${history ? history.length : 0} points)`, 'warn');
-                    return;
-                }
-
-                const backtestResult = backtestPattern(pattern, history, backtestPeriodMs);
-                logToDebugConsole(`Backtest for ${pattern.token} (${pattern.type}): ${JSON.stringify(backtestResult)}`, 'info');
-
-                if (backtestResult.occurrences < MIN_OCCURRENCES) {
-                    logToDebugConsole(`Removing pattern: occurrences (${backtestResult.occurrences}) < MIN_OCCURRENCES (${MIN_OCCURRENCES})`, 'warn');
+                if (pattern.dropPct <= 0 || pattern.risePct <= 0) {
                     patterns.delete(key);
                     return;
                 }
-                if (backtestResult.winRate < MIN_WIN_RATE) {
-                    logToDebugConsole(`Removing pattern: winRate (${backtestResult.winRate}%) < MIN_WIN_RATE (${MIN_WIN_RATE}%)`, 'warn');
+                if (pattern.risePct <= pattern.dropPct * 0.8) {
                     patterns.delete(key);
                     return;
                 }
-                if (backtestResult.avgProfitability < MIN_PROFITABILITY) {
-                    logToDebugConsole(`Removing pattern: avgProfitability (${backtestResult.avgProfitability}%) < MIN_PROFITABILITY (${MIN_PROFITABILITY}%)`, 'warn');
-                    patterns.delete(key);
-                    return;
-                }
-                if (pattern.type === PATTERN_TYPES.BUY && pattern.risePct <= pattern.dropPct) {
-                    logToDebugConsole(`Removing pattern: risePct (${pattern.risePct}%) <= dropPct (${pattern.dropPct}%)`, 'warn');
-                    patterns.delete(key);
-                    return;
-                }
-
-                pattern.winRate = backtestResult.winRate;
-                pattern.totalTrades = backtestResult.totalTrades;
-                pattern.winningTrades = backtestResult.winningTrades;
-                pattern.avgProfitability = backtestResult.avgProfitability;
-                pattern.totalProfit = backtestResult.totalProfit;
             });
-        }
-
-        function backtestPattern(pattern, history, backtestPeriodMs) {
-            const now = Date.now();
-            const startTime = now - backtestPeriodMs;
-            let totalTrades = 0;
-            let winningTrades = 0;
-            let occurrences = 0;
-            let totalProfit = 0;
-
-            const backtestHistory = history.filter(h => h.timestamp >= startTime);
-            if (backtestHistory.length < 10) {
-                logToDebugConsole(`Insufficient backtest history for ${pattern.token}: ${backtestHistory.length} points`, 'warn');
-                return { occurrences: 0, totalTrades: 0, winningTrades: 0, winRate: 0, avgProfitability: 0, totalProfit: 0 };
-            }
-
-            const tradeAmountETH = calculateTradeAmount();
-
-            for (let i = 5; i < backtestHistory.length - 5; i++) {
-                const current = backtestHistory[i];
-                let patternMatched = false;
-
-                if (pattern.type === PATTERN_TYPES.BUY) {
-                    for (let j = i - 1; j >= Math.max(0, i - 5); j--) {
-                        const prev = backtestHistory[j];
-                        const dropPct = (current.price - prev.price) / prev.price;
-                        const timeDiff = (current.timestamp - prev.timestamp) / 1000;
-
-                        if (Math.abs(dropPct) >= pattern.dropPct / 100 &&
-                            timeDiff >= pattern.dropTime - 2 &&
-                            timeDiff <= pattern.dropTime + 2) {
-
-                            for (let k = i + 1; k < Math.min(backtestHistory.length, i + 6); k++) {
-                                const next = backtestHistory[k];
-                                const risePct = (next.price - current.price) / current.price;
-                                const riseTime = (next.timestamp - current.timestamp) / 1000;
-
-                                if (risePct >= pattern.risePct / 100 &&
-                                    riseTime >= pattern.riseTime - 2 &&
-                                    riseTime <= pattern.riseTime + 2) {
-
-                                    patternMatched = true;
-                                    totalTrades++;
-                                    occurrences++;
-
-                                    const entryPrice = current.price;
-                                    const exitPrice = next.price;
-                                    const tokenAmount = tradeAmountETH / entryPrice;
-                                    const exitValue = tokenAmount * exitPrice;
-
-                                    const feePercent = 0.0005;
-                                    const buyFee = tradeAmountETH * feePercent;
-                                    const sellFee = exitValue * feePercent;
-
-                                    const profit = exitValue - tradeAmountETH - buyFee - sellFee;
-
-                                    if (profit > 0) winningTrades++;
-                                    totalProfit += profit;
-
-                                    i = k;
-                                    break;
-                                }
-                            }
-                            break;
-                        }
-                    }
-                } else if (pattern.type === PATTERN_TYPES.SELL) {
-                    for (let j = i - 1; j >= Math.max(0, i - 5); j--) {
-                        const prev = backtestHistory[j];
-                        const risePct = (current.price - prev.price) / prev.price;
-                        const timeDiff = (current.timestamp - prev.timestamp) / 1000;
-
-                        if (risePct >= pattern.risePct / 100 &&
-                            timeDiff >= pattern.riseTime - 2 &&
-                            timeDiff <= pattern.riseTime + 2) {
-
-                            for (let k = i + 1; k < Math.min(backtestHistory.length, i + 6); k++) {
-                                const next = backtestHistory[k];
-                                const dropPct = (next.price - current.price) / current.price;
-                                const dropTime = (next.timestamp - current.timestamp) / 1000;
-
-                                if (Math.abs(dropPct) >= pattern.dropPct / 100 &&
-                                    dropTime >= pattern.dropTime - 2 &&
-                                    dropTime <= pattern.dropTime + 2) {
-
-                                    patternMatched = true;
-                                    totalTrades++;
-                                    occurrences++;
-
-                                    const entryPrice = prev.price;
-                                    const exitPrice = current.price;
-                                    const tokenAmount = tradeAmountETH / entryPrice;
-                                    const exitValue = tokenAmount * exitPrice;
-
-                                    const feePercent = 0.0005;
-                                    const buyFee = tradeAmountETH * feePercent;
-                                    const sellFee = exitValue * feePercent;
-
-                                    const profit = exitValue - tradeAmountETH - buyFee - sellFee;
-
-                                    if (profit > 0) winningTrades++;
-                                    totalProfit += profit;
-
-                                    i = k;
-                                    break;
-                                }
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
-
-            const avgProfitability = totalTrades > 0 ? (totalProfit / tradeAmountETH / totalTrades * 100) : 0;
-
-            return {
-                occurrences,
-                totalTrades,
-                winningTrades,
-                winRate: totalTrades > 0 ? (winningTrades / totalTrades * 100) : 0,
-                avgProfitability,
-                totalProfit
-            };
         }
 
         function updatePatternStats() {
             const patternsArray = Array.from(state.activePatterns.values());
             state.patternStats.totalPatterns = patternsArray.length;
-            state.patternStats.buyPatterns = patternsArray.filter(p => p.type === PATTERN_TYPES.BUY).length;
-            state.patternStats.sellPatterns = patternsArray.filter(p => p.type === PATTERN_TYPES.SELL).length;
             state.patternStats.tokensWithPatterns = new Set(patternsArray.map(p => p.token)).size;
 
             document.getElementById('totalPatterns').textContent = state.patternStats.totalPatterns;
-            document.getElementById('buyPatternsCount').textContent = state.patternStats.buyPatterns;
             document.getElementById('tokensWithPatterns').textContent = state.patternStats.tokensWithPatterns;
             document.getElementById('activePatternsCount').textContent = state.patternStats.totalPatterns;
         }
@@ -1436,7 +1222,9 @@
                 UNI: { liquidity: 100000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'UNI' },
                 LINK: { liquidity: 80000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'LINK' },
                 ARB: { liquidity: 150000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'ARB' },
-                GMX: { liquidity: 40000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'GMX' }
+                GMX: { liquidity: 40000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'GMX' },
+                USDC: { liquidity: 5000000, feeTier: POOL_FEES.LOW, token0: 'WETH', token1: 'USDC' },
+                USDT: { liquidity: 5000000, feeTier: POOL_FEES.LOW, token0: 'WETH', token1: 'USDT' }
             };
             return defaults[token] || { liquidity: 75000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: token };
         }
@@ -1551,15 +1339,6 @@
                 state.portfolio.gasSpent += gasCostETH;
                 state.portfolio.feesPaid += feeCostETH;
                 state.portfolio.totalFees += totalCostETH;
-
-                if (position.patternObj) {
-                    const pattern = state.activePatterns.get(getPatternKey(position.patternObj));
-                    if (pattern) {
-                        pattern.totalTrades++;
-                        if (pnl > 0) pattern.winningTrades++;
-                        pattern.winRate = (pattern.winningTrades / pattern.totalTrades * 100);
-                    }
-                }
             }
 
             updatePortfolioEquity();
@@ -1662,9 +1441,17 @@
             state.lastTradedToken = tokenSymbol;
             state.lastTradeTimes[tokenSymbol] = Date.now();
 
+            if (action === 'buy') {
+                state.openBuyOrders.set(tokenSymbol, {
+                    tradeId: trade.id,
+                    pattern: pattern,
+                    entryPrice: tradeResult.executionPrice,
+                    entryTime: Date.now()
+                });
+            }
+
             if (action === 'sell') {
                 state.openBuyOrders.delete(tokenSymbol);
-                await settleTrade(trade);
             }
 
             updateDashboard();
@@ -1722,43 +1509,7 @@
             }
         }
 
-        async function settleTrade(trade) {
-            if (trade.type !== 'sell') return;
-
-            const openPositions = state.portfolio.positions
-                .filter(p => p.token === trade.token && p.status === 'open')
-                .sort((a, b) => a.entryTime - b.entryTime);
-
-            if (openPositions.length === 0) return;
-
-            const position = openPositions[0];
-            const amountToSell = Math.min(trade.tokenAmount, position.amount);
-            const sellValueETH = amountToSell * trade.price;
-
-            const costBasis = (amountToSell * position.entryPrice) +
-                (amountToSell / position.amount) * (position.feesPaid + position.gasPaid);
-
-            const pnl = sellValueETH - costBasis - (trade.fee || 0) - (trade.gasUsed * trade.gasPrice / 1e9 / 1e9);
-
-            position.amount -= amountToSell;
-            if (position.amount <= 0.000001) {
-                position.status = 'closed';
-                position.exitPrice = trade.price;
-                position.exitTime = Date.now();
-                position.pnl = pnl;
-            }
-
-            trade.pnl = pnl;
-            trade.status = 'closed';
-            trade.closedAt = new Date().toISOString();
-
-            state.portfolio.realizedPnL += pnl;
-            if (pnl > 0) state.portfolio.winningTrades++;
-            else if (pnl < 0) state.portfolio.losingTrades++;
-
-            updatePortfolioUI();
-        }
-
+        // ========== PATTERN MATCHING & PROFIT-TAKING ==========
         function checkPatternsForToken(token) {
             if (!state.isRunning) return;
 
@@ -1775,8 +1526,7 @@
             const tokenPatterns = Array.from(state.activePatterns.values())
                 .filter(p => p.token === token);
 
-            if (tokenPatterns.length === 0) return;
-
+            // If we have an open position, check if we should sell for profit
             if (openPosition) {
                 const currentValue = openPosition.amount * currentPrice;
                 const costBasis = (openPosition.amount * openPosition.entryPrice) +
@@ -1785,24 +1535,24 @@
                 const profitETH = currentValue - costBasis;
                 const profitPercent = (profitETH / costBasis) * 100;
 
-                if (profitPercent >= TARGET_PROFIT_PERCENT && profitETH > 0) {
+                // Sell immediately if we hit our profit target
+                if (profitPercent >= MIN_PROFIT_PERCENT && profitETH > 0) {
                     const sellAmountETH = openPosition.amount * currentPrice;
                     executeTrade(token, 'sell', `Profit target (${profitPercent.toFixed(2)}%) reached`, sellAmountETH, null);
                     return;
                 }
 
-                const sellPatterns = tokenPatterns.filter(p => p.type === PATTERN_TYPES.SELL);
-                sellPatterns.forEach(pattern => {
-                    if (checkPatternMatch(token, pattern, PATTERN_TYPES.SELL)) {
-                        if (PREVENT_SEQUENTIAL_TRADES && state.lastTradedToken === token) return;
-                        if (state.openBuyOrders.has(token)) return;
-
-                        const sellAmountETH = openPosition.amount * currentPrice;
-                        executeTrade(token, 'sell', getPatternDescription(pattern), sellAmountETH, pattern);
-                    }
-                });
+                // Also sell if position is too old
+                const positionAgeSeconds = (Date.now() - openPosition.entryTime) / 1000;
+                if (positionAgeSeconds > MAX_POSITION_AGE) {
+                    const reason = profitETH > 0 ?
+                        `Auto-sell after ${positionAgeSeconds.toFixed(0)}s (made ${profitPercent.toFixed(2)}% profit)` :
+                        `Auto-sell after ${positionAgeSeconds.toFixed(0)}s (loss of ${Math.abs(profitPercent).toFixed(2)}%)`;
+                    executeTrade(token, 'sell', reason);
+                }
             }
 
+            // If no open position, look for buy opportunities
             if (!openPosition) {
                 const buyPatterns = tokenPatterns.filter(p => p.type === PATTERN_TYPES.BUY);
                 buyPatterns.forEach(pattern => {
@@ -1824,21 +1574,6 @@
                             });
                     }
                 });
-            }
-
-            if (openPosition && MAX_POSITION_AGE > 0) {
-                const positionAgeSeconds = (Date.now() - openPosition.entryTime) / 1000;
-                const currentValue = openPosition.amount * currentPrice;
-                const costBasis = (openPosition.amount * openPosition.entryPrice) + openPosition.feesPaid + openPosition.gasPaid;
-                const profit = currentValue - costBasis;
-                const profitPercent = (profit / costBasis) * 100;
-
-                if (positionAgeSeconds > MAX_POSITION_AGE) {
-                    const reason = profit > 0 ?
-                        `Auto-sell after ${positionAgeSeconds.toFixed(0)}s (made ${profitPercent.toFixed(2)}% profit)` :
-                        `Auto-sell after ${positionAgeSeconds.toFixed(0)}s (loss of ${Math.abs(profitPercent).toFixed(2)}%)`;
-                    executeTrade(token, 'sell', reason);
-                }
             }
         }
 
@@ -1863,22 +1598,6 @@
                         if (Math.abs(dropPct) >= pattern.dropPct / 100 &&
                             timeDiff >= pattern.dropTime - 2 &&
                             timeDiff <= pattern.dropTime + 2) {
-
-                            const priceDiff = Math.abs(currentPrice - current.price) / current.price;
-                            if (priceDiff < 0.02) {
-                                return true;
-                            }
-                        }
-                    }
-                } else if (patternType === PATTERN_TYPES.SELL) {
-                    for (let j = i - 1; j >= Math.max(0, i - 5); j--) {
-                        const prev = recentHistory[j];
-                        const risePct = (current.price - prev.price) / prev.price;
-                        const timeDiff = (current.timestamp - prev.timestamp) / 1000;
-
-                        if (risePct >= pattern.risePct / 100 &&
-                            timeDiff >= pattern.riseTime - 2 &&
-                            timeDiff <= pattern.riseTime + 2) {
 
                             const priceDiff = Math.abs(currentPrice - current.price) / current.price;
                             if (priceDiff < 0.02) {
@@ -2010,7 +1729,7 @@
                     const currentPrice = state.prices[position.token] || position.entryPrice;
                     const currentValue = position.amount * currentPrice;
                     const unrealizedPnL = currentValue - (position.amount * position.entryPrice) - position.feesPaid - position.gasPaid;
-                    const returnPct = ((unrealizedPnL) / (position.amount * position.entryPrice + position.feesPaid + position.gasPaid)) * 100;
+                    const returnPct = (unrealizedPnL / (position.amount * position.entryPrice + position.feesPaid + position.gasPaid)) * 100;
 
                     html += `<tr>
                         <td><strong>${position.token}</strong></td>
@@ -2035,18 +1754,16 @@
         }
 
         function renderDashboard() {
-            const observedTokens = Object.keys(state.priceHistory);
+            const observedTokens = Array.from(state.observedTokens);
+
+            const trackedEl = document.getElementById('trackedTokensCount');
+            if (trackedEl) trackedEl.textContent = observedTokens.length;
 
             if (!state.activeSession || observedTokens.length === 0) {
                 const priceRows = document.getElementById('priceRows');
                 if (priceRows) priceRows.innerHTML = '<tr><td colspan="6">Press Start to begin watching the market</td></tr>';
-                const trackedEl = document.getElementById('trackedTokensCount');
-                if (trackedEl) trackedEl.textContent = '0';
                 return;
             }
-
-            const trackedEl = document.getElementById('trackedTokensCount');
-            if (trackedEl) trackedEl.textContent = observedTokens.length;
 
             let html = '';
             observedTokens.forEach(tokenSymbol => {
@@ -2218,9 +1935,9 @@
                 await updateGasPrice();
                 startPricePolling();
                 startPatternDetection();
-                setInterval(checkAgeBasedSelling, 15000);
+                setInterval(checkAgeBasedSelling, 10000); // Check every 10 seconds
 
-                showToast('success', `Started! Watching ${CHAINS[state.currentChainKey].name} for trading opportunities.`);
+                showToast('success', `Started! Watching ${CHAINS[state.currentChainKey].name} for quick swap opportunities.`);
                 logToDebugConsole(`Bot started on ${CHAINS[state.currentChainKey].name}`, 'success');
 
             } catch (error) {
@@ -2541,6 +2258,13 @@
 
             try {
                 await updateGasPriceForSession(s);
+
+                // If we haven't loaded top pools yet, do it now
+                if (!state.topPoolsLoaded) {
+                    await discoverTopPools(s);
+                    state.topPoolsLoaded = true;
+                }
+
                 const tokensToUpdate = Array.from(state.observedTokens);
 
                 for (const token of tokensToUpdate) {
@@ -2555,12 +2279,8 @@
                             }
                         }
                     } catch (e) {
-                        console.log(`Error updating price for ${token}:`, e.message);
+                        logToDebugConsole(`Error updating price for ${token}: ${e.message}`, 'error');
                     }
-                }
-
-                if (state.observedTokens.size < 10) {
-                    await discoverNewTokens(s);
                 }
 
                 state.lastPriceUpdate = new Date();
@@ -2568,38 +2288,31 @@
                 if (lastUpdateEl) lastUpdateEl.textContent = new Date().toLocaleTimeString();
 
             } catch (error) {
-                console.log('Error in updatePricesForSession:', error);
+                logToDebugConsole(`Error in updatePricesForSession: ${error.message}`, 'error');
             }
         }
 
-        async function discoverNewTokens(s) {
+        async function discoverTopPools(s) {
             if (!current(s) || !s.connected) return;
 
-            try {
-                const chain = CHAINS[state.currentChainKey];
-                const factory = new ethers.Contract(
-                    chain.factory,
-                    ["function getPool(address,address,uint24) view returns (address)",
-                        "function getPoolCount() view returns (uint256)"],
-                    s.provider
-                );
+            const chain = CHAINS[state.currentChainKey];
+            if (!chain.topPools) return;
 
-                const popularTokens = chain.stables || [];
-                const wethAddress = chain.wrappedNative;
+            logToDebugConsole(`Discovering top pools for ${chain.name}...`, 'info');
 
-                for (const stableAddress of popularTokens.slice(0, 3)) {
-                    try {
-                        const poolAddress = await factory.getPool(wethAddress, stableAddress, POOL_FEES.MEDIUM);
-                        if (poolAddress !== '0x0000000000000000000000000000000000000000') {
-                            await loadPool(s, poolAddress);
-                        }
-                    } catch (e) {
-                        console.log(`Error loading pool for ${stableAddress}:`, e.message);
-                    }
+            for (const pool of chain.topPools) {
+                try {
+                    const poolAddress = ethers.getAddress(pool.token0) < ethers.getAddress(pool.token1)
+                        ? ethers.getCreate2Address(chain.factory, [pool.token0, pool.token1, pool.fee], ethers.zeroPadBytes('0x01', 32))
+                        : ethers.getCreate2Address(chain.factory, [pool.token1, pool.token0, pool.fee], ethers.zeroPadBytes('0x01', 32));
+
+                    await loadPool(s, poolAddress);
+                } catch (e) {
+                    logToDebugConsole(`Error loading top pool: ${e.message}`, 'warn');
                 }
-            } catch (e) {
-                console.log('Error discovering new tokens:', e.message);
             }
+
+            logToDebugConsole(`Top pools discovery complete for ${chain.name}.`, 'success');
         }
 
         function findTokenMeta(s, symbol) {
@@ -2669,7 +2382,7 @@
                         topics: [SWAP_TOPIC]
                     });
                 } catch (e) {
-                    console.log(`Error getting logs for block ${n}:`, e.message);
+                    logToDebugConsole(`Error getting logs for block ${n}: ${e.message}`, 'error');
                     return;
                 }
 
@@ -2689,7 +2402,7 @@
                 }));
 
             } catch (error) {
-                console.log(`Error processing block ${n}:`, error.message);
+                logToDebugConsole(`Error processing block ${n}: ${error.message}`, 'error');
             }
         }
 
@@ -2720,7 +2433,7 @@
                     if (s.gasPriceHistory.length > 100) s.gasPriceHistory.shift();
                 }
             } catch (error) {
-                console.log('Gas price error:', error.message);
+                logToDebugConsole(`Gas price error: ${error.message}`, 'error');
             }
         }
 
@@ -2814,7 +2527,7 @@
                 }
 
             } catch (error) {
-                console.error(`Swap log error for ${s?.chain?.name || 'unknown'}:`, error);
+                logToDebugConsole(`Swap log error for ${s?.chain?.name || 'unknown'}: ${error.message}`, 'error');
             }
         }
 
@@ -3028,9 +2741,9 @@
                     const lastUpdateEl = document.getElementById('lastPriceUpdate');
                     if (lastUpdateEl) lastUpdateEl.textContent = new Date().toLocaleTimeString();
                 } catch (error) {
-                    console.log('Error in price polling:', error);
+                    logToDebugConsole(`Error in price polling: ${error.message}`, 'error');
                 }
-            }, 5000);
+            }, 3000); // Faster polling for quick swaps
         }
 
         function stopPricePolling() {
@@ -3123,8 +2836,8 @@
             }
         }, 30000);
 
-        console.log('Uniswap Easy Pattern Trader v' + APP_VERSION + ' initialized');
-        logToDebugConsole('Uniswap Easy Pattern Trader v' + APP_VERSION + ' initialized', 'success');
+        console.log('Uniswap Quick Swap Trader v' + APP_VERSION + ' initialized');
+        logToDebugConsole('Uniswap Quick Swap Trader v' + APP_VERSION + ' initialized', 'success');
     </script>
 </body>
 
