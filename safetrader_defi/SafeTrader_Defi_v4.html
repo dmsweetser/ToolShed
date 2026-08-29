@@ -226,39 +226,6 @@
                 transform: rotate(360deg);
             }
         }
-
-        /* Debug Console Styles */
-        #debugConsole {
-            background: #1e1e1e;
-            color: #00ff00;
-            padding: 15px;
-            border-radius: 4px;
-            font-family: monospace;
-            max-height: 300px;
-            overflow-y: auto;
-            margin-top: 10px;
-            white-space: pre-wrap;
-            font-size: 12px;
-            line-height: 1.4;
-        }
-
-        #debugToggle {
-            background: #333;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            cursor: pointer;
-            border-radius: 4px;
-            margin-bottom: 10px;
-        }
-
-        .debug-section {
-            display: none;
-        }
-
-        .debug-section.active {
-            display: block;
-        }
     </style>
 </head>
 
@@ -267,18 +234,6 @@
     <div class="container">
         <h1>Uniswap Quick Swap Trader</h1>
         <p><strong>v6.0.0 - Quick Buy/Sell Mode</strong> - Buys dips and sells at first profit opportunity.</p>
-
-        <!-- Debug Console Toggle -->
-        <button id="debugToggle" onclick="toggleDebugConsole()">Toggle Debug Console</button>
-        <div class="debug-section" id="debugSection">
-            <div class="card">
-                <h2>Debug Console</h2>
-                <button class="btn btn-primary btn-sm" onclick="clearDebugConsole()">Clear Console</button>
-                <button class="btn btn-secondary btn-sm" onclick="runDiagnostics()">Run Diagnostics</button>
-                <button class="btn btn-warning btn-sm" onclick="forceTokenDiscovery()">Force Token Discovery</button>
-                <div id="debugConsole"></div>
-            </div>
-        </div>
 
         <!-- Connection & Controls -->
         <div class="card">
@@ -609,7 +564,7 @@
         };
 
         const ERC20_ABI = ["function symbol() view returns (string)", "function decimals() view returns (uint8)", "function name() view returns (string)", "function balanceOf(address) view returns (uint256)"];
-        const POOL_ABI = ["function token0() view returns (address)", "function token1() view returns (address)", "function fee() view returns (uint24)", "function factory() view returns (address)", "function liquidity() view returns (uint128)", "function slot0() view returns (uint160, int24, uint16, uint16, uint16, uint16, uint16, bool)"];
+        const POOL_ABI = ["function token0() view returns (address)", "function token1() view returns (address)", "function fee() view returns (uint24)", "function factory() view returns (address)", "function liquidity() view returns (uint128)", "function slot0() view returns (uint160, int24, uint16, uint16, uint16, uint16, uint16, uint16, bool)"];
         const SWAP_INTERFACE = new ethers.Interface(["event Swap(address indexed sender,address indexed recipient,int256 amount0,int256 amount1,uint160 sqrtPriceX96,uint128 liquidity,int24 tick)"]);
         const SWAP_TOPIC = SWAP_INTERFACE.getEvent("Swap").topicHash;
 
@@ -717,77 +672,6 @@
             topPoolsLoaded: false
         };
 
-        // ========== DEBUG CONSOLE ==========
-        function logToDebugConsole(message, type = 'log') {
-            const consoleEl = document.getElementById('debugConsole');
-            if (!consoleEl) return;
-
-            const timestamp = new Date().toLocaleTimeString();
-            let formattedMessage = `[${timestamp}] `;
-
-            switch (type) {
-                case 'error':
-                    formattedMessage += `\x1b[31m[ERROR]\x1b[0m ${message}`;
-                    break;
-                case 'warn':
-                    formattedMessage += `\x1b[33m[WARN]\x1b[0m ${message}`;
-                    break;
-                case 'success':
-                    formattedMessage += `\x1b[32m[SUCCESS]\x1b[0m ${message}`;
-                    break;
-                case 'info':
-                    formattedMessage += `\x1b[36m[INFO]\x1b[0m ${message}`;
-                    break;
-                default:
-                    formattedMessage += `[LOG] ${message}`;
-            }
-
-            consoleEl.innerHTML += formattedMessage + '\n';
-            consoleEl.scrollTop = consoleEl.scrollHeight;
-        }
-
-        function toggleDebugConsole() {
-            const debugSection = document.getElementById('debugSection');
-            debugSection.classList.toggle('active');
-        }
-
-        function clearDebugConsole() {
-            const consoleEl = document.getElementById('debugConsole');
-            if (consoleEl) consoleEl.innerHTML = '';
-        }
-
-        function runDiagnostics() {
-            logToDebugConsole('=== RUNNING DIAGNOSTICS ===', 'info');
-            logToDebugConsole(`Bot Running: ${state.isRunning}`);
-            logToDebugConsole(`Wallet Connected: ${state.walletConnected}`);
-            logToDebugConsole(`Live Mode: ${state.liveMode}`);
-            logToDebugConsole(`Active Session: ${state.activeSession ? 'Yes' : 'No'}`);
-            logToDebugConsole(`Session Connected: ${state.activeSession?.connected || false}`);
-            logToDebugConsole(`Observed Tokens: ${Array.from(state.observedTokens).join(', ') || 'None'}`);
-            logToDebugConsole(`Active Patterns: ${state.activePatterns.size}`);
-            logToDebugConsole(`Open Positions: ${state.portfolio.positions.filter(p => p.status === 'open').length}`);
-            logToDebugConsole(`Total Trades: ${state.portfolio.totalTrades}`);
-
-            for (const token of Array.from(state.observedTokens)) {
-                const history = state.priceHistory[token];
-                const price = state.prices[token];
-                logToDebugConsole(`Token: ${token} | Price: ${price ? price.toFixed(12) : 'N/A'} | History Length: ${history ? history.length : 0}`);
-            }
-
-            logToDebugConsole('=== DIAGNOSTICS COMPLETE ===', 'info');
-        }
-
-        function forceTokenDiscovery() {
-            logToDebugConsole('Forcing token discovery...', 'info');
-            if (state.activeSession?.connected) {
-                discoverTopPools(state.activeSession).catch(e => {
-                    logToDebugConsole(`Token discovery failed: ${e.message}`, 'error');
-                });
-            } else {
-                logToDebugConsole('Session not connected. Start the bot first.', 'error');
-            }
-        }
-
         // ========== UTILITY FUNCTIONS ==========
         function norm(a) { return String(a).toLowerCase(); }
         function short(a) { if (!a) return ''; return a.substring(0, 6) + '...' + a.substring(a.length - 4); }
@@ -800,7 +684,6 @@
             setupEventListeners();
             updateNetworkInfo();
             updateConstantsDisplay();
-            logToDebugConsole('Uniswap Quick Swap Trader v' + APP_VERSION + ' initialized', 'success');
         });
 
         function initializeKnownTokens() {
@@ -974,23 +857,13 @@
             const tokens = Array.from(state.observedTokens);
             const newActivePatterns = new Map();
 
-            logToDebugConsole(`Detecting patterns for ${tokens.length} tokens...`, 'info');
-
             for (const token of tokens) {
                 const history = state.priceHistory[token];
-                if (!history || history.length < 5) {
-                    logToDebugConsole(`Skipping ${token}: insufficient history (${history ? history.length : 0} points)`, 'warn');
-                    continue;
-                }
+                if (!history || history.length < 5) continue;
 
                 const buyPatterns = detectBuyPatternsForToken(history, token);
-                logToDebugConsole(`Found ${buyPatterns.length} buy patterns for ${token}`, 'info');
-
                 buyPatterns.forEach(pattern => {
-                    if (!isPatternValid(pattern)) {
-                        logToDebugConsole(`Invalid pattern for ${token}: ${JSON.stringify(pattern)}`, 'warn');
-                        return;
-                    }
+                    if (!isPatternValid(pattern)) return;
                     const patternKey = getPatternKey(pattern);
                     const existingPatternKey = `${token}_${patternKey}`;
 
@@ -1010,7 +883,6 @@
                 });
             }
 
-            // Validate patterns with minimal backtesting
             validatePatternsMinimal(newActivePatterns);
 
             state.activePatterns = newActivePatterns;
@@ -1021,8 +893,6 @@
             if (lastDetectionEl) {
                 lastDetectionEl.textContent = state.lastDetectionTime.toLocaleTimeString();
             }
-
-            logToDebugConsole(`Pattern detection complete. Found ${state.patternStats.totalPatterns} patterns.`, 'success');
         }
 
         function isPatternValid(pattern) {
@@ -1094,7 +964,6 @@
         }
 
         function validatePatternsMinimal(patterns) {
-            // Minimal validation: just ensure the pattern is structurally valid
             patterns.forEach((pattern, key) => {
                 if (pattern.dropPct <= 0 || pattern.risePct <= 0) {
                     patterns.delete(key);
@@ -1352,53 +1221,29 @@
             }
 
             const currentPrice = state.prices[token];
-            if (!currentPrice) {
-                logToDebugConsole(`No price for ${token}, skipping trade`, 'warn');
-                return null;
-            }
+            if (!currentPrice) return null;
 
-            if (amountETH <= 0) {
-                logToDebugConsole(`Trade amount <= 0 for ${token}, skipping`, 'warn');
-                return null;
-            }
+            if (amountETH <= 0) return null;
 
             const totalOpenPositions = state.portfolio.positions.filter(p => p.status === 'open').length;
-            if (totalOpenPositions >= MAX_TRADES) {
-                logToDebugConsole(`Max trades (${MAX_TRADES}) reached, skipping`, 'warn');
-                return null;
-            }
+            if (totalOpenPositions >= MAX_TRADES) return null;
 
             const lastTradeTime = state.lastTradeTimes[token];
-            if (lastTradeTime && (Date.now() - lastTradeTime) < (TRADE_COOLDOWN * 1000)) {
-                logToDebugConsole(`Cooldown active for ${token}, skipping`, 'warn');
-                return null;
-            }
+            if (lastTradeTime && (Date.now() - lastTradeTime) < (TRADE_COOLDOWN * 1000)) return null;
 
             const tokenSymbol = token;
             const tokenAmount = amountETH / currentPrice;
             const poolInfo = await getEnhancedPoolInfo(tokenSymbol);
-            if (!poolInfo) {
-                logToDebugConsole(`No pool info for ${token}, skipping`, 'warn');
-                return null;
-            }
+            if (!poolInfo) return null;
 
             const currentGasPrice = state.currentGasPrice || MAX_GAS_PRICE;
-            if (currentGasPrice > MAX_GAS_PRICE) {
-                logToDebugConsole(`Gas price (${currentGasPrice} gwei) > max (${MAX_GAS_PRICE} gwei), skipping`, 'warn');
-                return null;
-            }
+            if (currentGasPrice > MAX_GAS_PRICE) return null;
 
             if (action === 'sell') {
                 const tokenBalance = state.portfolio.balances[tokenSymbol] || 0;
-                if (tokenBalance <= 0) {
-                    logToDebugConsole(`No balance for ${token}, skipping`, 'warn');
-                    return null;
-                }
+                if (tokenBalance <= 0) return null;
                 const sellableAmount = Math.min(tokenAmount, tokenBalance);
-                if (sellableAmount <= 0) {
-                    logToDebugConsole(`Sellable amount <= 0 for ${token}, skipping`, 'warn');
-                    return null;
-                }
+                if (sellableAmount <= 0) return null;
             }
 
             let tradeResult;
@@ -1424,10 +1269,7 @@
                 return failedTrade;
             }
 
-            if (PREVENT_SEQUENTIAL_TRADES && state.lastTradedToken === tokenSymbol) {
-                logToDebugConsole(`Preventing sequential trade for ${token}`, 'warn');
-                return null;
-            }
+            if (PREVENT_SEQUENTIAL_TRADES && state.lastTradedToken === tokenSymbol) return null;
 
             const trade = createTradeObject(
                 tokenSymbol, action, tradeResult.executionPrice, tradeResult.tokenAmount,
@@ -1463,8 +1305,6 @@
 
         async function executeLiveTrade(tokenSymbol, action, tokenAmount, currentPrice, poolInfo, gasPriceGwei) {
             try {
-                logToDebugConsole(`Executing live ${action} trade for ${tokenAmount} ${tokenSymbol} at ${currentPrice} ETH`, 'info');
-
                 const gasUsed = estimateSwapGas(action, tokenSymbol);
                 const feeTier = poolInfo.feeTier || POOL_FEES.MEDIUM;
                 const feePercent = feeTier / 1000000;
@@ -1545,9 +1385,7 @@
                 // Also sell if position is too old and has any profit
                 const positionAgeSeconds = (Date.now() - openPosition.entryTime) / 1000;
                 if (positionAgeSeconds > MAX_POSITION_AGE && profitETH > 0) {
-                    const reason = profitETH > 0 ?
-                        `Auto-sell after ${positionAgeSeconds.toFixed(0)}s (made ${profitPercent.toFixed(2)}% profit)` :
-                        `Auto-sell after ${positionAgeSeconds.toFixed(0)}s (loss of ${Math.abs(profitPercent).toFixed(2)}%)`;
+                    const reason = `Auto-sell after ${positionAgeSeconds.toFixed(0)}s (made ${profitPercent.toFixed(2)}% profit)`;
                     executeTrade(token, 'sell', reason);
                 }
             }
@@ -1755,7 +1593,6 @@
 
         function renderDashboard() {
             const observedTokens = Array.from(state.observedTokens);
-
             const trackedEl = document.getElementById('trackedTokensCount');
             if (trackedEl) trackedEl.textContent = observedTokens.length;
 
@@ -1768,8 +1605,6 @@
             let html = '';
             observedTokens.forEach(tokenSymbol => {
                 const price = state.prices[tokenSymbol];
-                if (price === undefined || price === null) return;
-
                 let changePct = 0;
                 const history = state.priceHistory[tokenSymbol];
                 if (history && history.length >= 2) {
@@ -1782,14 +1617,12 @@
 
                 const changeClass = changePct >= 0 ? 'price-up' : 'price-down';
                 const changeSymbol = changePct > 0 ? '\u25B2' : changePct < 0 ? '\u25BC' : '';
-                const displayPrice = price != null ? price.toFixed(12) : '<span>No price</span>';
+                const displayPrice = price != null ? price.toFixed(12) : 'N/A';
 
                 const tokenPatterns = Array.from(state.activePatterns.values()).filter(p => p.token === tokenSymbol);
-
                 const tokenTrades = state.trades.filter(t => t.token === tokenSymbol && (t.status === 'closed' || t.status === 'open'));
                 const lastTradeTime = tokenTrades.length > 0 ?
                     new Date(Math.max(...tokenTrades.map(t => new Date(t.timestamp).getTime()))).toLocaleTimeString() : 'Never';
-
                 const historyLength = history ? history.length : 0;
 
                 html += `<tr>
@@ -1935,10 +1768,9 @@
                 await updateGasPrice();
                 startPricePolling();
                 startPatternDetection();
-                setInterval(checkAgeBasedSelling, 10000); // Check every 10 seconds
+                setInterval(checkAgeBasedSelling, 10000);
 
                 showToast('success', `Started! Watching ${CHAINS[state.currentChainKey].name} for quick swap opportunities.`);
-                logToDebugConsole(`Bot started on ${CHAINS[state.currentChainKey].name}`, 'success');
 
             } catch (error) {
                 const errorMsg = error && error.message ? error.message : String(error);
@@ -1946,7 +1778,6 @@
                 document.getElementById('startBotBtn').disabled = false;
                 state.isRunning = false;
                 showToast('error', `Failed to start: ${errorMsg}`);
-                logToDebugConsole(`Failed to start: ${errorMsg}`, 'error');
             }
         }
 
@@ -1969,11 +1800,10 @@
 
                 updateBotStatus();
                 showToast('success', 'Trading stopped!');
-                logToDebugConsole('Bot stopped', 'success');
+
             } catch (error) {
                 const errorMsg = error && error.message ? error.message : String(error);
                 showToast('error', `Failed to stop: ${errorMsg}`);
-                logToDebugConsole(`Failed to stop: ${errorMsg}`, 'error');
             } finally {
                 hideLoading('stopSpinner');
                 document.getElementById('stopBotBtn').disabled = false;
@@ -1983,7 +1813,6 @@
         async function connectWallet() {
             if (!window.ethereum) {
                 showToast('error', 'MetaMask not detected. Ensure it is installed and enabled.');
-                logToDebugConsole('MetaMask not detected', 'error');
                 return;
             }
             try {
@@ -1995,10 +1824,8 @@
                 document.getElementById('connectWalletBtn').disabled = true;
                 document.getElementById('toggleLiveModeBtn').disabled = false;
                 showToast('success', 'Wallet connected successfully.');
-                logToDebugConsole('Wallet connected', 'success');
             } catch (error) {
                 showToast('error', 'Failed to connect wallet: ' + error.message);
-                logToDebugConsole(`Wallet connection failed: ${error.message}`, 'error');
             }
         }
 
@@ -2008,7 +1835,6 @@
             btn.textContent = state.liveMode ? 'Live Mode: ON' : 'Live Mode: OFF';
             btn.className = state.liveMode ? 'btn btn-danger' : 'btn btn-warning';
             showToast(state.liveMode ? 'success' : 'warning', state.liveMode ? 'Live Mode enabled. Real transactions will be executed.' : 'Live Mode disabled. Using simulation.');
-            logToDebugConsole(`Live mode ${state.liveMode ? 'enabled' : 'disabled'}`, state.liveMode ? 'success' : 'warn');
         }
 
         async function testConnection() {
@@ -2017,11 +1843,9 @@
                 const provider = new ethers.JsonRpcProvider(chain.rpcs[0]);
                 await provider.getBlockNumber();
                 showToast('success', `Successfully connected to ${chain.name}!`);
-                logToDebugConsole(`Connected to ${chain.name}`, 'success');
             } catch (error) {
                 const errorMsg = error && error.message ? error.message : String(error);
                 showToast('error', `Connection test failed: ${errorMsg}`);
-                logToDebugConsole(`Connection test failed: ${errorMsg}`, 'error');
             }
         }
 
@@ -2154,7 +1978,6 @@
                         updateConnectionStatus();
                         initializeSessionHandlers(s);
                         showToast('success', `Connected to ${s.chain.name}`);
-                        logToDebugConsole(`Connected to ${s.chain.name}`, 'success');
                     });
 
                     s.ws.addEventListener("close", () => {
@@ -2163,7 +1986,6 @@
                         updateButton();
                         updateConnectionStatus();
                         showToast('warning', `Disconnected from ${s.chain.name}, reconnecting...`);
-                        logToDebugConsole(`Disconnected from ${s.chain.name}`, 'warn');
                         scheduleReconnect(s);
                     });
 
@@ -2173,7 +1995,6 @@
                         updateButton();
                         updateConnectionStatus();
                         showToast('error', `WebSocket error for ${s.chain.name}: ${e.message || String(e)}`);
-                        logToDebugConsole(`WebSocket error for ${s.chain.name}: ${e.message || String(e)}`, 'error');
                         scheduleReconnect(s);
                     });
                 }
@@ -2194,7 +2015,6 @@
                 updateButton();
                 updateConnectionStatus();
                 showToast('error', `Connection failed for ${s.chain.name}: ${e.message || String(e)}`);
-                logToDebugConsole(`Connection failed for ${s.chain.name}: ${e.message || String(e)}`, 'error');
                 scheduleReconnect(s);
             }
         }
@@ -2215,7 +2035,6 @@
 
             const delay = Math.min(state.reconnectDelay * Math.pow(2, s.reconnectAttempts - 1), 30000);
             showToast('info', `Reconnecting to ${s.chain.name} in ${delay / 1000} seconds (attempt ${s.reconnectAttempts}/${maxAttempts})...`);
-            logToDebugConsole(`Reconnecting to ${s.chain.name} in ${delay / 1000} seconds (attempt ${s.reconnectAttempts}/${maxAttempts})`, 'info');
 
             s.reconnectTimer = setTimeout(() => {
                 s.reconnectTimer = null;
@@ -2259,7 +2078,6 @@
             try {
                 await updateGasPriceForSession(s);
 
-                // If we haven't loaded top pools yet, do it now
                 if (!state.topPoolsLoaded) {
                     await discoverTopPools(s);
                     state.topPoolsLoaded = true;
@@ -2279,7 +2097,7 @@
                             }
                         }
                     } catch (e) {
-                        logToDebugConsole(`Error updating price for ${token}: ${e.message}`, 'error');
+                        // Silently ignore price update errors
                     }
                 }
 
@@ -2288,7 +2106,7 @@
                 if (lastUpdateEl) lastUpdateEl.textContent = new Date().toLocaleTimeString();
 
             } catch (error) {
-                logToDebugConsole(`Error in updatePricesForSession: ${error.message}`, 'error');
+                // Silently ignore errors in price updates
             }
         }
 
@@ -2298,8 +2116,6 @@
             const chain = CHAINS[state.currentChainKey];
             if (!chain.topPools) return;
 
-            logToDebugConsole(`Discovering top pools for ${chain.name}...`, 'info');
-
             for (const pool of chain.topPools) {
                 try {
                     const poolAddress = ethers.getAddress(pool.token0) < ethers.getAddress(pool.token1)
@@ -2308,11 +2124,9 @@
 
                     await loadPool(s, poolAddress);
                 } catch (e) {
-                    logToDebugConsole(`Error loading top pool: ${e.message}`, 'warn');
+                    // Silently ignore pool loading errors
                 }
             }
-
-            logToDebugConsole(`Top pools discovery complete for ${chain.name}.`, 'success');
         }
 
         function findTokenMeta(s, symbol) {
@@ -2382,7 +2196,6 @@
                         topics: [SWAP_TOPIC]
                     });
                 } catch (e) {
-                    logToDebugConsole(`Error getting logs for block ${n}: ${e.message}`, 'error');
                     return;
                 }
 
@@ -2402,7 +2215,7 @@
                 }));
 
             } catch (error) {
-                logToDebugConsole(`Error processing block ${n}: ${error.message}`, 'error');
+                // Silently ignore block processing errors
             }
         }
 
@@ -2433,7 +2246,7 @@
                     if (s.gasPriceHistory.length > 100) s.gasPriceHistory.shift();
                 }
             } catch (error) {
-                logToDebugConsole(`Gas price error: ${error.message}`, 'error');
+                // Silently ignore gas price errors
             }
         }
 
@@ -2527,7 +2340,7 @@
                 }
 
             } catch (error) {
-                logToDebugConsole(`Swap log error for ${s?.chain?.name || 'unknown'}: ${error.message}`, 'error');
+                // Silently ignore swap log errors
             }
         }
 
@@ -2741,9 +2554,9 @@
                     const lastUpdateEl = document.getElementById('lastPriceUpdate');
                     if (lastUpdateEl) lastUpdateEl.textContent = new Date().toLocaleTimeString();
                 } catch (error) {
-                    logToDebugConsole(`Error in price polling: ${error.message}`, 'error');
+                    // Silently ignore polling errors
                 }
-            }, 3000); // Faster polling for quick swaps
+            }, 3000);
         }
 
         function stopPricePolling() {
@@ -2835,9 +2648,6 @@
                 backupData();
             }
         }, 30000);
-
-        console.log('Uniswap Quick Swap Trader v' + APP_VERSION + ' initialized');
-        logToDebugConsole('Uniswap Quick Swap Trader v' + APP_VERSION + ' initialized', 'success');
     </script>
 </body>
 
