@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Quick Swap Trader v6.0.0</title>
+    <title>Uniswap Quick Swap Trader v7.0.0</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
     <style>
         body {
@@ -303,7 +303,7 @@
     <div class="toast-container" id="toastContainer"></div>
     <div class="container">
         <h1>Uniswap Quick Swap Trader</h1>
-        <p><strong>v6.0.0 - Quick Buy/Sell Mode</strong> - Buys dips and sells at first profit opportunity.</p>
+        <p><strong>v7.0.0 - Profit-Only Mode</strong> - Buys dips and sells <strong>only at profit</strong>.</p>
 
         <!-- Connection & Controls -->
         <div class="card">
@@ -419,7 +419,7 @@
                     </div>
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Profit Target</div>
-                        <div style="font-size: 18px; font-weight: 600;"><span id="targetProfitPercent">0.3%</span></div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="targetProfitPercent">0.5%</span></div>
                     </div>
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Last Detection</div>
@@ -522,11 +522,11 @@
                     <p><strong>Starting ETH:</strong> <span id="displayStartingEth">0.0033 ETH</span></p>
                     <p><strong>Trade %:</strong> <span id="displayTradePercent">0.5%</span></p>
                     <p><strong>Min Trade:</strong> <span id="displayMinTrade">0.0003 ETH</span></p>
-                    <p><strong>Max Trades:</strong> <span id="displayMaxTrades">5</span></p>
+                    <p><strong>Max Trades:</strong> <span id="displayMaxTrades">10</span></p>
                 </div>
                 <div class="config-section">
                     <h3>Pattern Detection</h3>
-                    <p><strong>Min Price Change:</strong> <span id="displayMinPriceChange">0.05%</span></p>
+                    <p><strong>Min Price Change:</strong> <span id="displayMinPriceChange">0.1%</span></p>
                     <p><strong>Min Time Window:</strong> <span id="displayMinTimeWindow">3s</span></p>
                     <p><strong>Max Time Window:</strong> <span id="displayMaxTimeWindow">60s</span></p>
                     <p><strong>Min Occurrences:</strong> <span id="displayMinOccurrences">1</span></p>
@@ -535,8 +535,7 @@
             <div class="grid-3" style="margin-top: 15px;">
                 <div class="config-section">
                     <h3>Profit Targets</h3>
-                    <p><strong>Min Profit to Sell:</strong> <span id="displayMinProfit">0.3%</span></p>
-                    <p><strong>Max Position Age:</strong> <span id="displayMaxPositionAge">300s</span></p>
+                    <p><strong>Min Profit to Sell:</strong> <span id="displayMinProfit">0.5%</span></p>
                 </div>
                 <div class="config-section">
                     <h3>Safety</h3>
@@ -587,7 +586,7 @@
 
     <script>
         // ========== APP VERSION ==========
-        const APP_VERSION = '6.0.0-QUICKSWAP';
+        const APP_VERSION = '7.0.0-PROFITONLY';
 
         // ========== DEFAULT CONFIGURATION ==========
         let CONFIG = {
@@ -599,18 +598,17 @@
             STARTING_ETH: 0.0033,
             TRADE_AMOUNT_PERCENT: 0.5,
             MIN_TRADE_AMOUNT_ETH: 0.0003,
-            MAX_TRADES: 5,
+            MAX_TRADES: 10,
             TRADE_COOLDOWN: 60,
 
             // Pattern Detection Configuration
-            MIN_PRICE_CHANGE: 0.05,
+            MIN_PRICE_CHANGE: 0.1,      // Increased from 0.05 to 0.1 for better quality patterns
             MIN_TIME_WINDOW: 3,
             MAX_TIME_WINDOW: 60,
             MIN_OCCURRENCES: 1,
 
-            // Profit Targets
-            MIN_PROFIT_PERCENT: 0.3,
-            MAX_POSITION_AGE: 300,
+            // Profit Targets - ONLY SELL AT PROFIT
+            MIN_PROFIT_PERCENT: 0.5,    // Increased from 0.3 to 0.5 for better profits
 
             // Safety Configuration
             MAX_SLIPPAGE: 0.5,
@@ -937,7 +935,6 @@
             safeSetText('displayMaxTimeWindow', CONFIG.MAX_TIME_WINDOW + 's');
             safeSetText('displayMinOccurrences', CONFIG.MIN_OCCURRENCES);
             safeSetText('displayMinProfit', CONFIG.MIN_PROFIT_PERCENT + '%');
-            safeSetText('displayMaxPositionAge', CONFIG.MAX_POSITION_AGE + 's');
             safeSetText('displayMaxSlippage', CONFIG.MAX_SLIPPAGE + '%');
             safeSetText('displayMaxGasPrice', CONFIG.MAX_GAS_PRICE + ' gwei');
             safeSetText('displayPriceHistoryDuration', CONFIG.PRICE_HISTORY_DURATION + 'h');
@@ -1071,10 +1068,15 @@
         }
 
         function isPatternValid(pattern) {
+            // Only accept patterns that have sufficient profit potential
             if (pattern.dropPct > 100 || pattern.risePct > 100) return false;
             if (pattern.dropPct < 0 || pattern.risePct < 0) return false;
             if (pattern.dropTime > 100 || pattern.riseTime > 100) return false;
             if (pattern.dropTime < 1 || pattern.riseTime < 1) return false;
+
+            // Ensure the rise percentage meets our minimum profit requirement
+            if (pattern.risePct < CONFIG.MIN_PROFIT_PERCENT) return false;
+
             return true;
         }
 
@@ -1103,9 +1105,9 @@
                                 const next = history[k];
                                 const risePct = (next.price - current.price) / current.price;
                                 const riseTime = next.timestamp - current.timestamp;
-                                const minRequiredRise = Math.abs(dropPct) * 0.8;
 
-                                if (risePct >= minRequiredRise && riseTime >= minTime && riseTime <= maxTime) {
+                                // Require the rise to be at least our minimum profit percentage
+                                if (risePct >= (CONFIG.MIN_PROFIT_PERCENT / 100) && riseTime >= minTime && riseTime <= maxTime) {
                                     patterns.push({
                                         type: PATTERN_TYPES.BUY,
                                         dropPct: Math.abs(dropPct) * 100,
@@ -1144,7 +1146,8 @@
                     patterns.delete(key);
                     return;
                 }
-                if (pattern.risePct <= pattern.dropPct * 0.8) {
+                // Ensure the pattern has sufficient profit potential
+                if (pattern.risePct < CONFIG.MIN_PROFIT_PERCENT) {
                     patterns.delete(key);
                     return;
                 }
@@ -1551,7 +1554,7 @@
             }
         }
 
-        // ========== PATTERN MATCHING & PROFIT-TAKING ==========
+        // ========== PATTERN MATCHING & PROFIT-TAKING (PROFIT-ONLY MODE) ==========
         function checkPatternsForToken(token) {
             try {
                 if (!state.isRunning) return;
@@ -1578,19 +1581,13 @@
                     const profitETH = currentValue - costBasis;
                     const profitPercent = (profitETH / costBasis) * 100;
 
-                    // Sell immediately if we hit our profit target
+                    // ONLY SELL IF WE HIT OUR PROFIT TARGET
                     if (profitPercent >= CONFIG.MIN_PROFIT_PERCENT && profitETH > 0) {
                         const sellAmountETH = openPosition.amount * currentPrice;
                         executeTrade(token, 'sell', `Profit target (${profitPercent.toFixed(2)}%) reached`, sellAmountETH, null);
                         return;
                     }
-
-                    // Also sell if position is too old
-                    const positionAgeSeconds = (Date.now() - openPosition.entryTime) / 1000;
-                    if (positionAgeSeconds > CONFIG.MAX_POSITION_AGE && profitETH > 0) {
-                        const reason = `Auto-sell after ${positionAgeSeconds.toFixed(0)}s (made ${profitPercent.toFixed(2)}% profit)`
-                        executeTrade(token, 'sell', reason);
-                    }
+                    // Removed: No age-based selling - we only sell at profit
                 }
 
                 // If no open position, look for buy opportunities
@@ -1656,30 +1653,6 @@
             } catch (e) {
                 console.error('Error checking pattern match:', e);
                 return false;
-            }
-        }
-
-        function checkAgeBasedSelling() {
-            if (!CONFIG.MAX_POSITION_AGE || !state.isRunning) return;
-
-            try {
-                const now = Date.now();
-                state.portfolio.positions.forEach(position => {
-                    if (position.status !== 'open') return;
-
-                    const positionAgeSeconds = (now - position.entryTime) / 1000;
-                    const currentPrice = state.prices[position.token] || position.entryPrice;
-                    const currentValue = position.amount * currentPrice;
-                    const costBasis = (position.amount * position.entryPrice) + position.feesPaid + position.gasPaid;
-                    const profit = currentValue - costBasis;
-
-                    if (positionAgeSeconds > CONFIG.MAX_POSITION_AGE * 2) {
-                        const reason = `Force-sell after ${positionAgeSeconds.toFixed(0)}s (timeout)`;
-                        executeTrade(position.token, 'sell', reason);
-                    }
-                });
-            } catch (e) {
-                console.error('Error in age-based selling check:', e);
             }
         }
 
@@ -1780,10 +1753,11 @@
                 safeSetText('losingTradesCount', losingTrades);
                 safeSetText('failedTradesCount', failedTrades);
 
-                const winRate = totalTrades > 0 ? ((winningTrades / (winningTrades + losingTrades)) * 100).toFixed(2) : '0';
+                // Fix: Handle division by zero
+                const successfulTrades = winningTrades + losingTrades;
+                const winRate = successfulTrades > 0 ? ((winningTrades / successfulTrades) * 100).toFixed(2) : '0';
                 safeSetText('winRate', winRate + '%');
 
-                const successfulTrades = winningTrades + losingTrades;
                 const avgProfit = successfulTrades > 0 ?
                     (state.portfolio.realizedPnL / successfulTrades).toFixed(12) + ' ETH' : '0 ETH';
                 safeSetText('avgProfit', avgProfit);
@@ -2053,9 +2027,8 @@
                 await updateGasPrice();
                 startPricePolling();
                 startPatternDetection();
-                setInterval(checkAgeBasedSelling, 10000);
 
-                showToast('success', `Started! Watching ${CHAINS[state.currentChainKey].name} for quick swap opportunities.`);
+                showToast('success', `Started! Watching ${CHAINS[state.currentChainKey].name} for quick swap opportunities (profit-only mode).`);
 
             } catch (error) {
                 const errorMsg = error && error.message ? error.message : String(error);
