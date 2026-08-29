@@ -421,7 +421,7 @@
                     <p><strong>Starting ETH:</strong> <span id="displayStartingEth">0.0033 ETH</span></p>
                     <p><strong>Trade %:</strong> <span id="displayTradePercent">0.5%</span></p>
                     <p><strong>Min Trade:</strong> <span id="displayMinTrade">0.0003 ETH</span></p>
-                    <p><strong>Max Trades:</strong> <span id="displayMaxTrades">200</span></p>
+                    <p><strong>Max Trades:</strong> <span id="displayMaxTrades">5</span></p>
                 </div>
                 <div>
                     <h3>Pattern Detection</h3>
@@ -463,7 +463,7 @@
         let STARTING_ETH = 0.0033;
         let TRADE_AMOUNT_PERCENT = 0.5;      // % of available ETH to use per trade
         let MIN_TRADE_AMOUNT_ETH = 0.0003;
-        let MAX_TRADES = 200;
+        let MAX_TRADES = 5;
         let TRADE_COOLDOWN = 60;              // Seconds between trades for the same token
 
         // Pattern Detection Configuration (Optimized for quick swaps)
@@ -1542,9 +1542,9 @@
                     return;
                 }
 
-                // Also sell if position is too old
+                // Also sell if position is too old and has any profit
                 const positionAgeSeconds = (Date.now() - openPosition.entryTime) / 1000;
-                if (positionAgeSeconds > MAX_POSITION_AGE) {
+                if (positionAgeSeconds > MAX_POSITION_AGE && profitETH > 0) {
                     const reason = profitETH > 0 ?
                         `Auto-sell after ${positionAgeSeconds.toFixed(0)}s (made ${profitPercent.toFixed(2)}% profit)` :
                         `Auto-sell after ${positionAgeSeconds.toFixed(0)}s (loss of ${Math.abs(profitPercent).toFixed(2)}%)`;
