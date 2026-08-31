@@ -453,7 +453,7 @@ class BlockchainHelper:
         self._initialize_providers()
 
     def _initialize_providers(self):
-        from web3.middleware import geth_poa_middleware  # <-- FIX: Use geth_poa_middleware
+        from web3.middleware import ExtraDataToPOAMiddleware
 
         for chain_key, chain_config in self.chains.items():
             rpc_url = chain_config["rpcs"][0]
@@ -465,7 +465,8 @@ class BlockchainHelper:
 
             # Inject POA middleware for POA chains (Arbitrum, Base, Optimism, Polygon)
             if chain_key in ["polygon", "arbitrum", "base", "optimism"]:
-                w3.middleware_onion.inject(geth_poa_middleware, layer=0)  # <-- FIX: Use geth_poa_middleware
+                # FIXED: Pass an instance () and provide a unique string name
+                w3.middleware_onion.inject(ExtraDataToPOAMiddleware(), layer=0, name="extradata_to_poa")  
 
             self.web3_providers[chain_key] = w3
 
