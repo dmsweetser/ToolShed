@@ -6,6 +6,7 @@ import math
 import asyncio
 import threading
 import logging
+import requests
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set, Tuple, Any
@@ -46,6 +47,20 @@ def to_checksum_address(address: str) -> str:
         return Web3.to_checksum_address(address.lower())
     except Exception:
         return address
+
+# ========== COINGECKO TOKEN FETCHER ==========
+def fetch_coingecko_tokens(chain_id: int = 42161) -> List[Dict[str, Any]]:
+    """Fetch tokens from CoinGecko's Arbitrum token list."""
+    url = "https://tokens.coingecko.com/arbitrum-one/all.json"
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        tokens = data.get("tokens", [])
+        return [token for token in tokens if token.get("chainId") == chain_id]
+    except Exception as e:
+        logger.error(f"Failed to fetch CoinGecko tokens: {e}")
+        return []
 
 # ========== PARAMETER GENERATION ==========
 @dataclass
@@ -133,7 +148,7 @@ class Config:
 POOL_FEES = {"LOW": 500, "MEDIUM": 3000, "HIGH": 10000}
 PATTERN_TYPES = {"BUY": "buy"}
 
-# Known token symbols and their addresses per network
+# Known token symbols and their addresses for Arbitrum
 NETWORK_TOKENS = {
     "arbitrum": {
         "WETH": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
@@ -144,36 +159,6 @@ NETWORK_TOKENS = {
         "GMX": "0xfc5A1A6EB076a2C7aD06eD22C5C769A78b3Fa3A1",
         "USDC": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
         "USDT": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"
-    },
-    "ethereum": {
-        "WETH": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-        "WBTC": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
-        "UNI": "0x1f9840a85d5aF5bf1D1762F925BDADDd9702f158",
-        "LINK": "0x514910771AF9Ca656af840dff83E8264EcF986CA",
-        "USDC": "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-        "USDT": "0xdAC17F958D2ee523a2206206994597C13D831ec7"
-    },
-    "base": {
-        "WETH": "0x4200000000000000000000000000000000000006",
-        "WBTC": "0x6025518810202842D4E7b537291033197F2B498c",
-        "USDC": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-        "USDT": "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42"
-    },
-    "optimism": {
-        "WETH": "0x4200000000000000000000000000000000000006",
-        "WBTC": "0x68f180fcCe6836688e9084f035309fC299A09C00",
-        "UNI": "0x6fd9d7AD17242c41f7131d257212c54A0e816691",
-        "LINK": "0x350a791Bfc2C21F9Ed5d10980Dad2e2638ffa7f6",
-        "USDC": "0x0b2C639c533813f4AaA9D7837CAf62653d097Ff85",
-        "USDT": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607"
-    },
-    "polygon": {
-        "WETH": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
-        "WBTC": "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6",
-        "UNI": "0xb33EaAd8d922B1083446DC23f610c2567fB5180",
-        "LINK": "0x53E0bca35eC356BD5ddDFebbD1Fc0fD03Fad3981",
-        "USDC": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
-        "USDT": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
     }
 }
 
@@ -202,92 +187,6 @@ CHAINS = {
             ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xfc5A1A6EB076a2C7aD06eD22C5C769A78b3Fa3A1", 3000),
             ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", 500),
             ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", 500)
-        ]
-    },
-    "ethereum": {
-        "name": "Ethereum Mainnet",
-        "chainId": 1,
-        "rpcs": [
-            os.getenv("ETHEREUM_RPC_URL", "https://eth.llamarpc.com"),
-            "https://ethereum.publicnode.com"
-        ],
-        "factory": "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
-        "wrappedNative": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-        "quoteMode": "native",
-        "quoteLabel": "ETH",
-        "stables": [
-            "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-            "0xdAC17F958D2ee523a2206206994597C13D831ec7"
-        ],
-        "topPools": [
-            ("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", 3000),
-            ("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "0x1f9840a85d5aF5bf1D1762F925BDADDd9702f158", 3000),
-            ("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "0x514910771AF9Ca656af840dff83E8264EcF986CA", 3000),
-            ("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", 500),
-            ("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "0xdAC17F958D2ee523a2206206994597C13D831ec7", 500)
-        ]
-    },
-    "base": {
-        "name": "Base",
-        "chainId": 8453,
-        "rpcs": [
-            os.getenv("BASE_RPC_URL", "https://base-mainnet.public.blastapi.io"),
-            "https://base-rpc.publicnode.com"
-        ],
-        "factory": "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
-        "wrappedNative": "0x4200000000000000000000000000000000000006",
-        "quoteMode": "native",
-        "quoteLabel": "ETH",
-        "stables": [
-            "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-            "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42"
-        ],
-        "topPools": [
-            ("0x4200000000000000000000000000000000000006", "0x6025518810202842D4E7b537291033197F2B498c", 3000),
-            ("0x4200000000000000000000000000000000000006", "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", 500),
-            ("0x4200000000000000000000000000000000000006", "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42", 500)
-        ]
-    },
-    "optimism": {
-        "name": "Optimism",
-        "chainId": 10,
-        "rpcs": [
-            os.getenv("OPTIMISM_RPC_URL", "https://optimism-mainnet.public.blastapi.io"),
-            "https://optimism-rpc.publicnode.com"
-        ],
-        "factory": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
-        "wrappedNative": "0x4200000000000000000000000000000000000006",
-        "quoteMode": "native",
-        "quoteLabel": "ETH",
-        "stables": [
-            "0x0b2C639c533813f4AaA9D7837CAf62653d097Ff85",
-            "0x7F5c764cBc14f9669B88837ca1490cCa17c31607"
-        ],
-        "topPools": [
-            ("0x4200000000000000000000000000000000000006", "0x68f180fcCe6836688e9084f035309fC299A09C00", 3000),
-            ("0x4200000000000000000000000000000000000006", "0x0b2C639c533813f4AaA9D7837CAf62653d097Ff85", 500),
-            ("0x4200000000000000000000000000000000000006", "0x7F5c764cBc14f9669B88837ca1490cCa17c31607", 500)
-        ]
-    },
-    "polygon": {
-        "name": "Polygon",
-        "chainId": 137,
-        "rpcs": [
-            os.getenv("POLYGON_RPC_URL", "https://polygon-rpc.com"),
-            "https://polygon-mainnet.public.blastapi.io"
-        ],
-        "factory": "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
-        "wrappedNative": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
-        "quoteMode": "native",
-        "quoteLabel": "WPOL",
-        "stables": [
-            "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
-            "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
-        ],
-        "topPools": [
-            ("0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6", 3000),
-            ("0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", 500),
-            ("0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", 500)
         ]
     }
 }
@@ -371,48 +270,33 @@ class State:
 
     def get_token_symbol(self, token: str) -> str:
         """Get symbol for a token (handles both symbols and addresses)."""
-        # First try direct lookup
         if token in self.token_symbols:
             return self.token_symbols[token]
-        
-        # Try checksummed version
         checksummed = to_checksum_address(token)
         if checksummed in self.token_symbols:
             return self.token_symbols[checksummed]
-        
-        # Try reverse lookup (address to symbol)
         for symbol, addr in self.token_addresses.items():
             if norm(token) == norm(addr):
                 return symbol
-        
         return short(token)
 
     def get_token_address(self, token: str) -> Optional[str]:
         """Get address for a token (handles both symbols and addresses)."""
-        # If it's already an address
         if token in self.token_addresses.values():
             return to_checksum_address(token)
         if norm(token) in [norm(addr) for addr in self.token_addresses.values()]:
             return to_checksum_address(token)
-        
-        # If it's a symbol
         if token in self.token_addresses:
             return to_checksum_address(self.token_addresses[token])
-        
         return None
 
     def get_token_price(self, token: str) -> Optional[float]:
         """Get price for a token (handles both symbols and addresses)."""
-        # First try direct lookup
         if token in self.prices:
             return self.prices[token]
-        
-        # Try checksummed version
         checksummed = to_checksum_address(token)
         if checksummed in self.prices:
             return self.prices[checksummed]
-        
-        # Try to find by symbol
         if token in self.token_addresses:
             addr = self.token_addresses[token]
             if addr in self.prices:
@@ -420,8 +304,6 @@ class State:
             checksummed_addr = to_checksum_address(addr)
             if checksummed_addr in self.prices:
                 return self.prices[checksummed_addr]
-        
-        # Try reverse lookup (address to symbol)
         for symbol, addr in self.token_addresses.items():
             if norm(token) == norm(addr):
                 if addr in self.prices:
@@ -429,21 +311,15 @@ class State:
                 checksummed_addr = to_checksum_address(addr)
                 if checksummed_addr in self.prices:
                     return self.prices[checksummed_addr]
-        
         return None
 
     def get_token_history(self, token: str) -> Optional[List[Dict[str, Any]]]:
         """Get price history for a token (handles both symbols and addresses)."""
-        # First try direct lookup
         if token in self.price_history:
             return self.price_history[token]
-        
-        # Try checksummed version
         checksummed = to_checksum_address(token)
         if checksummed in self.price_history:
             return self.price_history[checksummed]
-        
-        # Try to find by symbol
         if token in self.token_addresses:
             addr = self.token_addresses[token]
             if addr in self.price_history:
@@ -451,8 +327,6 @@ class State:
             checksummed_addr = to_checksum_address(addr)
             if checksummed_addr in self.price_history:
                 return self.price_history[checksummed_addr]
-        
-        # Try reverse lookup
         for symbol, addr in self.token_addresses.items():
             if norm(token) == norm(addr):
                 if addr in self.price_history:
@@ -460,7 +334,6 @@ class State:
                 checksummed_addr = to_checksum_address(addr)
                 if checksummed_addr in self.price_history:
                     return self.price_history[checksummed_addr]
-        
         return None
 
     def to_dict(self) -> Dict[str, Any]:
@@ -651,22 +524,6 @@ class BlockchainHelper:
         except Exception as e:
             return None
 
-    def validate_abi(abi):
-        for entry in abi:
-            if entry.get("type") is None:
-                raise ValueError(f"ABI error: entry type is None → {entry}")
-
-            if "inputs" in entry and entry["inputs"] is not None:
-                for inp in entry["inputs"]:
-                    if inp.get("type") is None:
-                        raise ValueError(f"ABI error: input type None → {entry}")
-
-            if "outputs" in entry and entry["outputs"] is not None:
-                for out in entry["outputs"]:
-                    if out.get("type") is None:
-                        raise ValueError(f"ABI error: output type None → {entry}")
-
-
     def _sqrt_price_x96_to_price(self, sqrt_price_x96: int) -> float:
         sqrt_price = sqrt_price_x96 / (2**96)
         return sqrt_price * sqrt_price
@@ -706,7 +563,7 @@ class TokenDiscovery:
         self.swap_topic = "0xc42079f94a6436c4e6930f05045148f3556048be474e7962b362652246f71625"
 
     async def initialize_known_tokens(self, chain_key: str):
-        """Initialize with WETH, stables, and top pool tokens."""
+        """Initialize with WETH, stables, top pool tokens, and CoinGecko tokens."""
         chain_config = CHAINS[chain_key]
         wrapped_native = to_checksum_address(chain_config["wrappedNative"])
         quote_label = chain_config["quoteLabel"]
@@ -738,6 +595,21 @@ class TokenDiscovery:
 
         # Add top pool tokens
         await self._add_top_pool_tokens(chain_key)
+
+        # Add tokens from CoinGecko
+        await self._add_coingecko_tokens(chain_key)
+
+    async def _add_coingecko_tokens(self, chain_key: str):
+        """Add tokens from CoinGecko's Arbitrum list."""
+        coingecko_tokens = fetch_coingecko_tokens()
+        for token in coingecko_tokens:
+            address = to_checksum_address(token["address"])
+            symbol = token.get("symbol", short(address))
+            if address not in self.state.observed_tokens:
+                self.state.observed_tokens.add(address)
+                self.state.token_symbols[address] = symbol
+                self.state.token_addresses[symbol] = address
+                logger.debug(f"Added CoinGecko token: {symbol} ({short(address)})")
 
     async def _add_top_pool_tokens(self, chain_key: str):
         """Add tokens from the top pools for the chain."""
@@ -1384,10 +1256,10 @@ class PriceUpdater:
         """Get price for a token by finding its pool with WETH."""
         chain_config = CHAINS[chain_key]
         wrapped_native = to_checksum_address(chain_config["wrappedNative"])
-        
+
         # First, try to get the checksummed address
         token_checksum = to_checksum_address(token)
-        
+
         # Try all fee tiers
         for fee in [POOL_FEES["MEDIUM"], POOL_FEES["LOW"], POOL_FEES["HIGH"]]:
             try:
@@ -1589,7 +1461,7 @@ class Bot:
             perf = self.optimizer.performance[i]
             marker = " (BEST)" if i == self.optimizer.best_set_index else ""
             print(f"Set {i}{marker}: Profit={perf['profit']:.6f} ETH, Trades={perf['trades']}, Winning={perf['winning_trades']}")
-        
+
         open_positions = [p for p in self.state.portfolio["positions"] if p["status"] == "open"]
         if open_positions:
             print("\n--- Open Positions ---")
@@ -1602,7 +1474,7 @@ class Bot:
                 age = int(time.time() - pos["entry_time"])
                 set_index = pos.get("parameter_set_index", "N/A")
                 print(f"{pos['token']}: Bought at {pos['entry_price']:.8f}, Amount: {pos['amount']:.8f}, Value: {current_value:.8f} ETH, PnL: {unrealized_pnl:+.8f} ETH ({return_pct:+.2f}%), Age: {age}s, Param Set: {set_index}")
-        
+
         if self.state.trades:
             print("\n--- Recent Trades ---")
             for trade in self.state.trades[-5:]:
@@ -1680,8 +1552,8 @@ class Bot:
 def main():
     print("Uniswap Quick Swap Trader v7.0.0 - Python Console Version")
     print("Profit-Only Mode: Buys dips and sells ONLY at profit")
-    print("Dynamic Token Discovery: Monitors any detected tokens from swap events.")
-    print("Parameter Optimization: Tests multiple parameter sets from ranges and uses the best performer.\n")
+    print("Arbitrum-Only Mode: Only works on Arbitrum network")
+    print("Dynamic Token Discovery: Populates tokens from CoinGecko's Arbitrum list.\n")
     logger.info("Uniswap Quick Swap Trader v7.0.0 started.")
 
     bot = Bot()
