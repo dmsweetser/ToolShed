@@ -1,3 +1,4 @@
+import asyncio
 import json
 import time
 import threading
@@ -5,7 +6,7 @@ import os
 import random
 import math
 from dataclasses import dataclass, asdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set, Tuple
 
 # ========== CONFIGURATION ==========
@@ -551,8 +552,9 @@ class Trader:
             return None
 
         # Create trade
+        token_amount = trade_result['token_amount']
         trade = self.create_trade(
-            token, action, trade_result['execution_price'], trade_result['token_amount'],
+            token, action, trade_result['execution_price'], token_amount,
             trade_result['amount_eth'], pattern_desc, 'open', **trade_result
         )
 
@@ -581,7 +583,7 @@ class Trader:
 
         return trade
 
-    def check_patterns_for_token(self, token: str):
+    async def check_patterns_for_token(self, token: str):
         """Check for buy/sell opportunities for a token."""
         if not self.state.is_running:
             return
@@ -605,7 +607,7 @@ class Trader:
             # Sell only if profit target is met
             if profit_pct >= self.config.MIN_PROFIT_PERCENT and profit_eth > 0:
                 sell_amount_eth = open_position['amount'] * current_price
-                self.execute_trade(token, 'sell', f"Profit target ({profit_pct:.2f}%) reached", sell_amount_eth)
+                await self.execute_trade(token, 'sell', f"Profit target ({profit_pct:.2f}%) reached", sell_amount_eth)
                 return
 
         # Check for buy opportunities
@@ -620,7 +622,7 @@ class Trader:
                     continue
 
                 trade_amount = self.calculate_trade_amount()
-                self.execute_trade(
+                await self.execute_trade(
                     token, 'buy',
                     f"Buy dip: {pattern['drop_pct']:.2f}% drop, {pattern['rise_pct']:.2f}% target",
                     trade_amount, pattern
@@ -797,7 +799,7 @@ class StateManager:
                 json.dump(list(self.state.active_patterns.values()), f, indent=2)
 
             # Metrics
-            uptime = str(datetime.timedelta(seconds=int(time.time() - self.state.start_time))) if self.state.start_time else "00:00:00"
+            uptime = str(timedelta(seconds=int(time.time() - self.state.start_time))) if self.state.start_time else "00:00:00"
             last_update = datetime.fromtimestamp(self.state.last_price_update).strftime('%Y-%m-%d %H:%M:%S') if self.state.last_price_update else "Never"
             metrics = {
                 'uptime': uptime,
@@ -893,13 +895,16 @@ class Bot:
         threading.Thread(target=state_saver, daemon=True).start()
 
         # Start pattern checking
-        def pattern_checker():
+        async def pattern_checker():
             while self.running:
                 for token in list(self.state.observed_tokens):
-                    self.trader.check_patterns_for_token(token)
+                    await self.trader.check_patterns_for_token(token)
                 time.sleep(1)  # Check every second
 
-        threading.Thread(target=pattern_checker, daemon=True).start()
+        threading.Thread(
+            target=lambda: asyncio.run(pattern_checker()), 
+            daemon=True
+        ).start()
 
         print("Bot started! Press Ctrl+C to stop.")
         print("Type 'status' to see current state, 'prices' to see prices, or 'stop' to stop.")
@@ -1033,7 +1038,7 @@ class Bot:
 
         return {
             'is_running': self.state.is_running,
-            'uptime': str(datetime.timedelta(seconds=int(time.time() - self.state.start_time))) if self.state.start_time else "00:00:00",
+            'uptime': str(timedelta(seconds=int(time.time() - self.state.start_time))) if self.state.start_time else "00:00:00",
             'current_eth': self.state.portfolio['current_eth'],
             'realized_pnl': self.state.portfolio['realized_pnl'],
             'unrealized_pnl': self.state.portfolio['unrealized_pnl'],
