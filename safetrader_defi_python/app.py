@@ -45,26 +45,23 @@ def to_checksum_address(address: str) -> str:
     try:
         return Web3.to_checksum_address(address.lower())
     except Exception:
-        return address  # Fallback if checksum fails
+        return address
 
 # ========== PARAMETER GENERATION ==========
 @dataclass
 class ParameterRange:
-    """Defines a range for a parameter (min, max, step)."""
     min: float
     max: float
     step: float
 
     def generate_values(self) -> List[float]:
-        """Generate values from min to max with step."""
         values = []
         current = self.min
-        while current <= self.max + 1e-9:  # Account for floating-point precision
+        while current <= self.max + 1e-9:
             values.append(current)
             current += self.step
         return values
 
-# Default parameter ranges for optimization
 DEFAULT_PARAMETER_RANGES = {
     "MIN_PRICE_CHANGE": ParameterRange(min=0.05, max=2.0, step=0.05),
     "MIN_TIME_WINDOW": ParameterRange(min=2, max=30, step=2),
@@ -74,14 +71,12 @@ DEFAULT_PARAMETER_RANGES = {
 }
 
 class ParameterGenerator:
-    """Generates parameter sets from defined ranges."""
     def __init__(self, ranges: Optional[Dict[str, ParameterRange]] = None, max_combinations: int = 50):
         self.ranges = ranges or DEFAULT_PARAMETER_RANGES
         self.max_combinations = max_combinations
         self.parameter_sets = self._generate_parameter_sets()
 
     def _generate_parameter_sets(self) -> List[Dict[str, float]]:
-        """Generate all or sampled combinations from ranges."""
         param_values = {name: rng.generate_values() for name, rng in self.ranges.items()}
         total_combinations = 1
         for values in param_values.values():
@@ -93,14 +88,12 @@ class ParameterGenerator:
             return self._sample_combinations(param_values, self.max_combinations)
 
     def _generate_all_combinations(self, param_values: Dict[str, List[float]]) -> List[Dict[str, float]]:
-        """Generate all possible combinations (cartesian product)."""
         from itertools import product
         param_names = list(param_values.keys())
         value_lists = [param_values[name] for name in param_names]
         return [dict(zip(param_names, combo)) for combo in product(*value_lists)]
 
     def _sample_combinations(self, param_values: Dict[str, List[float]], count: int) -> List[Dict[str, float]]:
-        """Randomly sample combinations from the parameter space."""
         param_names = list(param_values.keys())
         value_lists = [param_values[name] for name in param_names]
         combinations = set()
@@ -110,51 +103,80 @@ class ParameterGenerator:
         return [dict(zip(param_names, combo)) for combo in combinations]
 
     def get_parameter_sets(self) -> List[Dict[str, float]]:
-        """Return all generated parameter sets."""
         return self.parameter_sets
 
 # ========== CONFIGURATION ==========
 @dataclass
 class Config:
-    # Network
     BLOCKCHAIN_NETWORK: str = "arbitrum"
     UNISWAP_VERSION: str = "v3"
-
-    # Trading Budget
     STARTING_ETH: float = 0.0033
     TRADE_AMOUNT_PERCENT: float = 0.5
     MIN_TRADE_AMOUNT_ETH: float = 0.0003
     MAX_TRADES: int = 10
-    TRADE_COOLDOWN: int = 60  # seconds
-
-    # Pattern Detection
+    TRADE_COOLDOWN: int = 60
     MIN_PRICE_CHANGE: float = 0.5
     MIN_TIME_WINDOW: int = 5
     MAX_TIME_WINDOW: int = 120
     MIN_OCCURRENCES: int = 2
-
-    # Profit Targets (PROFIT-ONLY MODE)
     MIN_PROFIT_PERCENT: float = 2.0
-
-    # Safety
     MAX_SLIPPAGE: float = 0.5
     MAX_GAS_PRICE: int = 200
     GAS_LIMIT: int = 300000
     PREVENT_SEQUENTIAL_TRADES: bool = True
-
-    # Data
-    PRICE_HISTORY_DURATION: int = 24  # hours
+    PRICE_HISTORY_DURATION: int = 24
     MAX_PRICE_HISTORY: int = 5000
-
-    # Optimization
-    OPTIMIZATION_INTERVAL: int = 300  # 5 minutes
+    OPTIMIZATION_INTERVAL: int = 300
     MAX_PARAMETER_SETS: int = 50
 
 # ========== CONSTANTS ==========
 POOL_FEES = {"LOW": 500, "MEDIUM": 3000, "HIGH": 10000}
 PATTERN_TYPES = {"BUY": "buy"}
 
-# Chain Configurations
+# Known token symbols and their addresses per network
+NETWORK_TOKENS = {
+    "arbitrum": {
+        "WETH": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+        "WBTC": "0x2f2a2543B76A416654947aaB75B4e35b52a17231",
+        "UNI": "0xfa7F8980b0f1E64A2062791cc3b0871572f1F7f0",
+        "LINK": "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4",
+        "ARB": "0x912CE59144196C11c48067255325c5414506085A",
+        "GMX": "0xfc5A1A6EB076a2C7aD06eD22C5C769A78b3Fa3A1",
+        "USDC": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+        "USDT": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"
+    },
+    "ethereum": {
+        "WETH": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+        "WBTC": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+        "UNI": "0x1f9840a85d5aF5bf1D1762F925BDADDd9702f158",
+        "LINK": "0x514910771AF9Ca656af840dff83E8264EcF986CA",
+        "USDC": "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        "USDT": "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+    },
+    "base": {
+        "WETH": "0x4200000000000000000000000000000000000006",
+        "WBTC": "0x6025518810202842D4E7b537291033197F2B498c",
+        "USDC": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "USDT": "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42"
+    },
+    "optimism": {
+        "WETH": "0x4200000000000000000000000000000000000006",
+        "WBTC": "0x68f180fcCe6836688e9084f035309fC299A09C00",
+        "UNI": "0x6fd9d7AD17242c41f7131d257212c54A0e816691",
+        "LINK": "0x350a791Bfc2C21F9Ed5d10980Dad2e2638ffa7f6",
+        "USDC": "0x0b2C639c533813f4AaA9D7837CAf62653d097Ff85",
+        "USDT": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607"
+    },
+    "polygon": {
+        "WETH": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+        "WBTC": "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6",
+        "UNI": "0xb33EaAd8d922B1083446DC23f610c2567fB5180",
+        "LINK": "0x53E0bca35eC356BD5ddDFebbD1Fc0fD03Fad3981",
+        "USDC": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+        "USDT": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
+    }
+}
+
 CHAINS = {
     "arbitrum": {
         "name": "Arbitrum One",
@@ -169,17 +191,17 @@ CHAINS = {
         "quoteMode": "native",
         "quoteLabel": "ETH",
         "stables": [
-            "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",  # USDC
-            "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",  # USDT
+            "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+            "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"
         ],
         "topPools": [
-            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0x2f2a2543B76A416654947aaB75B4e35b52a17231", 3000),  # WETH/WBTC
-            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xfa7F8980b0f1E64A2062791cc3b0871572f1F7f0", 3000),  # WETH/UNI
-            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4", 3000),  # WETH/LINK
-            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0x912CE59144196C11c48067255325c5414506085A", 3000),  # WETH/ARB
-            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xfc5A1A6EB076a2C7aD06eD22C5C769A78b3Fa3A1", 3000),  # WETH/GMX
-            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", 500),   # WETH/USDC
-            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", 500),   # WETH/USDT
+            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0x2f2a2543B76A416654947aaB75B4e35b52a17231", 3000),
+            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xfa7F8980b0f1E64A2062791cc3b0871572f1F7f0", 3000),
+            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4", 3000),
+            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0x912CE59144196C11c48067255325c5414506085A", 3000),
+            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xfc5A1A6EB076a2C7aD06eD22C5C769A78b3Fa3A1", 3000),
+            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", 500),
+            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", 500)
         ]
     },
     "ethereum": {
@@ -187,22 +209,22 @@ CHAINS = {
         "chainId": 1,
         "rpcs": [
             os.getenv("ETHEREUM_RPC_URL", "https://eth.llamarpc.com"),
-            "https://ethereum.publicnode.com",
+            "https://ethereum.publicnode.com"
         ],
         "factory": "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
         "wrappedNative": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
         "quoteMode": "native",
         "quoteLabel": "ETH",
         "stables": [
-            "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",  # USDC
-            "0xdAC17F958D2ee523a2206206994597C13D831ec7",  # USDT
+            "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+            "0xdAC17F958D2ee523a2206206994597C13D831ec7"
         ],
         "topPools": [
-            ("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", 3000),  # WETH/WBTC
-            ("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "0x1f9840a85d5aF5bf1D1762F925BDADDd9702f158", 3000),  # WETH/UNI
-            ("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "0x514910771AF9Ca656af840dff83E8264EcF986CA", 3000),  # WETH/LINK
-            ("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", 500),   # WETH/USDC
-            ("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "0xdAC17F958D2ee523a2206206994597C13D831ec7", 500),   # WETH/USDT
+            ("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", 3000),
+            ("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "0x1f9840a85d5aF5bf1D1762F925BDADDd9702f158", 3000),
+            ("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "0x514910771AF9Ca656af840dff83E8264EcF986CA", 3000),
+            ("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", 500),
+            ("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "0xdAC17F958D2ee523a2206206994597C13D831ec7", 500)
         ]
     },
     "base": {
@@ -210,20 +232,20 @@ CHAINS = {
         "chainId": 8453,
         "rpcs": [
             os.getenv("BASE_RPC_URL", "https://base-mainnet.public.blastapi.io"),
-            "https://base-rpc.publicnode.com",
+            "https://base-rpc.publicnode.com"
         ],
         "factory": "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
         "wrappedNative": "0x4200000000000000000000000000000000000006",
         "quoteMode": "native",
         "quoteLabel": "ETH",
         "stables": [
-            "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",  # USDC
-            "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42",  # USDT
+            "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+            "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42"
         ],
         "topPools": [
-            ("0x4200000000000000000000000000000000000006", "0x6025518810202842D4E7b537291033197F2B498c", 3000),  # WETH/WBTC
-            ("0x4200000000000000000000000000000000000006", "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", 500),   # WETH/USDC
-            ("0x4200000000000000000000000000000000000006", "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42", 500),   # WETH/USDT
+            ("0x4200000000000000000000000000000000000006", "0x6025518810202842D4E7b537291033197F2B498c", 3000),
+            ("0x4200000000000000000000000000000000000006", "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", 500),
+            ("0x4200000000000000000000000000000000000006", "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42", 500)
         ]
     },
     "optimism": {
@@ -231,20 +253,20 @@ CHAINS = {
         "chainId": 10,
         "rpcs": [
             os.getenv("OPTIMISM_RPC_URL", "https://optimism-mainnet.public.blastapi.io"),
-            "https://optimism-rpc.publicnode.com",
+            "https://optimism-rpc.publicnode.com"
         ],
         "factory": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
         "wrappedNative": "0x4200000000000000000000000000000000000006",
         "quoteMode": "native",
         "quoteLabel": "ETH",
         "stables": [
-            "0x0b2C639c533813f4AaA9D7837CAf62653d097Ff85",  # USDC
-            "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",  # USDT
+            "0x0b2C639c533813f4AaA9D7837CAf62653d097Ff85",
+            "0x7F5c764cBc14f9669B88837ca1490cCa17c31607"
         ],
         "topPools": [
-            ("0x4200000000000000000000000000000000000006", "0x68f180fcCe6836688e9084f035309fC299A09C00", 3000),  # WETH/WBTC
-            ("0x4200000000000000000000000000000000000006", "0x0b2C639c533813f4AaA9D7837CAf62653d097Ff85", 500),   # WETH/USDC
-            ("0x4200000000000000000000000000000000000006", "0x7F5c764cBc14f9669B88837ca1490cCa17c31607", 500),   # WETH/USDT
+            ("0x4200000000000000000000000000000000000006", "0x68f180fcCe6836688e9084f035309fC299A09C00", 3000),
+            ("0x4200000000000000000000000000000000000006", "0x0b2C639c533813f4AaA9D7837CAf62653d097Ff85", 500),
+            ("0x4200000000000000000000000000000000000006", "0x7F5c764cBc14f9669B88837ca1490cCa17c31607", 500)
         ]
     },
     "polygon": {
@@ -252,25 +274,24 @@ CHAINS = {
         "chainId": 137,
         "rpcs": [
             os.getenv("POLYGON_RPC_URL", "https://polygon-rpc.com"),
-            "https://polygon-mainnet.public.blastapi.io",
+            "https://polygon-mainnet.public.blastapi.io"
         ],
         "factory": "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
         "wrappedNative": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
         "quoteMode": "native",
         "quoteLabel": "WPOL",
         "stables": [
-            "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",  # USDC
-            "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",  # USDT
+            "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+            "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
         ],
         "topPools": [
-            ("0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6", 3000),  # WETH/WBTC
-            ("0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", 500),   # WETH/USDC
-            ("0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", 500),   # WETH/USDT
+            ("0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6", 3000),
+            ("0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", 500),
+            ("0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270", "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", 500)
         ]
-    },
+    }
 }
 
-# Uniswap V3 ABI snippets
 UNISWAP_V3_FACTORY_ABI = json.loads('''
 [
     {
@@ -289,42 +310,10 @@ UNISWAP_V3_FACTORY_ABI = json.loads('''
 
 UNISWAP_V3_POOL_ABI = json.loads('''
 [
-    {
-        "inputs": [],
-        "name": "token0",
-        "outputs": [{"internalType": "address", "name": "", "type": "address"}],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "token1",
-        "outputs": [{"internalType": "address", "name": "", "type": "address"}],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "fee",
-        "outputs": [{"internalType": "uint24", "name": "", "type": "uint24"}],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "slot0",
-        "outputs": [
-            {"internalType": "uint160", "name": "sqrtPriceX96", "type": "uint160"},
-            {"internalType": "int24", "name": "tick", "type": "int24"},
-            {"internalType": "uint16", "name": "observationIndex", "type": "uint16"},
-            {"internalType": "uint16", "name": "observationCardinality", "type": "uint16"},
-            {"internalType": "uint16", "name": "observationCardinalityNext", "type": "uint16"},
-            {"internalType": "uint8", "name": "feeProtocol", "type": "uint8"},
-            {"internalType": "bool", "name": "unlocked", "type": "bool"}
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    }
+    {"inputs": [], "name": "token0", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"},
+    {"inputs": [], "name": "token1", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"},
+    {"inputs": [], "name": "fee", "outputs": [{"internalType": "uint24", "name": "", "type": "uint24"}], "stateMutability": "view", "type": "function"},
+    {"inputs": [], "name": "slot0", "outputs": [{"internalType": "uint160", "name": "sqrtPriceX96"}, {"internalType": "int24", "name": "tick"}, {"internalType": "uint16", "name": "observationIndex"}, {"internalType": "uint16", "name": "observationCardinality"}, {"internalType": "uint16", "name": "observationCardinalityNext"}, {"internalType": "uint8", "name": "feeProtocol"}, {"internalType": "bool", "name": "unlocked"}], "stateMutability": "view", "type": "function"}
 ]
 ''')
 
@@ -333,7 +322,7 @@ ERC20_ABI = json.loads('''
     {"inputs": [], "name": "symbol", "outputs": [{"internalType": "string", "name": "", "type": "string"}], "stateMutability": "view", "type": "function"},
     {"inputs": [], "name": "decimals", "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}], "stateMutability": "view", "type": "function"},
     {"inputs": [], "name": "name", "outputs": [{"internalType": "string", "name": "", "type": "string"}], "stateMutability": "view", "type": "function"},
-    {"inputs": [{"internalType": "address", "name": "account", "type": "address"}], "name": "balanceOf", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}
+    {"inputs": [{"internalType": "address", "name": "account"}], "name": "balanceOf", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}
 ]
 ''')
 
@@ -377,8 +366,102 @@ class State:
         self.wallet_connected = False
         self.live_mode = False
         self.token_decimals: Dict[str, int] = {}
-        self.token_symbols: Dict[str, str] = {}  # address -> symbol
-        self.token_addresses: Dict[str, str] = {}  # symbol -> address
+        self.token_symbols: Dict[str, str] = {}
+        self.token_addresses: Dict[str, str] = {}
+
+    def get_token_symbol(self, token: str) -> str:
+        """Get symbol for a token (handles both symbols and addresses)."""
+        # First try direct lookup
+        if token in self.token_symbols:
+            return self.token_symbols[token]
+        
+        # Try checksummed version
+        checksummed = to_checksum_address(token)
+        if checksummed in self.token_symbols:
+            return self.token_symbols[checksummed]
+        
+        # Try reverse lookup (address to symbol)
+        for symbol, addr in self.token_addresses.items():
+            if norm(token) == norm(addr):
+                return symbol
+        
+        return short(token)
+
+    def get_token_address(self, token: str) -> Optional[str]:
+        """Get address for a token (handles both symbols and addresses)."""
+        # If it's already an address
+        if token in self.token_addresses.values():
+            return to_checksum_address(token)
+        if norm(token) in [norm(addr) for addr in self.token_addresses.values()]:
+            return to_checksum_address(token)
+        
+        # If it's a symbol
+        if token in self.token_addresses:
+            return to_checksum_address(self.token_addresses[token])
+        
+        return None
+
+    def get_token_price(self, token: str) -> Optional[float]:
+        """Get price for a token (handles both symbols and addresses)."""
+        # First try direct lookup
+        if token in self.prices:
+            return self.prices[token]
+        
+        # Try checksummed version
+        checksummed = to_checksum_address(token)
+        if checksummed in self.prices:
+            return self.prices[checksummed]
+        
+        # Try to find by symbol
+        if token in self.token_addresses:
+            addr = self.token_addresses[token]
+            if addr in self.prices:
+                return self.prices[addr]
+            checksummed_addr = to_checksum_address(addr)
+            if checksummed_addr in self.prices:
+                return self.prices[checksummed_addr]
+        
+        # Try reverse lookup (address to symbol)
+        for symbol, addr in self.token_addresses.items():
+            if norm(token) == norm(addr):
+                if addr in self.prices:
+                    return self.prices[addr]
+                checksummed_addr = to_checksum_address(addr)
+                if checksummed_addr in self.prices:
+                    return self.prices[checksummed_addr]
+        
+        return None
+
+    def get_token_history(self, token: str) -> Optional[List[Dict[str, Any]]]:
+        """Get price history for a token (handles both symbols and addresses)."""
+        # First try direct lookup
+        if token in self.price_history:
+            return self.price_history[token]
+        
+        # Try checksummed version
+        checksummed = to_checksum_address(token)
+        if checksummed in self.price_history:
+            return self.price_history[checksummed]
+        
+        # Try to find by symbol
+        if token in self.token_addresses:
+            addr = self.token_addresses[token]
+            if addr in self.price_history:
+                return self.price_history[addr]
+            checksummed_addr = to_checksum_address(addr)
+            if checksummed_addr in self.price_history:
+                return self.price_history[checksummed_addr]
+        
+        # Try reverse lookup
+        for symbol, addr in self.token_addresses.items():
+            if norm(token) == norm(addr):
+                if addr in self.price_history:
+                    return self.price_history[addr]
+                checksummed_addr = to_checksum_address(addr)
+                if checksummed_addr in self.price_history:
+                    return self.price_history[checksummed_addr]
+        
+        return None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -404,7 +487,6 @@ class State:
         }
 
     def from_dict(self, state_dict: Dict[str, Any]):
-        """Load state from dictionary."""
         self.config = Config(**state_dict["config"])
         self.is_running = state_dict["is_running"]
         self.current_network = state_dict["current_network"]
@@ -444,13 +526,10 @@ class ParameterOptimizer:
         self.current_set_index = 0
 
     def get_current_best_parameters(self) -> Dict[str, float]:
-        """Find and return the best-performing parameter set."""
         if not self.parameter_sets:
             return {}
-
         best_index = 0
         best_score = -float('inf')
-
         for i, perf in self.performance.items():
             if perf["trades"] == 0:
                 continue
@@ -459,24 +538,22 @@ class ParameterOptimizer:
             if score > best_score:
                 best_score = score
                 best_index = i
-
         self.best_set_index = best_index
-        logger.info(
-            f"Best parameter set #{best_index}: {self.parameter_sets[best_index]} "
-            f"(Score: {best_score:.6f}, Profit: {self.performance[best_index]['profit']:.6f} ETH, "
-            f"Trades: {self.performance[best_index]['trades']}, Winning: {self.performance[best_index]['winning_trades']})"
-        )
+        if best_score != -float('inf'):
+            logger.info(
+                f"Best parameter set #{best_index}: {self.parameter_sets[best_index]} "
+                f"(Score: {best_score:.6f}, Profit: {self.performance[best_index]['profit']:.6f} ETH, "
+                f"Trades: {self.performance[best_index]['trades']}, Winning: {self.performance[best_index]['winning_trades']})"
+            )
         return self.parameter_sets[best_index]
 
     def get_next_parameter_set(self) -> Tuple[int, Dict[str, float]]:
-        """Get the next parameter set for round-robin testing."""
         index = self.current_set_index
         param_set = self.parameter_sets[index]
         self.current_set_index = (self.current_set_index + 1) % len(self.parameter_sets)
         return index, param_set
 
     def update_performance(self, parameter_set_index: int, profit: float, is_winning: bool):
-        """Update performance tracking for a parameter set."""
         if parameter_set_index in self.performance:
             self.performance[parameter_set_index]["profit"] += profit
             self.performance[parameter_set_index]["trades"] += 1
@@ -484,254 +561,11 @@ class ParameterOptimizer:
                 self.performance[parameter_set_index]["winning_trades"] += 1
 
     def optimize(self):
-        """Run optimization to update the best parameter set."""
         current_time = time.time()
         if current_time - self.last_optimization_time < self.optimization_interval:
             return
         self.get_current_best_parameters()
         self.last_optimization_time = current_time
-
-# ========== TOKEN DISCOVERY ==========
-class TokenDiscovery:
-    def __init__(self, state: State, blockchain: 'BlockchainHelper'):
-        self.state = state
-        self.blockchain = blockchain
-        self.active_pools: Set[str] = set()
-        self.last_block: Dict[str, int] = {}
-        self.swap_topic = "0xc42079f94a6436c4e6930f05045148f3556048be474e7962b362652246f71625"  # Uniswap V3 Swap event topic
-
-    async def initialize_known_tokens(self, chain_key: str):
-        """Initialize with WETH, stables, and top pool tokens (all checksummed)."""
-        chain_config = CHAINS[chain_key]
-        wrapped_native = to_checksum_address(chain_config["wrappedNative"])
-
-        # Add WETH/ETH
-        if wrapped_native not in self.state.observed_tokens:
-            self.state.observed_tokens.add(wrapped_native)
-            self.state.token_symbols[wrapped_native] = chain_config["quoteLabel"]
-            self.state.token_addresses[chain_config["quoteLabel"]] = wrapped_native
-            self.state.prices[wrapped_native] = 1.0
-            self._update_price_history(wrapped_native, 1.0)
-
-        # Add stables
-        for stable in chain_config.get("stables", []):
-            stable = to_checksum_address(stable)
-            if stable not in self.state.observed_tokens:
-                self.state.observed_tokens.add(stable)
-                try:
-                    symbol = await self.blockchain.get_token_symbol(stable, chain_key)
-                    self.state.token_symbols[stable] = symbol
-                    self.state.token_addresses[symbol] = stable
-                except Exception as e:
-                    logger.warning(f"Could not get symbol for stable {short(stable)}: {e}")
-                    self.state.token_symbols[stable] = "STABLE"
-                    self.state.token_addresses["STABLE"] = stable
-
-        # Add top pool tokens
-        await self._add_top_pool_tokens(chain_key)
-
-    async def _add_top_pool_tokens(self, chain_key: str):
-        """Add tokens from the top pools for the chain (checksummed)."""
-        chain_config = CHAINS[chain_key]
-        for token0, token1, _ in chain_config.get("topPools", []):
-            for token_addr in [to_checksum_address(token0), to_checksum_address(token1)]:
-                if token_addr not in self.state.observed_tokens:
-                    self.state.observed_tokens.add(token_addr)
-                    try:
-                        symbol = await self.blockchain.get_token_symbol(token_addr, chain_key)
-                        if symbol and symbol != short(token_addr):
-                            self.state.token_symbols[token_addr] = symbol
-                            self.state.token_addresses[symbol] = token_addr
-                    except Exception as e:
-                        logger.warning(f"Could not get symbol for {short(token_addr)}: {e}")
-
-    async def discover_tokens_from_blocks(self, chain_key: str, blocks_to_scan: int = 5):
-        """Scan recent blocks for Swap events to discover new tokens (with checksumming)."""
-        try:
-            w3 = self.blockchain.get_web3(chain_key)
-            current_block = w3.eth.block_number
-            last_scanned = self.last_block.get(chain_key, current_block - blocks_to_scan)
-
-            if current_block <= last_scanned:
-                return
-
-            from_block = max(0, current_block - blocks_to_scan)
-            to_block = current_block
-
-            logger.debug(f"Scanning blocks {from_block} to {to_block} on {chain_key} for Swap events...")
-
-            try:
-                logs = w3.eth.get_logs({
-                    'fromBlock': from_block,
-                    'toBlock': to_block,
-                    'topics': [self.swap_topic]
-                })
-            except Exception as e:
-                logger.warning(f"Error fetching Swap logs: {e}")
-                return
-
-            new_tokens = set()
-            for log in logs:
-                try:
-                    pool_address = to_checksum_address(log['address'])
-                    if pool_address in self.active_pools:
-                        continue
-                    self.active_pools.add(pool_address)
-
-                    pool_contract = await self.blockchain.get_pool_contract(pool_address, chain_key)
-                    token0 = to_checksum_address(pool_contract.functions.token0().call())
-                    token1 = to_checksum_address(pool_contract.functions.token1().call())
-
-                    new_tokens.update([token0, token1])
-                except Exception as e:
-                    logger.warning(f"Error processing Swap log: {e}")
-                    continue
-
-            for token_addr in new_tokens:
-                if token_addr not in self.state.observed_tokens:
-                    self.state.observed_tokens.add(token_addr)
-                    logger.info(f"Discovered new token: {short(token_addr)}")
-                    try:
-                        symbol = await self.blockchain.get_token_symbol(token_addr, chain_key)
-                        if symbol and symbol != short(token_addr):
-                            self.state.token_symbols[token_addr] = symbol
-                            self.state.token_addresses[symbol] = token_addr
-                    except Exception as e:
-                        logger.warning(f"Could not get symbol for {short(token_addr)}: {e}")
-
-            self.last_block[chain_key] = current_block
-        except Exception as e:
-            logger.error(f"Error in token discovery: {e}")
-
-    def _update_price_history(self, token: str, price: float):
-        """Update price history for a token."""
-        if token not in self.state.price_history:
-            self.state.price_history[token] = []
-        self.state.price_history[token].append({"price": price, "timestamp": time.time()})
-        if len(self.state.price_history[token]) > self.state.config.MAX_PRICE_HISTORY:
-            self.state.price_history[token] = self.state.price_history[token][-self.state.config.MAX_PRICE_HISTORY:]
-
-# ========== PATTERN DETECTION ==========
-class PatternDetector:
-    def __init__(self, state: State, optimizer: ParameterOptimizer):
-        self.state = state
-        self.optimizer = optimizer
-
-    def detect_all_patterns(self):
-        """Detect patterns for all observed tokens using the best parameter set."""
-        tokens = list(self.state.observed_tokens)
-        new_active_patterns = {}
-        best_set_index, best_params = self.optimizer.get_next_parameter_set()
-
-        for token in tokens:
-            history = self.state.price_history.get(token, [])
-            if len(history) < 5:
-                continue
-            buy_patterns = self._detect_buy_patterns(history, token, best_params, best_set_index)
-            for pattern in buy_patterns:
-                if not self._is_valid_pattern(pattern, best_params):
-                    continue
-                pattern_key = self._get_pattern_key(pattern)
-                existing_key = f"{token}_{pattern_key}"
-                if existing_key not in new_active_patterns:
-                    new_active_patterns[existing_key] = {
-                        **pattern,
-                        "token": token,
-                        "occurrences": 1,
-                        "first_seen": pattern["timestamp"],
-                        "last_seen": pattern["timestamp"],
-                        "parameter_set_index": best_set_index,
-                    }
-                else:
-                    existing = new_active_patterns[existing_key]
-                    existing["occurrences"] += 1
-                    existing["last_seen"] = max(existing["last_seen"], pattern["timestamp"])
-
-        self._validate_patterns(new_active_patterns, best_params)
-        self.state.active_patterns = new_active_patterns
-        self._update_pattern_stats()
-        self.state.last_detection_time = time.time()
-
-    def _detect_buy_patterns(
-        self, history: List[Dict[str, Any]], token: str, params: Dict[str, float], set_index: int
-    ) -> List[Dict[str, Any]]:
-        """Detect buy patterns (dips + rises) for a token."""
-        patterns = []
-        min_change = params["MIN_PRICE_CHANGE"] / 100
-        min_time = params["MIN_TIME_WINDOW"]
-        max_time = params["MAX_TIME_WINDOW"]
-        min_profit = params["MIN_PROFIT_PERCENT"]
-
-        for i in range(2, len(history) - 2):
-            current = history[i]
-            is_minima = (
-                current["price"] <= history[i - 1]["price"]
-                and current["price"] <= history[i - 2]["price"]
-                and current["price"] <= history[i + 1]["price"]
-                and current["price"] <= history[i + 2]["price"]
-            )
-            if is_minima:
-                for j in range(i - 1, max(0, i - 5), -1):
-                    prev = history[j]
-                    drop_pct = (current["price"] - prev["price"]) / prev["price"]
-                    time_diff = current["timestamp"] - prev["timestamp"]
-                    if drop_pct <= -min_change and min_time <= time_diff <= max_time:
-                        for k in range(i + 1, min(len(history), i + 6)):
-                            next_point = history[k]
-                            rise_pct = (next_point["price"] - current["price"]) / current["price"]
-                            rise_time = next_point["timestamp"] - current["timestamp"]
-                            if rise_pct >= (min_profit / 100) and min_time <= rise_time <= max_time:
-                                patterns.append({
-                                    "type": "buy",
-                                    "drop_pct": abs(drop_pct) * 100,
-                                    "drop_time": time_diff,
-                                    "rise_pct": rise_pct * 100,
-                                    "rise_time": rise_time,
-                                    "timestamp": current["timestamp"],
-                                    "parameter_set_index": set_index,
-                                })
-                                break
-                        break
-        return patterns
-
-    def _is_valid_pattern(self, pattern: Dict[str, Any], params: Dict[str, float]) -> bool:
-        """Check if a pattern meets validity criteria."""
-        if pattern["drop_pct"] > 100 or pattern["rise_pct"] > 100:
-            return False
-        if pattern["drop_pct"] < 0 or pattern["rise_pct"] < 0:
-            return False
-        if pattern["drop_time"] > 600 or pattern["rise_time"] > 600:
-            return False
-        if pattern["drop_time"] < 1 or pattern["rise_time"] < 1:
-            return False
-        if pattern["rise_pct"] < params["MIN_PROFIT_PERCENT"]:
-            return False
-        return True
-
-    def _get_pattern_key(self, pattern: Dict[str, Any]) -> str:
-        """Generate a unique key for a pattern."""
-        return (
-            f"BUY_{round(pattern['drop_pct'] * 10) / 10}%"
-            f"_{round(pattern['drop_time'])}s_"
-            f"{round(pattern['rise_pct'] * 10) / 10}%"
-            f"_{round(pattern['rise_time'])}s"
-        )
-
-    def _validate_patterns(self, patterns: Dict[str, Dict[str, Any]], params: Dict[str, float]):
-        """Remove invalid patterns."""
-        keys_to_delete = [
-            key for key, pattern in patterns.items()
-            if pattern["drop_pct"] <= 0 or pattern["rise_pct"] <= 0
-            or pattern["rise_pct"] < params["MIN_PROFIT_PERCENT"]
-        ]
-        for key in keys_to_delete:
-            del patterns[key]
-
-    def _update_pattern_stats(self):
-        """Update pattern statistics."""
-        patterns_list = list(self.state.active_patterns.values())
-        self.state.pattern_stats["total_patterns"] = len(patterns_list)
-        self.state.pattern_stats["tokens_with_patterns"] = len({p["token"] for p in patterns_list})
 
 # ========== BLOCKCHAIN HELPERS ==========
 class BlockchainHelper:
@@ -815,8 +649,23 @@ class BlockchainHelper:
             sqrt_price_x96 = slot0[0]
             return self._sqrt_price_x96_to_price(sqrt_price_x96)
         except Exception as e:
-            logger.error(f"Error getting pool price for {short(pool_address)}: {e}")
             return None
+
+    def validate_abi(abi):
+        for entry in abi:
+            if entry.get("type") is None:
+                raise ValueError(f"ABI error: entry type is None → {entry}")
+
+            if "inputs" in entry and entry["inputs"] is not None:
+                for inp in entry["inputs"]:
+                    if inp.get("type") is None:
+                        raise ValueError(f"ABI error: input type None → {entry}")
+
+            if "outputs" in entry and entry["outputs"] is not None:
+                for out in entry["outputs"]:
+                    if out.get("type") is None:
+                        raise ValueError(f"ABI error: output type None → {entry}")
+
 
     def _sqrt_price_x96_to_price(self, sqrt_price_x96: int) -> float:
         sqrt_price = sqrt_price_x96 / (2**96)
@@ -847,7 +696,235 @@ class BlockchainHelper:
             logger.error(f"Error getting token symbol for {short(token_address)}: {e}")
             return short(token_address)
 
-# ========== TRADE EXECUTION & PORTFOLIO ==========
+# ========== TOKEN DISCOVERY ==========
+class TokenDiscovery:
+    def __init__(self, state: State, blockchain: BlockchainHelper):
+        self.state = state
+        self.blockchain = blockchain
+        self.active_pools: Set[str] = set()
+        self.last_block: Dict[str, int] = {}
+        self.swap_topic = "0xc42079f94a6436c4e6930f05045148f3556048be474e7962b362652246f71625"
+
+    async def initialize_known_tokens(self, chain_key: str):
+        """Initialize with WETH, stables, and top pool tokens."""
+        chain_config = CHAINS[chain_key]
+        wrapped_native = to_checksum_address(chain_config["wrappedNative"])
+        quote_label = chain_config["quoteLabel"]
+
+        # Add WETH/ETH
+        if wrapped_native not in self.state.token_symbols:
+            self.state.token_symbols[wrapped_native] = quote_label
+            self.state.token_addresses[quote_label] = wrapped_native
+        if wrapped_native not in self.state.observed_tokens:
+            self.state.observed_tokens.add(wrapped_native)
+        if wrapped_native not in self.state.prices:
+            self.state.prices[wrapped_native] = 1.0
+            self._update_price_history(wrapped_native, 1.0)
+
+        # Add known tokens from NETWORK_TOKENS
+        for symbol, address in NETWORK_TOKENS.get(chain_key, {}).items():
+            checksum_addr = to_checksum_address(address)
+            if checksum_addr not in self.state.token_symbols:
+                self.state.token_symbols[checksum_addr] = symbol
+                self.state.token_addresses[symbol] = checksum_addr
+            if checksum_addr not in self.state.observed_tokens:
+                self.state.observed_tokens.add(checksum_addr)
+
+        # Add stables
+        for stable in chain_config.get("stables", []):
+            stable = to_checksum_address(stable)
+            if stable not in self.state.observed_tokens:
+                self.state.observed_tokens.add(stable)
+
+        # Add top pool tokens
+        await self._add_top_pool_tokens(chain_key)
+
+    async def _add_top_pool_tokens(self, chain_key: str):
+        """Add tokens from the top pools for the chain."""
+        chain_config = CHAINS[chain_key]
+        for token0, token1, _ in chain_config.get("topPools", []):
+            for token_addr in [to_checksum_address(token0), to_checksum_address(token1)]:
+                if token_addr not in self.state.observed_tokens:
+                    self.state.observed_tokens.add(token_addr)
+
+    async def discover_tokens_from_blocks(self, chain_key: str, blocks_to_scan: int = 5):
+        """Scan recent blocks for Swap events to discover new tokens."""
+        try:
+            w3 = self.blockchain.get_web3(chain_key)
+            current_block = w3.eth.block_number
+            last_scanned = self.last_block.get(chain_key, current_block - blocks_to_scan)
+
+            if current_block <= last_scanned:
+                return
+
+            from_block = max(0, current_block - blocks_to_scan)
+            to_block = current_block
+
+            logger.debug(f"Scanning blocks {from_block} to {to_block} on {chain_key} for Swap events...")
+
+            try:
+                logs = w3.eth.get_logs({
+                    'fromBlock': from_block,
+                    'toBlock': to_block,
+                    'topics': [self.swap_topic]
+                })
+            except Exception as e:
+                logger.warning(f"Error fetching Swap logs: {e}")
+                return
+
+            new_tokens = set()
+            for log in logs:
+                try:
+                    pool_address = to_checksum_address(log['address'])
+                    if pool_address in self.active_pools:
+                        continue
+                    self.active_pools.add(pool_address)
+
+                    pool_contract = await self.blockchain.get_pool_contract(pool_address, chain_key)
+                    token0 = to_checksum_address(pool_contract.functions.token0().call())
+                    token1 = to_checksum_address(pool_contract.functions.token1().call())
+
+                    new_tokens.update([token0, token1])
+                except Exception as e:
+                    logger.warning(f"Error processing Swap log: {e}")
+                    continue
+
+            for token_addr in new_tokens:
+                if token_addr not in self.state.observed_tokens:
+                    self.state.observed_tokens.add(token_addr)
+                    logger.info(f"Discovered new token: {short(token_addr)}")
+
+            self.last_block[chain_key] = current_block
+        except Exception as e:
+            logger.error(f"Error in token discovery: {e}")
+
+    def _update_price_history(self, token: str, price: float):
+        """Update price history for a token."""
+        if token not in self.state.price_history:
+            self.state.price_history[token] = []
+        self.state.price_history[token].append({"price": price, "timestamp": time.time()})
+        if len(self.state.price_history[token]) > self.state.config.MAX_PRICE_HISTORY:
+            self.state.price_history[token] = self.state.price_history[token][-self.state.config.MAX_PRICE_HISTORY:]
+
+# ========== PATTERN DETECTION ==========
+class PatternDetector:
+    def __init__(self, state: State, optimizer: ParameterOptimizer):
+        self.state = state
+        self.optimizer = optimizer
+
+    def detect_all_patterns(self):
+        """Detect patterns for all observed tokens using the current parameter set."""
+        tokens = list(self.state.observed_tokens)
+        new_active_patterns = {}
+        best_params = self.optimizer.get_current_best_parameters()
+
+        for token in tokens:
+            history = self.state.get_token_history(token)
+            if history is None or len(history) < 5:
+                continue
+            buy_patterns = self._detect_buy_patterns(history, token, best_params)
+            for pattern in buy_patterns:
+                if not self._is_valid_pattern(pattern, best_params):
+                    continue
+                pattern_key = self._get_pattern_key(pattern)
+                existing_key = f"{token}_{pattern_key}"
+                if existing_key not in new_active_patterns:
+                    new_active_patterns[existing_key] = {
+                        **pattern,
+                        "token": token,
+                        "occurrences": 1,
+                        "first_seen": pattern["timestamp"],
+                        "last_seen": pattern["timestamp"]
+                    }
+                else:
+                    existing = new_active_patterns[existing_key]
+                    existing["occurrences"] += 1
+                    existing["last_seen"] = max(existing["last_seen"], pattern["timestamp"])
+
+        self._validate_patterns(new_active_patterns, best_params)
+        self.state.active_patterns = new_active_patterns
+        self._update_pattern_stats()
+        self.state.last_detection_time = time.time()
+
+    def _detect_buy_patterns(self, history: List[Dict[str, Any]], token: str, params: Dict[str, float]) -> List[Dict[str, Any]]:
+        """Detect buy patterns (dips + rises) for a token."""
+        patterns = []
+        min_change = params["MIN_PRICE_CHANGE"] / 100
+        min_time = params["MIN_TIME_WINDOW"]
+        max_time = params["MAX_TIME_WINDOW"]
+        min_profit = params["MIN_PROFIT_PERCENT"]
+
+        for i in range(2, len(history) - 2):
+            current = history[i]
+            is_minima = (
+                current["price"] <= history[i - 1]["price"]
+                and current["price"] <= history[i - 2]["price"]
+                and current["price"] <= history[i + 1]["price"]
+                and current["price"] <= history[i + 2]["price"]
+            )
+            if is_minima:
+                for j in range(i - 1, max(0, i - 5), -1):
+                    prev = history[j]
+                    drop_pct = (current["price"] - prev["price"]) / prev["price"]
+                    time_diff = current["timestamp"] - prev["timestamp"]
+                    if drop_pct <= -min_change and min_time <= time_diff <= max_time:
+                        for k in range(i + 1, min(len(history), i + 6)):
+                            next_point = history[k]
+                            rise_pct = (next_point["price"] - current["price"]) / current["price"]
+                            rise_time = next_point["timestamp"] - current["timestamp"]
+                            if rise_pct >= (min_profit / 100) and min_time <= rise_time <= max_time:
+                                patterns.append({
+                                    "type": "buy",
+                                    "drop_pct": abs(drop_pct) * 100,
+                                    "drop_time": time_diff,
+                                    "rise_pct": rise_pct * 100,
+                                    "rise_time": rise_time,
+                                    "timestamp": current["timestamp"],
+                                })
+                                break
+                        break
+        return patterns
+
+    def _is_valid_pattern(self, pattern: Dict[str, Any], params: Dict[str, float]) -> bool:
+        """Check if a pattern meets validity criteria."""
+        if pattern["drop_pct"] > 100 or pattern["rise_pct"] > 100:
+            return False
+        if pattern["drop_pct"] < 0 or pattern["rise_pct"] < 0:
+            return False
+        if pattern["drop_time"] > 600 or pattern["rise_time"] > 600:
+            return False
+        if pattern["drop_time"] < 1 or pattern["rise_time"] < 1:
+            return False
+        if pattern["rise_pct"] < params["MIN_PROFIT_PERCENT"]:
+            return False
+        return True
+
+    def _get_pattern_key(self, pattern: Dict[str, Any]) -> str:
+        """Generate a unique key for a pattern."""
+        return (
+            f"BUY_{round(pattern['drop_pct'] * 10) / 10}%"
+            f"_{round(pattern['drop_time'])}s_"
+            f"{round(pattern['rise_pct'] * 10) / 10}%"
+            f"_{round(pattern['rise_time'])}s"
+        )
+
+    def _validate_patterns(self, patterns: Dict[str, Dict[str, Any]], params: Dict[str, float]):
+        """Remove invalid patterns."""
+        keys_to_delete = [
+            key for key, pattern in patterns.items()
+            if pattern["drop_pct"] <= 0 or pattern["rise_pct"] <= 0
+            or pattern["rise_pct"] < params["MIN_PROFIT_PERCENT"]
+        ]
+        for key in keys_to_delete:
+            del patterns[key]
+
+    def _update_pattern_stats(self):
+        """Update pattern statistics."""
+        patterns_list = list(self.state.active_patterns.values())
+        self.state.pattern_stats["total_patterns"] = len(patterns_list)
+        self.state.pattern_stats["tokens_with_patterns"] = len({p["token"] for p in patterns_list})
+
+# ========== TRADE EXECUTION ==========
 class Trader:
     def __init__(self, state: State, optimizer: ParameterOptimizer):
         self.state = state
@@ -856,7 +933,7 @@ class Trader:
         self.detector = PatternDetector(state, optimizer)
         self.blockchain = BlockchainHelper(state)
         self.token_discovery = TokenDiscovery(state, self.blockchain)
-        self.live_mode = os.getenv("PRIVATE_KEY") is not None
+        self.live_mode = os.getenv("PRIVATE_KEY", "") != ""
         logger.info(f"Live mode: {'ON' if self.live_mode else 'OFF (shadow mode)'}")
 
     def calculate_trade_amount(self) -> float:
@@ -921,7 +998,7 @@ class Trader:
         return min(base_gas, self.config.GAS_LIMIT)
 
     def _calculate_price_impact(self, token: str, token_amount: float) -> float:
-        token_price = self.state.prices.get(token, 1.0)
+        token_price = self.state.get_token_price(token) or 1.0
         token_value_eth = token_amount * token_price
         liquidity_eth = 100000
         return min((token_value_eth / liquidity_eth) * 100, 2.0)
@@ -951,32 +1028,6 @@ class Trader:
             "parameter_set_index": parameter_set_index,
             "network": self.state.current_network,
         }
-
-    def _get_token_address(self, token: str) -> Optional[str]:
-        """Resolve token to address (handles both symbols and addresses)."""
-        if token in self.state.token_addresses:
-            return self.state.token_addresses[token]
-        if token in self.state.token_symbols:
-            return token
-        return None
-
-    def _get_token_price(self, token: str) -> Optional[float]:
-        """Get price for a token (handles both symbols and addresses)."""
-        if token in self.state.prices:
-            return self.state.prices[token]
-        token_addr = self._get_token_address(token)
-        if token_addr and token_addr in self.state.prices:
-            return self.state.prices[token_addr]
-        return None
-
-    def _get_token_history(self, token: str) -> Optional[List[Dict[str, Any]]]:
-        """Get price history for a token (handles both symbols and addresses)."""
-        if token in self.state.price_history:
-            return self.state.price_history[token]
-        token_addr = self._get_token_address(token)
-        if token_addr and token_addr in self.state.price_history:
-            return self.state.price_history[token_addr]
-        return None
 
     def update_portfolio(self, trade: Dict[str, Any], action: str, trade_result: Dict[str, Any]):
         token = trade["token"]
@@ -1013,7 +1064,7 @@ class Trader:
                     "status": "open",
                     "trade_id": trade["id"],
                     "pattern": trade["pattern"],
-                    "parameter_set_index": trade.get("parameter_set_index"),
+                    "parameter_set_index": trade.get("parameter_set_index")
                 }
                 self.state.portfolio["positions"].append(position)
             else:
@@ -1082,12 +1133,12 @@ class Trader:
         for token, amount in self.state.portfolio["balances"].items():
             if token == "ETH":
                 continue
-            price_in_eth = self._get_token_price(token)
+            price_in_eth = self.state.get_token_price(token)
             if price_in_eth is not None:
                 total_eth += amount * price_in_eth
         for position in self.state.portfolio["positions"]:
             if position["status"] == "open":
-                current_price = self._get_token_price(position["token"]) or position["entry_price"]
+                current_price = self.state.get_token_price(position["token"]) or position["entry_price"]
                 current_value = position["amount"] * current_price
                 unrealized_pnl = (
                     current_value - (position["amount"] * position["entry_price"]) - position["fees_paid"] - position["gas_paid"]
@@ -1110,7 +1161,7 @@ class Trader:
             return None
         if amount_eth is None:
             amount_eth = self.calculate_trade_amount()
-        current_price = self._get_token_price(token)
+        current_price = self.state.get_token_price(token)
         if current_price is None:
             logger.warning(f"No price available for token {token}")
             return None
@@ -1173,10 +1224,10 @@ class Trader:
         """Check for buy/sell opportunities for a token."""
         if not self.state.is_running:
             return
-        history = self._get_token_history(token)
+        history = self.state.get_token_history(token)
         if history is None or len(history) < 2:
             return
-        current_price = self._get_token_price(token)
+        current_price = self.state.get_token_price(token)
         if current_price is None:
             return
         best_params = self.optimizer.get_current_best_parameters()
@@ -1199,7 +1250,7 @@ class Trader:
                 return
         token_patterns = [
             p for p in self.state.active_patterns.values()
-            if p["token"] == token and p.get("parameter_set_index") == self.optimizer.best_set_index
+            if p["token"] == token
         ]
         buy_patterns = [p for p in token_patterns if p["type"] == "buy"]
         for pattern in buy_patterns:
@@ -1216,10 +1267,10 @@ class Trader:
 
     def _check_pattern_match(self, token: str, pattern: Dict[str, Any]) -> bool:
         """Check if current price matches a pattern."""
-        history = self._get_token_history(token)
+        history = self.state.get_token_history(token)
         if history is None or len(history) < 2:
             return False
-        current_price = self._get_token_price(token)
+        current_price = self.state.get_token_price(token)
         if current_price is None:
             return False
         recent_history = history[-10:]
@@ -1262,9 +1313,10 @@ class PriceUpdater:
         self.blockchain = BlockchainHelper(state)
         self.token_discovery = TokenDiscovery(state, self.blockchain)
         self.price_update_lock = threading.Lock()
+        self.last_price_update: Dict[str, float] = {}
 
     async def update_prices(self):
-        """Update prices for all observed tokens and discover new ones."""
+        """Update prices for all observed tokens."""
         with self.price_update_lock:
             try:
                 chain_key = self.state.current_network
@@ -1275,10 +1327,10 @@ class PriceUpdater:
                 try:
                     gas_price_wei = w3.eth.gas_price
                     self.state.current_gas_price = gas_price_wei / 1e9
-                    logger.info(f"Gas price: {self.state.current_gas_price:.2f} gwei")
+                    logger.debug(f"Gas price: {self.state.current_gas_price:.2f} gwei")
                 except Exception as e:
                     logger.warning(f"Could not fetch gas price: {e}")
-                    self.state.current_gas_price = self.state.config.MAX_GAS_PRICE  # Fallback
+                    self.state.current_gas_price = self.state.config.MAX_GAS_PRICE
 
                 wrapped_native = to_checksum_address(chain_config["wrappedNative"])
 
@@ -1289,51 +1341,68 @@ class PriceUpdater:
                 # Discover new tokens from blocks
                 await self.token_discovery.discover_tokens_from_blocks(chain_key, blocks_to_scan=5)
 
-                # Update prices for all tokens
-                tokens_to_update = list(self.state.observed_tokens)
+                # Get all tokens that need price updates
+                current_time = time.time()
+                tokens_to_update = []
+                for token in self.state.observed_tokens:
+                    last_updated = self.last_price_update.get(token, 0)
+                    if current_time - last_updated > 10:
+                        tokens_to_update.append(token)
+
+                # Update prices for tokens that need it
                 for token in tokens_to_update:
                     try:
-                        # Skip if we already have a recent price
-                        if token in self.state.prices:
-                            continue
-
-                        # For WETH/ETH, price is 1.0
+                        # Skip WETH/ETH as price is always 1.0
                         if norm(token) == norm(wrapped_native):
                             self.state.prices[token] = 1.0
                             self.token_discovery._update_price_history(token, 1.0)
+                            self.last_price_update[token] = current_time
                             continue
 
-                        # Try to find a pool with this token and WETH
-                        pool_address = await self.blockchain.get_pool_address(
-                            token, wrapped_native, POOL_FEES["MEDIUM"], chain_key
-                        )
-                        if not pool_address:
-                            # Try other fee tiers
-                            for fee in [POOL_FEES["LOW"], POOL_FEES["HIGH"]]:
-                                pool_address = await self.blockchain.get_pool_address(
-                                    token, wrapped_native, fee, chain_key
-                                )
-                                if pool_address:
-                                    break
+                        # Try to get price from existing pools
+                        price = await self._get_price_for_token(token, chain_key)
+                        if price is not None:
+                            self.state.prices[token] = price
+                            self.token_discovery._update_price_history(token, price)
+                            self.last_price_update[token] = current_time
+                            continue
 
-                        if pool_address:
-                            price = await self.blockchain.get_pool_price(pool_address, chain_key)
-                            if price is not None:
-                                self.state.prices[token] = price
-                                self.token_discovery._update_price_history(token, price)
-                                continue
-
-                        # If no pool found, log and keep the token (don't remove)
-                        logger.warning(f"No pool found for {short(token)} (may need more time to discover)")
+                        # If we still don't have a price, log but don't remove the token
+                        if token not in self.state.prices:
+                            logger.debug(f"No price found for {short(token)} (will retry)")
 
                     except Exception as e:
                         logger.error(f"Error updating price for {short(token)}: {e}")
                         continue
 
-                self.state.last_price_update = time.time()
+                self.state.last_price_update = current_time
 
             except Exception as e:
                 logger.error(f"Error in price update: {e}")
+
+    async def _get_price_for_token(self, token: str, chain_key: str) -> Optional[float]:
+        """Get price for a token by finding its pool with WETH."""
+        chain_config = CHAINS[chain_key]
+        wrapped_native = to_checksum_address(chain_config["wrappedNative"])
+        
+        # First, try to get the checksummed address
+        token_checksum = to_checksum_address(token)
+        
+        # Try all fee tiers
+        for fee in [POOL_FEES["MEDIUM"], POOL_FEES["LOW"], POOL_FEES["HIGH"]]:
+            try:
+                pool_address = await self.blockchain.get_pool_address(
+                    token_checksum, wrapped_native, fee, chain_key
+                )
+                if pool_address:
+                    price = await self.blockchain.get_pool_price(pool_address, chain_key)
+                    if price is not None:
+                        return price
+            except Exception as e:
+                logger.debug(f"Error getting price for {short(token)} at fee {fee}: {e}")
+                continue
+
+        return None
 
 # ========== STATE PERSISTENCE ==========
 class StateManager:
@@ -1346,7 +1415,7 @@ class StateManager:
         try:
             with open(os.path.join(self.data_dir, "full_state.json"), "w") as f:
                 json.dump(self.state.to_dict(), f, indent=2)
-            logger.info("State saved to data/full_state.json.")
+            logger.debug("State saved to data/full_state.json.")
         except Exception as e:
             logger.error(f"Error saving state: {e}")
 
@@ -1390,7 +1459,6 @@ class Bot:
 
         self._event_loop_thread = threading.Thread(target=run_loop, daemon=True)
         self._event_loop_thread.start()
-        # Give the loop a moment to start
         time.sleep(0.1)
 
     def _stop_event_loop(self):
@@ -1410,7 +1478,6 @@ class Bot:
         logger.info("Starting Uniswap Quick Swap Trader (Profit-Only Mode)...")
         logger.info(f"Generated {len(self.optimizer.parameter_sets)} parameter sets from ranges.")
 
-        # Start the event loop
         self._start_event_loop()
 
         self.running = True
@@ -1496,6 +1563,7 @@ class Bot:
         print(f"Status: {'Running' if status['is_running'] else 'Stopped'}")
         print(f"Uptime: {status['uptime']}")
         print(f"Live Mode: {'ON' if self.trader.live_mode else 'OFF (shadow mode)'}")
+        print(f"Network: {self.state.current_network}")
         print(f"Best Parameter Set: {self.optimizer.best_set_index}")
         print("\n--- Portfolio ---")
         print(f"Current Value: {status['current_eth']:.12f} ETH")
@@ -1521,11 +1589,12 @@ class Bot:
             perf = self.optimizer.performance[i]
             marker = " (BEST)" if i == self.optimizer.best_set_index else ""
             print(f"Set {i}{marker}: Profit={perf['profit']:.6f} ETH, Trades={perf['trades']}, Winning={perf['winning_trades']}")
+        
         open_positions = [p for p in self.state.portfolio["positions"] if p["status"] == "open"]
         if open_positions:
             print("\n--- Open Positions ---")
             for pos in open_positions:
-                current_price = self.trader._get_token_price(pos["token"]) or pos["entry_price"]
+                current_price = self.trader.state.get_token_price(pos["token"]) or pos["entry_price"]
                 current_value = pos["amount"] * current_price
                 unrealized_pnl = current_value - (pos["amount"] * pos["entry_price"]) - pos["fees_paid"] - pos["gas_paid"]
                 cost_basis = (pos["amount"] * pos["entry_price"]) + pos["fees_paid"] + pos["gas_paid"]
@@ -1533,6 +1602,7 @@ class Bot:
                 age = int(time.time() - pos["entry_time"])
                 set_index = pos.get("parameter_set_index", "N/A")
                 print(f"{pos['token']}: Bought at {pos['entry_price']:.8f}, Amount: {pos['amount']:.8f}, Value: {current_value:.8f} ETH, PnL: {unrealized_pnl:+.8f} ETH ({return_pct:+.2f}%), Age: {age}s, Param Set: {set_index}")
+        
         if self.state.trades:
             print("\n--- Recent Trades ---")
             for trade in self.state.trades[-5:]:
@@ -1570,7 +1640,7 @@ class Bot:
             print("Cannot reset while bot is running. Stop the bot first.")
             return
         if input("Are you sure you want to reset? This will clear all data. (y/n): ").lower() == "y":
-            self._stop_event_loop()  # Clean up the event loop
+            self._stop_event_loop()
             self.state = State(self.config)
             self.optimizer = ParameterOptimizer(self.state, self.parameter_ranges)
             self.trader = Trader(self.state, self.optimizer)
@@ -1615,7 +1685,7 @@ def main():
     logger.info("Uniswap Quick Swap Trader v7.0.0 started.")
 
     bot = Bot()
-    bot.state_manager.load_state()  # Load previous state if available
+    bot.state_manager.load_state()
 
     print("Commands:")
     print("  start   - Start the bot")
