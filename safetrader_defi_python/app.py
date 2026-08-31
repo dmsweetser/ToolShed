@@ -453,6 +453,8 @@ class BlockchainHelper:
         self._initialize_providers()
 
     def _initialize_providers(self):
+        from web3.middleware import geth_poa_middleware  # <-- FIX: Use geth_poa_middleware
+
         for chain_key, chain_config in self.chains.items():
             rpc_url = chain_config["rpcs"][0]
             if "wss:" in rpc_url:
@@ -460,8 +462,11 @@ class BlockchainHelper:
             else:
                 provider = Web3.HTTPProvider(rpc_url)
             w3 = Web3(provider)
+
+            # Inject POA middleware for POA chains (Arbitrum, Base, Optimism, Polygon)
             if chain_key in ["polygon", "arbitrum", "base", "optimism"]:
-                w3.middleware_onion.inject(Web3.GasPriceStrategy(), layer=0)
+                w3.middleware_onion.inject(geth_poa_middleware, layer=0)  # <-- FIX: Use geth_poa_middleware
+
             self.web3_providers[chain_key] = w3
 
     async def get_web3(self, chain_key: str) -> Web3:
