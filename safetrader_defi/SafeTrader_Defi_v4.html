@@ -514,38 +514,38 @@
             <div class="grid-3">
                 <div class="config-section">
                     <h3>Market Connection</h3>
-                    <p><strong>Network:</strong> <span id="displayNetwork">arbitrum</span></p>
-                    <p><strong>Uniswap Version:</strong> v3</p>
+                    <p><strong>Network:</strong> <span id="displayNetwork"></span></p>
+                    <p><strong>Uniswap Version:</strong></p>
                 </div>
                 <div class="config-section">
                     <h3>Trading Budget</h3>
-                    <p><strong>Starting ETH:</strong> <span id="displayStartingEth">0.0033 ETH</span></p>
-                    <p><strong>Trade %:</strong> <span id="displayTradePercent">0.5%</span></p>
-                    <p><strong>Min Trade:</strong> <span id="displayMinTrade">0.0003 ETH</span></p>
-                    <p><strong>Max Trades:</strong> <span id="displayMaxTrades">10</span></p>
+                    <p><strong>Starting ETH:</strong> <span id="displayStartingEth"></span></p>
+                    <p><strong>Trade %:</strong> <span id="displayTradePercent"></span></p>
+                    <p><strong>Min Trade:</strong> <span id="displayMinTrade"></span></p>
+                    <p><strong>Max Trades:</strong> <span id="displayMaxTrades"></span></p>
                 </div>
                 <div class="config-section">
                     <h3>Pattern Detection</h3>
-                    <p><strong>Min Price Change:</strong> <span id="displayMinPriceChange">0.1%</span></p>
-                    <p><strong>Min Time Window:</strong> <span id="displayMinTimeWindow">3s</span></p>
-                    <p><strong>Max Time Window:</strong> <span id="displayMaxTimeWindow">60s</span></p>
-                    <p><strong>Min Occurrences:</strong> <span id="displayMinOccurrences">1</span></p>
+                    <p><strong>Min Price Change:</strong> <span id="displayMinPriceChange"></span></p>
+                    <p><strong>Min Time Window:</strong> <span id="displayMinTimeWindow"></span></p>
+                    <p><strong>Max Time Window:</strong> <span id="displayMaxTimeWindow"></span></p>
+                    <p><strong>Min Occurrences:</strong> <span id="displayMinOccurrences"></span></p>
                 </div>
             </div>
             <div class="grid-3" style="margin-top: 15px;">
                 <div class="config-section">
                     <h3>Profit Targets</h3>
-                    <p><strong>Min Profit to Sell:</strong> <span id="displayMinProfit">0.5%</span></p>
+                    <p><strong>Min Profit to Sell:</strong> <span id="displayMinProfit"></span></p>
                 </div>
                 <div class="config-section">
                     <h3>Safety</h3>
-                    <p><strong>Max Slippage:</strong> <span id="displayMaxSlippage">0.5%</span></p>
-                    <p><strong>Max Gas Price:</strong> <span id="displayMaxGasPrice">200 gwei</span></p>
+                    <p><strong>Max Slippage:</strong> <span id="displayMaxSlippage"></span></p>
+                    <p><strong>Max Gas Price:</strong> <span id="displayMaxGasPrice"></span></p>
                 </div>
                 <div class="config-section">
                     <h3>Data</h3>
-                    <p><strong>Price History:</strong> <span id="displayPriceHistoryDuration">24h</span></p>
-                    <p><strong>Max Price History:</strong> <span id="displayMaxPriceHistory">5000</span></p>
+                    <p><strong>Price History:</strong> <span id="displayPriceHistoryDuration"></span></p>
+                    <p><strong>Max Price History:</strong> <span id="displayMaxPriceHistory"></span></p>
                 </div>
             </div>
         </div>
@@ -602,13 +602,13 @@
             TRADE_COOLDOWN: 60,
 
             // Pattern Detection Configuration
-            MIN_PRICE_CHANGE: 0.1,      // Increased from 0.05 to 0.1 for better quality patterns
+            MIN_PRICE_CHANGE: 0.1,
             MIN_TIME_WINDOW: 3,
             MAX_TIME_WINDOW: 60,
-            MIN_OCCURRENCES: 1,
+            MIN_OCCURRENCES: 3, // DDMS changed from 1 to 3
 
             // Profit Targets - ONLY SELL AT PROFIT
-            MIN_PROFIT_PERCENT: 0.5,    // Increased from 0.3 to 0.5 for better profits
+            MIN_PROFIT_PERCENT: 2.0, // DDMS changed from .5 to 2
 
             // Safety Configuration
             MAX_SLIPPAGE: 0.5,
