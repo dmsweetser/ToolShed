@@ -27,6 +27,26 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ========== UTILITY FUNCTIONS ==========
+def norm(a: str) -> str:
+    """Normalize address to lowercase."""
+    return a.lower() if a else ""
+
+def short(a: str) -> str:
+    """Shorten address for display."""
+    if not a:
+        return ""
+    return f"{a[:6]}...{a[-4:]}"
+
+def to_checksum_address(address: str) -> str:
+    """Convert an Ethereum address to checksum format."""
+    if not address or not isinstance(address, str):
+        return address
+    try:
+        return Web3.to_checksum_address(address.lower())
+    except Exception:
+        return address  # Fallback if checksum fails
+
 # ========== PARAMETER GENERATION ==========
 @dataclass
 class ParameterRange:
@@ -317,17 +337,6 @@ ERC20_ABI = json.loads('''
 ]
 ''')
 
-# ========== UTILITY FUNCTIONS ==========
-def norm(a: str) -> str:
-    """Normalize address to lowercase."""
-    return a.lower() if a else ""
-
-def short(a: str) -> str:
-    """Shorten address for display."""
-    if not a:
-        return ""
-    return f"{a[:6]}...{a[-4:]}"
-
 # ========== STATE MANAGEMENT ==========
 class State:
     def __init__(self, config: Config):
@@ -377,7 +386,7 @@ class State:
             "is_running": self.is_running,
             "current_network": self.current_network,
             "prices": self.prices,
-            "price_history": {k: v for k, v in self.price_history.items()},  # Ensure JSON-serializable
+            "price_history": {k: v for k, v in self.price_history.items()},
             "trades": self.trades,
             "active_patterns": self.active_patterns,
             "portfolio": self.portfolio,
@@ -492,9 +501,9 @@ class TokenDiscovery:
         self.swap_topic = "0xc42079f94a6436c4e6930f05045148f3556048be474e7962b362652246f71625"  # Uniswap V3 Swap event topic
 
     async def initialize_known_tokens(self, chain_key: str):
-        """Initialize with WETH, stables, and top pool tokens."""
+        """Initialize with WETH, stables, and top pool tokens (all checksummed)."""
         chain_config = CHAINS[chain_key]
-        wrapped_native = norm(chain_config["wrappedNative"])
+        wrapped_native = to_checksum_address(chain_config["wrappedNative"])
 
         # Add WETH/ETH
         if wrapped_native not in self.state.observed_tokens:
@@ -506,7 +515,7 @@ class TokenDiscovery:
 
         # Add stables
         for stable in chain_config.get("stables", []):
-            stable = norm(stable)
+            stable = to_checksum_address(stable)
             if stable not in self.state.observed_tokens:
                 self.state.observed_tokens.add(stable)
                 try:
@@ -522,10 +531,10 @@ class TokenDiscovery:
         await self._add_top_pool_tokens(chain_key)
 
     async def _add_top_pool_tokens(self, chain_key: str):
-        """Add tokens from the top pools for the chain."""
+        """Add tokens from the top pools for the chain (checksummed)."""
         chain_config = CHAINS[chain_key]
         for token0, token1, _ in chain_config.get("topPools", []):
-            for token_addr in [norm(token0), norm(token1)]:
+            for token_addr in [to_checksum_address(token0), to_checksum_address(token1)]:
                 if token_addr not in self.state.observed_tokens:
                     self.state.observed_tokens.add(token_addr)
                     try:
@@ -537,7 +546,7 @@ class TokenDiscovery:
                         logger.warning(f"Could not get symbol for {short(token_addr)}: {e}")
 
     async def discover_tokens_from_blocks(self, chain_key: str, blocks_to_scan: int = 5):
-        """Scan recent blocks for Swap events to discover new tokens."""
+        """Scan recent blocks for Swap events to discover new tokens (with checksumming)."""
         try:
             w3 = self.blockchain.get_web3(chain_key)
             current_block = w3.eth.block_number
@@ -564,14 +573,14 @@ class TokenDiscovery:
             new_tokens = set()
             for log in logs:
                 try:
-                    pool_address = norm(log['address'])
+                    pool_address = to_checksum_address(log['address'])
                     if pool_address in self.active_pools:
                         continue
                     self.active_pools.add(pool_address)
 
                     pool_contract = await self.blockchain.get_pool_contract(pool_address, chain_key)
-                    token0 = norm(pool_contract.functions.token0().call())
-                    token1 = norm(pool_contract.functions.token1().call())
+                    token0 = to_checksum_address(pool_contract.functions.token0().call())
+                    token1 = to_checksum_address(pool_contract.functions.token1().call())
 
                     new_tokens.update([token0, token1])
                 except Exception as e:
@@ -757,15 +766,16 @@ class BlockchainHelper:
             return self.factory_contracts[chain_key]
         w3 = self.get_web3(chain_key)
         chain_config = self.chains[chain_key]
+        factory_address = to_checksum_address(chain_config["factory"])
         factory_contract = w3.eth.contract(
-            address=Web3.to_checksum_address(chain_config["factory"]),
+            address=factory_address,
             abi=UNISWAP_V3_FACTORY_ABI,
         )
         self.factory_contracts[chain_key] = factory_contract
         return factory_contract
 
     async def get_pool_contract(self, pool_address: str, chain_key: str) -> Any:
-        pool_address = Web3.to_checksum_address(pool_address)
+        pool_address = to_checksum_address(pool_address)
         cache_key = f"{chain_key}_{pool_address}"
         if cache_key in self.pool_contracts:
             return self.pool_contracts[cache_key]
@@ -775,7 +785,7 @@ class BlockchainHelper:
         return pool_contract
 
     async def get_token_contract(self, token_address: str, chain_key: str) -> Any:
-        token_address = Web3.to_checksum_address(token_address)
+        token_address = to_checksum_address(token_address)
         cache_key = f"{chain_key}_{token_address}"
         if cache_key in self.token_contracts:
             return self.token_contracts[cache_key]
@@ -787,22 +797,25 @@ class BlockchainHelper:
     async def get_pool_address(self, token0: str, token1: str, fee: int, chain_key: str) -> Optional[str]:
         try:
             factory = await self.get_factory_contract(chain_key)
-            pool_address = factory.functions.getPool(token0, token1, fee).call()
+            token0_checksum = to_checksum_address(token0)
+            token1_checksum = to_checksum_address(token1)
+            pool_address = factory.functions.getPool(token0_checksum, token1_checksum, fee).call()
             if pool_address == "0x0000000000000000000000000000000000000000":
                 return None
             return pool_address
         except Exception as e:
-            logger.error(f"Error getting pool address: {e}")
+            logger.error(f"Error getting pool address for {short(token0)}-{short(token1)}: {e}")
             return None
 
     async def get_pool_price(self, pool_address: str, chain_key: str) -> Optional[float]:
         try:
-            pool = await self.get_pool_contract(pool_address, chain_key)
+            pool_address_checksum = to_checksum_address(pool_address)
+            pool = await self.get_pool_contract(pool_address_checksum, chain_key)
             slot0 = pool.functions.slot0().call()
             sqrt_price_x96 = slot0[0]
             return self._sqrt_price_x96_to_price(sqrt_price_x96)
         except Exception as e:
-            logger.error(f"Error getting pool price: {e}")
+            logger.error(f"Error getting pool price for {short(pool_address)}: {e}")
             return None
 
     def _sqrt_price_x96_to_price(self, sqrt_price_x96: int) -> float:
@@ -818,7 +831,7 @@ class BlockchainHelper:
             self.state.token_decimals[token_address] = decimals
             return decimals
         except Exception as e:
-            logger.error(f"Error getting token decimals: {e}")
+            logger.error(f"Error getting token decimals for {short(token_address)}: {e}")
             return 18
 
     async def get_token_symbol(self, token_address: str, chain_key: str) -> str:
@@ -831,7 +844,7 @@ class BlockchainHelper:
             self.state.token_addresses[symbol] = token_address
             return symbol
         except Exception as e:
-            logger.error(f"Error getting token symbol: {e}")
+            logger.error(f"Error getting token symbol for {short(token_address)}: {e}")
             return short(token_address)
 
 # ========== TRADE EXECUTION & PORTFOLIO ==========
@@ -1257,46 +1270,70 @@ class PriceUpdater:
                 chain_key = self.state.current_network
                 chain_config = CHAINS[chain_key]
                 w3 = self.blockchain.get_web3(chain_key)
-                gas_price_wei = w3.eth.gas_price
-                self.state.current_gas_price = gas_price_wei / 1e9
-                wrapped_native = norm(chain_config["wrappedNative"])
+
+                # Get gas price
+                try:
+                    gas_price_wei = w3.eth.gas_price
+                    self.state.current_gas_price = gas_price_wei / 1e9
+                    logger.info(f"Gas price: {self.state.current_gas_price:.2f} gwei")
+                except Exception as e:
+                    logger.warning(f"Could not fetch gas price: {e}")
+                    self.state.current_gas_price = self.state.config.MAX_GAS_PRICE  # Fallback
+
+                wrapped_native = to_checksum_address(chain_config["wrappedNative"])
+
+                # Initialize with known tokens if empty
                 if not self.state.observed_tokens:
                     await self.token_discovery.initialize_known_tokens(chain_key)
+
+                # Discover new tokens from blocks
                 await self.token_discovery.discover_tokens_from_blocks(chain_key, blocks_to_scan=5)
-                tokens_to_update = set(self.state.observed_tokens)
-                for token in list(tokens_to_update):
+
+                # Update prices for all tokens
+                tokens_to_update = list(self.state.observed_tokens)
+                for token in tokens_to_update:
                     try:
+                        # Skip if we already have a recent price
                         if token in self.state.prices:
                             continue
-                        if norm(token) == wrapped_native:
+
+                        # For WETH/ETH, price is 1.0
+                        if norm(token) == norm(wrapped_native):
                             self.state.prices[token] = 1.0
                             self.token_discovery._update_price_history(token, 1.0)
                             continue
+
+                        # Try to find a pool with this token and WETH
                         pool_address = await self.blockchain.get_pool_address(
                             token, wrapped_native, POOL_FEES["MEDIUM"], chain_key
                         )
                         if not pool_address:
+                            # Try other fee tiers
                             for fee in [POOL_FEES["LOW"], POOL_FEES["HIGH"]]:
                                 pool_address = await self.blockchain.get_pool_address(
                                     token, wrapped_native, fee, chain_key
                                 )
                                 if pool_address:
                                     break
+
                         if pool_address:
                             price = await self.blockchain.get_pool_price(pool_address, chain_key)
                             if price is not None:
                                 self.state.prices[token] = price
                                 self.token_discovery._update_price_history(token, price)
                                 continue
-                        if token in self.state.observed_tokens:
-                            logger.warning(f"Removed {short(token)}: No pool found.")
-                            self.state.observed_tokens.remove(token)
+
+                        # If no pool found, log and keep the token (don't remove)
+                        logger.warning(f"No pool found for {short(token)} (may need more time to discover)")
+
                     except Exception as e:
                         logger.error(f"Error updating price for {short(token)}: {e}")
                         continue
+
                 self.state.last_price_update = time.time()
+
             except Exception as e:
-                logger.error(f"Error updating prices: {e}")
+                logger.error(f"Error in price update: {e}")
 
 # ========== STATE PERSISTENCE ==========
 class StateManager:
@@ -1338,37 +1375,82 @@ class Bot:
         self.price_updater = PriceUpdater(self.state)
         self.state_manager = StateManager(self.state)
         self.running = False
+        self._event_loop = None
+        self._event_loop_thread = None
+
+    def _start_event_loop(self):
+        """Start a dedicated event loop in a background thread."""
+        if self._event_loop is not None:
+            return
+
+        def run_loop():
+            self._event_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self._event_loop)
+            self._event_loop.run_forever()
+
+        self._event_loop_thread = threading.Thread(target=run_loop, daemon=True)
+        self._event_loop_thread.start()
+        # Give the loop a moment to start
+        time.sleep(0.1)
+
+    def _stop_event_loop(self):
+        """Stop the event loop."""
+        if self._event_loop is not None:
+            self._event_loop.call_soon_threadsafe(self._event_loop.stop)
+            if self._event_loop_thread:
+                self._event_loop_thread.join(timeout=1)
+            self._event_loop = None
+            self._event_loop_thread = None
 
     def start(self):
         if self.running:
             logger.info("Bot is already running")
             return
+
         logger.info("Starting Uniswap Quick Swap Trader (Profit-Only Mode)...")
         logger.info(f"Generated {len(self.optimizer.parameter_sets)} parameter sets from ranges.")
+
+        # Start the event loop
+        self._start_event_loop()
+
         self.running = True
         self.state.is_running = True
         self.state.start_time = time.time()
+
+        # Initialize known tokens
         asyncio.run_coroutine_threadsafe(
             self.trader.token_discovery.initialize_known_tokens(self.state.current_chain_key),
-            asyncio.new_event_loop()
+            self._event_loop
         )
+
+        # Start price updates
         async def price_loop():
             while self.running:
                 await self.price_updater.update_prices()
                 await asyncio.sleep(10)
-        asyncio.run_coroutine_threadsafe(price_loop(), asyncio.new_event_loop())
+
+        asyncio.run_coroutine_threadsafe(price_loop(), self._event_loop)
+
+        # Start pattern detection
         self.trader.start_pattern_detection()
+
+        # Start state saving
         def state_saver():
             while self.running:
                 self.state_manager.save_state()
                 time.sleep(30)
+
         threading.Thread(target=state_saver, daemon=True).start()
+
+        # Start pattern checking
         async def pattern_checker():
             while self.running:
                 for token in list(self.state.observed_tokens):
                     await self.trader.check_patterns_for_token(token)
                 await asyncio.sleep(1)
-        asyncio.run_coroutine_threadsafe(pattern_checker(), asyncio.new_event_loop())
+
+        asyncio.run_coroutine_threadsafe(pattern_checker(), self._event_loop)
+
         logger.info("Bot started! Press Ctrl+C to stop.")
         logger.info("Commands: status, prices, params, stop, reset, help")
         self._interactive_loop()
@@ -1377,11 +1459,13 @@ class Bot:
         if not self.running:
             logger.info("Bot is not running")
             return
+
         logger.info("Stopping bot...")
         self.running = False
         self.state.is_running = False
         self.state.manually_stopped = True
         self.trader.stop_pattern_detection()
+        self._stop_event_loop()
         self.state_manager.save_state()
         logger.info("Bot stopped!")
 
@@ -1400,7 +1484,7 @@ class Bot:
                 elif cmd == "reset":
                     self.reset()
                 elif cmd == "help":
-                    print("Commands: status, prices, params, stop, reset, help")
+                    print("Commands: start, stop, status, prices, params, reset, help")
                 elif cmd:
                     print("Unknown command. Type 'help' for options.")
         except KeyboardInterrupt:
@@ -1486,6 +1570,7 @@ class Bot:
             print("Cannot reset while bot is running. Stop the bot first.")
             return
         if input("Are you sure you want to reset? This will clear all data. (y/n): ").lower() == "y":
+            self._stop_event_loop()  # Clean up the event loop
             self.state = State(self.config)
             self.optimizer = ParameterOptimizer(self.state, self.parameter_ranges)
             self.trader = Trader(self.state, self.optimizer)
@@ -1528,8 +1613,10 @@ def main():
     print("Dynamic Token Discovery: Monitors any detected tokens from swap events.")
     print("Parameter Optimization: Tests multiple parameter sets from ranges and uses the best performer.\n")
     logger.info("Uniswap Quick Swap Trader v7.0.0 started.")
+
     bot = Bot()
-    bot.state_manager.load_state()
+    bot.state_manager.load_state()  # Load previous state if available
+
     print("Commands:")
     print("  start   - Start the bot")
     print("  stop    - Stop the bot")
@@ -1538,6 +1625,7 @@ def main():
     print("  params  - Show parameter set performance")
     print("  reset   - Reset all data")
     print("  help    - Show this help\n")
+
     while True:
         cmd = input("> ").strip().lower()
         if cmd == "start":
