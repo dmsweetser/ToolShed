@@ -5,17 +5,26 @@ import random
 import math
 import asyncio
 import threading
+import logging
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set, Tuple, Any
 from dotenv import load_dotenv
-from web3 import Web3, AsyncHTTPProvider, AsyncWebsocketProvider
-from web3.contract import AsyncContract
-from web3.middleware import async_geth_poa_middleware
-from eth_utils import to_checksum_address
+from web3 import Web3
 
 # Load environment variables
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler("app.log"),
+        logging.StreamHandler(),
+    ],
+)
+logger = logging.getLogger(__name__)
 
 # ========== CONFIGURATION ==========
 @dataclass
@@ -33,8 +42,8 @@ class Config:
 
     # Pattern Detection
     MIN_PRICE_CHANGE: float = 0.1  # %
-    MIN_TIME_WINDOW: int = 3       # seconds
-    MAX_TIME_WINDOW: int = 600     # seconds
+    MIN_TIME_WINDOW: int = 3  # seconds
+    MAX_TIME_WINDOW: int = 600  # seconds
     MIN_OCCURRENCES: int = 2
 
     # Profit Targets (PROFIT-ONLY MODE)
@@ -42,7 +51,7 @@ class Config:
 
     # Safety
     MAX_SLIPPAGE: float = 0.5  # %
-    MAX_GAS_PRICE: int = 200    # gwei
+    MAX_GAS_PRICE: int = 200  # gwei
     GAS_LIMIT: int = 300000
     PREVENT_SEQUENTIAL_TRADES: bool = True
 
@@ -232,13 +241,6 @@ UNISWAP_V3_POOL_ABI = json.loads('''
         ],
         "stateMutability": "view",
         "type": "function"
-    },
-    {
-        "inputs": [{"internalType": "uint256", "name": "amountIn", "type": "uint256"}, {"internalType": "uint160", "name": "sqrtPriceLimitX96", "type": "uint160"}],
-        "name": "getAmountOut",
-        "outputs": [{"internalType": "uint256", "name": "amountOut", "type": "uint256"}],
-        "stateMutability": "view",
-        "type": "function"
     }
 ]
 ''')
@@ -291,12 +293,6 @@ class State:
         self.pattern_detection_active = False
         self.wallet_connected = False
         self.live_mode = False
-        self.provider = None
-        self.signer = None
-        self.session_serial = 0
-        self.active_session = None
-        self.current_rpc_index = 0
-        self.last_detection_time = None
         self.web3_providers: Dict[str, Web3] = {}
         self.token_decimals: Dict[str, int] = {}
 
@@ -361,6 +357,7 @@ class PatternDetector:
         self.state.active_patterns = new_active_patterns
         self._update_pattern_stats()
         self.state.last_detection_time = time.time()
+        logger.info(f"Detected {len(new_active_patterns)} patterns across {len(tokens)} tokens.")
 
     def _detect_buy_patterns(self, history: List[Dict[str, Any]], token: str) -> List[Dict[str, Any]]:
         patterns = []
@@ -450,21 +447,21 @@ class BlockchainHelper:
         self.config = state.config
         self.chains = CHAINS
         self.web3_providers: Dict[str, Web3] = {}
-        self.factory_contracts: Dict[str, AsyncContract] = {}
-        self.pool_contracts: Dict[str, AsyncContract] = {}
-        self.token_contracts: Dict[str, AsyncContract] = {}
+        self.factory_contracts: Dict[str, Any] = {}
+        self.pool_contracts: Dict[str, Any] = {}
+        self.token_contracts: Dict[str, Any] = {}
         self._initialize_providers()
 
     def _initialize_providers(self):
         for chain_key, chain_config in self.chains.items():
             rpc_url = chain_config["rpcs"][0]
             if "wss:" in rpc_url:
-                provider = AsyncWebsocketProvider(rpc_url)
+                provider = Web3.WebsocketProvider(rpc_url)
             else:
-                provider = AsyncHTTPProvider(rpc_url)
+                provider = Web3.HTTPProvider(rpc_url)
             w3 = Web3(provider)
             if chain_key in ["polygon", "arbitrum", "base", "optimism"]:
-                w3.middleware_onion.inject(async_geth_poa_middleware, layer=0)
+                w3.middleware_onion.inject(Web3.GasPriceStrategy(), layer=0)
             self.web3_providers[chain_key] = w3
 
     async def get_web3(self, chain_key: str) -> Web3:
@@ -472,20 +469,20 @@ class BlockchainHelper:
             self._initialize_providers()
         return self.web3_providers[chain_key]
 
-    async def get_factory_contract(self, chain_key: str) -> AsyncContract:
+    async def get_factory_contract(self, chain_key: str) -> Any:
         if chain_key in self.factory_contracts:
             return self.factory_contracts[chain_key]
         w3 = await self.get_web3(chain_key)
         chain_config = self.chains[chain_key]
         factory_contract = w3.eth.contract(
-            address=to_checksum_address(chain_config["factory"]),
+            address=Web3.to_checksum_address(chain_config["factory"]),
             abi=UNISWAP_V3_FACTORY_ABI,
         )
         self.factory_contracts[chain_key] = factory_contract
         return factory_contract
 
-    async def get_pool_contract(self, pool_address: str, chain_key: str) -> AsyncContract:
-        pool_address = to_checksum_address(pool_address)
+    async def get_pool_contract(self, pool_address: str, chain_key: str) -> Any:
+        pool_address = Web3.to_checksum_address(pool_address)
         cache_key = f"{chain_key}_{pool_address}"
         if cache_key in self.pool_contracts:
             return self.pool_contracts[cache_key]
@@ -494,8 +491,8 @@ class BlockchainHelper:
         self.pool_contracts[cache_key] = pool_contract
         return pool_contract
 
-    async def get_token_contract(self, token_address: str, chain_key: str) -> AsyncContract:
-        token_address = to_checksum_address(token_address)
+    async def get_token_contract(self, token_address: str, chain_key: str) -> Any:
+        token_address = Web3.to_checksum_address(token_address)
         cache_key = f"{chain_key}_{token_address}"
         if cache_key in self.token_contracts:
             return self.token_contracts[cache_key]
@@ -507,22 +504,22 @@ class BlockchainHelper:
     async def get_pool_address(self, token0: str, token1: str, fee: int, chain_key: str) -> Optional[str]:
         try:
             factory = await self.get_factory_contract(chain_key)
-            pool_address = await factory.functions.getPool(token0, token1, fee).call()
+            pool_address = factory.functions.getPool(token0, token1, fee).call()
             if pool_address == "0x0000000000000000000000000000000000000000":
                 return None
             return pool_address
         except Exception as e:
-            print(f"Error getting pool address: {e}")
+            logger.error(f"Error getting pool address: {e}")
             return None
 
     async def get_pool_price(self, pool_address: str, chain_key: str) -> Optional[float]:
         try:
             pool = await self.get_pool_contract(pool_address, chain_key)
-            slot0 = await pool.functions.slot0().call()
+            slot0 = pool.functions.slot0().call()
             sqrt_price_x96 = slot0[0]
             return self._sqrt_price_x96_to_price(sqrt_price_x96)
         except Exception as e:
-            print(f"Error getting pool price: {e}")
+            logger.error(f"Error getting pool price: {e}")
             return None
 
     def _sqrt_price_x96_to_price(self, sqrt_price_x96: int) -> float:
@@ -534,43 +531,36 @@ class BlockchainHelper:
             return self.state.token_decimals[token_address]
         try:
             token_contract = await self.get_token_contract(token_address, chain_key)
-            decimals = await token_contract.functions.decimals().call()
+            decimals = token_contract.functions.decimals().call()
             self.state.token_decimals[token_address] = decimals
             return decimals
         except Exception as e:
-            print(f"Error getting token decimals: {e}")
+            logger.error(f"Error getting token decimals: {e}")
             return 18  # Default to 18
-
-    async def get_token_symbol(self, token_address: str, chain_key: str) -> str:
-        try:
-            token_contract = await self.get_token_contract(token_address, chain_key)
-            return await token_contract.functions.symbol().call()
-        except Exception as e:
-            print(f"Error getting token symbol: {e}")
-            return short(token_address)
 
     async def get_eth_price_in_wei(self, chain_key: str) -> int:
         w3 = await self.get_web3(chain_key)
-        return await w3.eth.gas_price
+        return w3.eth.gas_price
 
     async def send_transaction(self, tx: Dict[str, Any], chain_key: str) -> Optional[str]:
         try:
+            if not os.getenv("PRIVATE_KEY"):
+                logger.warning("No PRIVATE_KEY set. Running in shadow mode (simulated trades only).")
+                return None
+
             w3 = await self.get_web3(chain_key)
             private_key = os.getenv("PRIVATE_KEY")
-            if not private_key:
-                raise ValueError("PRIVATE_KEY not set in .env")
-
             account = w3.eth.account.from_key(private_key)
             tx["from"] = account.address
-            tx["nonce"] = await w3.eth.get_transaction_count(account.address)
-            tx["gasPrice"] = await w3.eth.gas_price
+            tx["nonce"] = w3.eth.get_transaction_count(account.address)
+            tx["gasPrice"] = w3.eth.gas_price
             tx["chainId"] = self.chains[chain_key]["chainId"]
 
             signed_tx = account.sign_transaction(tx)
-            tx_hash = await w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+            tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
             return tx_hash.hex()
         except Exception as e:
-            print(f"Error sending transaction: {e}")
+            logger.error(f"Error sending transaction: {e}")
             return None
 
 def norm(a: str) -> str:
@@ -588,6 +578,8 @@ class Trader:
         self.config = state.config
         self.detector = PatternDetector(state)
         self.blockchain = BlockchainHelper(state)
+        self.live_mode = os.getenv("PRIVATE_KEY") is not None
+        logger.info(f"Live mode: {'ON' if self.live_mode else 'OFF (shadow mode)'}")
 
     def calculate_trade_amount(self) -> float:
         try:
@@ -607,10 +599,10 @@ class Trader:
             trade_amount = min(trade_amount, available_eth * 0.95)
             return trade_amount
         except Exception as e:
-            print(f"Error calculating trade amount: {e}")
+            logger.error(f"Error calculating trade amount: {e}")
             return self.config.MIN_TRADE_AMOUNT_ETH
 
-    async def simulate_trade(
+    def simulate_trade(
         self, token: str, action: str, token_amount: float, current_price: float
     ) -> Dict[str, Any]:
         result = {
@@ -862,7 +854,7 @@ class Trader:
 
         open_positions = len([p for p in self.state.portfolio["positions"] if p["status"] == "open"])
         if open_positions >= self.config.MAX_TRADES:
-            print(f"Max trades ({self.config.MAX_TRADES}) reached")
+            logger.info(f"Max trades ({self.config.MAX_TRADES}) reached")
             return None
 
         last_trade_time = self.state.last_trade_times.get(token)
@@ -870,7 +862,7 @@ class Trader:
             return None
 
         if self.state.current_gas_price > self.config.MAX_GAS_PRICE:
-            print(
+            logger.info(
                 f"Gas price too high: {self.state.current_gas_price:.2f} gwei > {self.config.MAX_GAS_PRICE} gwei"
             )
             return None
@@ -881,7 +873,7 @@ class Trader:
                 return None
 
         token_amount = amount_eth / current_price
-        trade_result = await self.simulate_trade(token, action, token_amount, current_price)
+        trade_result = self.simulate_trade(token, action, token_amount, current_price)
         if not trade_result["success"]:
             failed_trade = self.create_trade(
                 token,
@@ -897,7 +889,7 @@ class Trader:
             self.state.trades.append(failed_trade)
             self.state.portfolio["failed_trades"] += 1
             self.state.portfolio["total_trades"] += 1
-            print(f"Trade failed: {trade_result['reason']}")
+            logger.warning(f"Trade failed: {trade_result['reason']}")
             return failed_trade
 
         if self.config.PREVENT_SEQUENTIAL_TRADES and self.state.last_traded_token == token:
@@ -927,7 +919,7 @@ class Trader:
                 "entry_price": trade_result["execution_price"],
                 "entry_time": time.time(),
             }
-            print(
+            logger.info(
                 f"Bought {trade_result['token_amount']:.6f} {token} at {trade_result['execution_price']:.8f} ETH"
             )
 
@@ -935,7 +927,7 @@ class Trader:
             if token in self.state.open_buy_orders:
                 del self.state.open_buy_orders[token]
             pnl_text = f"+{trade['pnl']:.8f}" if trade["pnl"] >= 0 else f"{trade['pnl']:.8f}"
-            print(
+            logger.info(
                 f"Sold {trade_result['token_amount']:.6f} {token} at {trade_result['execution_price']:.8f} ETH (PnL: {pnl_text} ETH)"
             )
         return trade
@@ -1056,9 +1048,9 @@ class PriceUpdater:
             w3 = await self.blockchain.get_web3(chain_key)
 
             # Get gas price
-            gas_price_wei = await w3.eth.gas_price
+            gas_price_wei = w3.eth.gas_price
             self.state.current_gas_price = gas_price_wei / 1e9  # Convert to gwei
-            print(f"Gas price: {self.state.current_gas_price:.2f} gwei")
+            logger.info(f"Gas price: {self.state.current_gas_price:.2f} gwei")
 
             # Update prices for all known tokens
             for token_symbol in list(self.state.observed_tokens):
@@ -1066,16 +1058,16 @@ class PriceUpdater:
                 if not token_address:
                     continue
 
-                # For simplicity, we'll use WETH as the quote token
-                quote_token_address = chain_config["wrappedNative"]
-                if token_symbol == "ETH" or token_symbol == "WETH":
+                # For WETH/ETH, price is 1.0
+                if token_symbol in ["ETH", "WETH"]:
                     self.state.prices[token_symbol] = 1.0
                     self._update_price_history(token_symbol, 1.0)
                     continue
 
                 # Get pool address for token/WETH
+                wrapped_native = chain_config["wrappedNative"]
                 pool_address = await self.blockchain.get_pool_address(
-                    token_address, quote_token_address, POOL_FEES["MEDIUM"], chain_key
+                    token_address, wrapped_native, POOL_FEES["MEDIUM"], chain_key
                 )
                 if not pool_address:
                     continue
@@ -1091,7 +1083,7 @@ class PriceUpdater:
 
             self.state.last_price_update = time.time()
         except Exception as e:
-            print(f"Error updating prices: {e}")
+            logger.error(f"Error updating prices: {e}")
 
     def _update_price_history(self, token: str, price: float):
         if token not in self.state.price_history:
@@ -1119,9 +1111,9 @@ class StateManager:
         try:
             with open(os.path.join(self.data_dir, "full_state.json"), "w") as f:
                 json.dump(self.state.to_dict(), f, indent=2)
-            print("State saved.")
+            logger.info("State saved to data/full_state.json.")
         except Exception as e:
-            print(f"Error saving state: {e}")
+            logger.error(f"Error saving state: {e}")
 
     def load_state(self) -> bool:
         try:
@@ -1146,10 +1138,10 @@ class StateManager:
             self.state.observed_tokens = set(state_dict["observed_tokens"])
             self.state.pattern_stats = state_dict["pattern_stats"]
             self.state.open_buy_orders = state_dict["open_buy_orders"]
-            print("State loaded successfully!")
+            logger.info("State loaded from data/full_state.json.")
             return True
         except Exception as e:
-            print(f"Error loading state: {e}")
+            logger.error(f"Error loading state: {e}")
             return False
 
 # ========== MAIN BOT CLASS ==========
@@ -1164,10 +1156,10 @@ class Bot:
 
     def start(self):
         if self.running:
-            print("Bot is already running")
+            logger.info("Bot is already running")
             return
 
-        print("Starting Uniswap Quick Swap Trader (Profit-Only Mode)...")
+        logger.info("Starting Uniswap Quick Swap Trader (Profit-Only Mode)...")
         self.running = True
         self.state.is_running = True
         self.state.start_time = time.time()
@@ -1202,24 +1194,24 @@ class Bot:
 
         asyncio.run_coroutine_threadsafe(pattern_checker(), asyncio.new_event_loop())
 
-        print("Bot started! Press Ctrl+C to stop.")
-        print("Commands: status, prices, stop, reset, help")
+        logger.info("Bot started! Press Ctrl+C to stop.")
+        logger.info("Commands: status, prices, stop, reset, help")
 
         # Start interactive loop
         self._interactive_loop()
 
     def stop(self):
         if not self.running:
-            print("Bot is not running")
+            logger.info("Bot is not running")
             return
 
-        print("Stopping bot...")
+        logger.info("Stopping bot...")
         self.running = False
         self.state.is_running = False
         self.state.manually_stopped = True
         self.trader.stop_pattern_detection()
         self.state_manager.save_state()
-        print("Bot stopped!")
+        logger.info("Bot stopped!")
 
     def _interactive_loop(self):
         try:
@@ -1320,6 +1312,7 @@ class Bot:
             for f in os.listdir("data"):
                 os.remove(os.path.join("data", f))
             print("Bot reset!")
+            logger.info("Bot reset by user.")
 
     def _get_status(self) -> Dict[str, Any]:
         net_pnl = self.state.portfolio["realized_pnl"] + self.state.portfolio["unrealized_pnl"]
@@ -1360,6 +1353,7 @@ class Bot:
 def main():
     print("Uniswap Quick Swap Trader v7.0.0 - Python Console Version")
     print("Profit-Only Mode: Buys dips and sells ONLY at profit\n")
+    logger.info("Uniswap Quick Swap Trader v7.0.0 started.")
 
     bot = Bot()
     bot.state_manager.load_state()  # Load previous state if available
