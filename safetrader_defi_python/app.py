@@ -2,7 +2,6 @@ import os
 import json
 import time
 import random
-import math
 import asyncio
 import threading
 import logging
@@ -13,6 +12,7 @@ from typing import Dict, List, Optional, Set, Tuple, Any
 from dotenv import load_dotenv
 from web3 import Web3
 from web3.middleware import ExtraDataToPOAMiddleware
+import sqlite3
 
 # Load environment variables
 load_dotenv()
@@ -80,11 +80,11 @@ class ParameterRange:
         return values
 
 DEFAULT_PARAMETER_RANGES = {
-    "MIN_PRICE_CHANGE": ParameterRange(min=0.01, max=0.5, step=0.01),  # Lowered for testing
-    "MIN_TIME_WINDOW": ParameterRange(min=2, max=30, step=2),
-    "MAX_TIME_WINDOW": ParameterRange(min=30, max=300, step=30),  # Reduced for testing
-    "MIN_OCCURRENCES": ParameterRange(min=1, max=3, step=1),
-    "MIN_PROFIT_PERCENT": ParameterRange(min=0.1, max=5.0, step=0.1),  # Lowered for testing
+    "MIN_PRICE_CHANGE":    ParameterRange(min=0.01, max=0.5,  step=0.49),   # 2 values: 0.01, 0.5
+    "MIN_TIME_WINDOW":     ParameterRange(min=2,     max=30,   step=28),    # 2 values: 2, 30
+    "MAX_TIME_WINDOW":     ParameterRange(min=30,    max=300,  step=270),   # 2 values: 30, 300
+    "MIN_OCCURRENCES":     ParameterRange(min=1,     max=3,    step=1),     # 3 values: 1, 2, 3
+    "MIN_PROFIT_PERCENT":  ParameterRange(min=0.1,   max=5.0,  step=4.9),   # 2 values: 0.1, 5.0
 }
 
 class ParameterGenerator:
@@ -1511,33 +1511,96 @@ class PriceUpdater:
         return None
 
 # ========== STATE PERSISTENCE ==========
+
 class StateManager:
-    def __init__(self, state: State):
+    def __init__(self, state: 'State'):  # Use string annotation to avoid circular import
         self.state = state
-        self.data_dir = "data"
-        os.makedirs(self.data_dir, exist_ok=True)
+        self.db_path = "data/state.db"
+        self.max_backups = 100  # Keep last 100 states to prevent DB bloat
+        os.makedirs("data", exist_ok=True)
+        self._init_db()
+        self._cleanup_old_states()
+
+    def _init_db(self):
+        """Initialize the SQLite database schema."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS bot_state (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+                        state_data TEXT NOT NULL,
+                        version INTEGER DEFAULT 1
+                    )
+                ''')
+                cursor.execute('''
+                    CREATE INDEX IF NOT EXISTS idx_bot_state_timestamp
+                    ON bot_state(timestamp DESC)
+                ''')
+                conn.commit()
+            logger.info(f"SQLite database initialized at {self.db_path}")
+        except Exception as e:
+            logger.error(f"Error initializing SQLite database: {e}", exc_info=True)
+
+    def _cleanup_old_states(self):
+        """Remove old state entries to prevent database bloat."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    DELETE FROM bot_state
+                    WHERE id NOT IN (
+                        SELECT id FROM bot_state
+                        ORDER BY timestamp DESC
+                        LIMIT ?
+                    )
+                ''', (self.max_backups,))
+                conn.commit()
+        except Exception as e:
+            logger.error(f"Error cleaning up old states: {e}", exc_info=True)
 
     def save_state(self):
+        """Save the current state to SQLite database."""
         try:
-            with open(os.path.join(self.data_dir, "full_state.json"), "w") as f:
-                json.dump(self.state.to_dict(), f, indent=2)
-            logger.info("State saved to data/full_state.json")
+            state_dict = self.state.to_dict()
+            state_json = json.dumps(state_dict, default=str, indent=2)  # Handle non-serializable types
+
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO bot_state (state_data, timestamp)
+                    VALUES (?, datetime('now'))
+                ''', (state_json,))
+                conn.commit()
+                self._cleanup_old_states()
+            logger.info("State saved to SQLite database")
         except Exception as e:
-            logger.error(f"Error saving state: {e}", exc_info=True)
+            logger.error(f"Error saving state to SQLite: {e}", exc_info=True)
 
     def load_state(self) -> bool:
+        """Load the most recent state from SQLite database."""
         try:
-            full_state_path = os.path.join(self.data_dir, "full_state.json")
-            if not os.path.exists(full_state_path):
-                logger.info("No saved state found")
-                return False
-            with open(full_state_path, "r") as f:
-                state_dict = json.load(f)
-            self.state.from_dict(state_dict)
-            logger.info("State loaded from data/full_state.json")
-            return True
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT state_data FROM bot_state
+                    ORDER BY timestamp DESC
+                    LIMIT 1
+                ''')
+                result = cursor.fetchone()
+
+                if result is None:
+                    logger.info("No saved state found in SQLite database")
+                    return False
+
+                state_json = result[0]
+                state_dict = json.loads(state_json)
+                self.state.from_dict(state_dict)
+                logger.info("State loaded from SQLite database")
+                return True
         except Exception as e:
-            logger.error(f"Error loading state: {e}", exc_info=True)
+            logger.error(f"Error loading state from SQLite: {e}", exc_info=True)
             return False
 
 # ========== MAIN BOT CLASS ==========
