@@ -14,7 +14,6 @@ from collections import deque
 
 from dotenv import load_dotenv
 from web3 import Web3
-from web3.providers.legacy_websocket import LegacyWebSocketProvider
 from web3.middleware import ExtraDataToPOAMiddleware
 import sqlite3
 from requests.adapters import HTTPAdapter
@@ -674,10 +673,7 @@ class BlockchainHelper:
 
     def _test_rpc_endpoint(self, rpc_url: str) -> bool:
         try:
-            if rpc_url.startswith("wss://"):
-                w3 = Web3(LegacyWebSocketProvider(rpc_url, websocket_timeout=5))
-            else:
-                w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={'timeout': 5}))
+            w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={'timeout': 5}))
 
             # Test block number first
             block_number = w3.eth.block_number
@@ -712,10 +708,7 @@ class BlockchainHelper:
                 break
 
         if working_rpc:
-            if working_rpc.startswith("wss://"):
-                provider = LegacyWebSocketProvider(working_rpc, websocket_timeout=10)
-            else:
-                provider = Web3.HTTPProvider(working_rpc, request_kwargs={'timeout': 10})
+            provider = Web3.HTTPProvider(working_rpc, request_kwargs={'timeout': 10})                
             w3 = Web3(provider)
             if chain_key in ["polygon", "arbitrum", "base", "optimism"]:
                 w3.middleware_onion.inject(ExtraDataToPOAMiddleware(), layer=0, name="extradata_to_poa")
