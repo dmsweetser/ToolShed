@@ -17,12 +17,12 @@ from web3.middleware import ExtraDataToPOAMiddleware
 # Load environment variables
 load_dotenv()
 
-# Configure logging
+# Configure logging with enhanced verbosity
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.DEBUG,  # Set to DEBUG for maximum verbosity
+    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
     handlers=[
-        logging.FileHandler("app.log"),
+        logging.FileHandler("app_debug.log"),
         logging.StreamHandler(),
     ],
 )
@@ -53,13 +53,15 @@ def fetch_coingecko_tokens(chain_id: int = 42161) -> List[Dict[str, Any]]:
     """Fetch tokens from CoinGecko's Arbitrum token list."""
     url = "https://tokens.coingecko.com/arbitrum-one/all.json"
     try:
-        response = requests.get(url, timeout=10)
+        logger.debug(f"Fetching CoinGecko tokens from {url}")
+        response = requests.get(url, timeout=15)
         response.raise_for_status()
         data = response.json()
         tokens = data.get("tokens", [])
+        logger.info(f"Fetched {len(tokens)} tokens from CoinGecko")
         return [token for token in tokens if token.get("chainId") == chain_id]
     except Exception as e:
-        logger.error(f"Failed to fetch CoinGecko tokens: {e}")
+        logger.error(f"Failed to fetch CoinGecko tokens: {e}", exc_info=True)
         return []
 
 # ========== PARAMETER GENERATION ==========
@@ -78,11 +80,11 @@ class ParameterRange:
         return values
 
 DEFAULT_PARAMETER_RANGES = {
-    "MIN_PRICE_CHANGE": ParameterRange(min=0.05, max=2.0, step=0.05),
+    "MIN_PRICE_CHANGE": ParameterRange(min=0.01, max=0.5, step=0.01),  # Lowered for testing
     "MIN_TIME_WINDOW": ParameterRange(min=2, max=30, step=2),
-    "MAX_TIME_WINDOW": ParameterRange(min=30, max=600, step=30),
+    "MAX_TIME_WINDOW": ParameterRange(min=30, max=300, step=30),  # Reduced for testing
     "MIN_OCCURRENCES": ParameterRange(min=1, max=3, step=1),
-    "MIN_PROFIT_PERCENT": ParameterRange(min=0.5, max=10.0, step=0.5),
+    "MIN_PROFIT_PERCENT": ParameterRange(min=0.1, max=5.0, step=0.1),  # Lowered for testing
 }
 
 class ParameterGenerator:
@@ -90,6 +92,7 @@ class ParameterGenerator:
         self.ranges = ranges or DEFAULT_PARAMETER_RANGES
         self.max_combinations = max_combinations
         self.parameter_sets = self._generate_parameter_sets()
+        logger.info(f"Generated {len(self.parameter_sets)} parameter sets")
 
     def _generate_parameter_sets(self) -> List[Dict[str, float]]:
         param_values = {name: rng.generate_values() for name, rng in self.ranges.items()}
@@ -100,6 +103,7 @@ class ParameterGenerator:
         if total_combinations <= self.max_combinations:
             return self._generate_all_combinations(param_values)
         else:
+            logger.info(f"Total combinations ({total_combinations}) exceeds max ({self.max_combinations}), sampling...")
             return self._sample_combinations(param_values, self.max_combinations)
 
     def _generate_all_combinations(self, param_values: Dict[str, List[float]]) -> List[Dict[str, float]]:
@@ -130,11 +134,11 @@ class Config:
     MIN_TRADE_AMOUNT_ETH: float = 0.0003
     MAX_TRADES: int = 10
     TRADE_COOLDOWN: int = 60
-    MIN_PRICE_CHANGE: float = 0.5
+    MIN_PRICE_CHANGE: float = 0.1  # Lowered for testing
     MIN_TIME_WINDOW: int = 5
     MAX_TIME_WINDOW: int = 120
     MIN_OCCURRENCES: int = 2
-    MIN_PROFIT_PERCENT: float = 2.0
+    MIN_PROFIT_PERCENT: float = 1.0  # Lowered for testing
     MAX_SLIPPAGE: float = 0.5
     MAX_GAS_PRICE: int = 200
     GAS_LIMIT: int = 300000
@@ -162,15 +166,19 @@ NETWORK_TOKENS = {
     }
 }
 
+# Arbitrum RPC endpoints with fallback
+ARBITRUM_RPC_ENDPOINTS = [
+    "https://arbitrum-mainnet.public.blastapi.io",
+    "https://arb1.arbitrum.io/rpc",
+    "https://arbitrum-mainnet.rpcfast.com",
+    "wss://arbitrum-one-rpc.publicnode.com"
+]
+
 CHAINS = {
     "arbitrum": {
         "name": "Arbitrum One",
         "chainId": 42161,
-        "rpcs": [
-            os.getenv("ARBITRUM_RPC_URL", "https://arb1.arbitrum.io/rpc"),
-            "https://arbitrum-mainnet.public.blastapi.io",
-            "wss://arbitrum-one-rpc.publicnode.com"
-        ],
+        "rpcs": ARBITRUM_RPC_ENDPOINTS,
         "factory": "0x1F98431c8aD98523631AE4a59f267346ea31F984",
         "wrappedNative": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
         "quoteMode": "native",
@@ -267,6 +275,7 @@ class State:
         self.token_decimals: Dict[str, int] = {}
         self.token_symbols: Dict[str, str] = {}
         self.token_addresses: Dict[str, str] = {}
+        logger.info("State initialized with starting ETH: %.12f", config.STARTING_ETH)
 
     def get_token_symbol(self, token: str) -> str:
         """Get symbol for a token (handles both symbols and addresses)."""
@@ -378,6 +387,7 @@ class State:
         self.open_buy_orders = state_dict["open_buy_orders"]
         self.token_symbols = state_dict.get("token_symbols", {})
         self.token_addresses = state_dict.get("token_addresses", {})
+        logger.info("State loaded from dictionary")
 
 # ========== PARAMETER OPTIMIZER ==========
 class ParameterOptimizer:
@@ -397,9 +407,11 @@ class ParameterOptimizer:
         self.last_optimization_time = 0
         self.optimization_interval = state.config.OPTIMIZATION_INTERVAL
         self.current_set_index = 0
+        logger.info(f"ParameterOptimizer initialized with {len(self.parameter_sets)} parameter sets")
 
     def get_current_best_parameters(self) -> Dict[str, float]:
         if not self.parameter_sets:
+            logger.warning("No parameter sets available")
             return {}
         best_index = 0
         best_score = -float('inf')
@@ -418,12 +430,15 @@ class ParameterOptimizer:
                 f"(Score: {best_score:.6f}, Profit: {self.performance[best_index]['profit']:.6f} ETH, "
                 f"Trades: {self.performance[best_index]['trades']}, Winning: {self.performance[best_index]['winning_trades']})"
             )
+        else:
+            logger.warning("No valid parameter sets found (all have 0 trades)")
         return self.parameter_sets[best_index]
 
     def get_next_parameter_set(self) -> Tuple[int, Dict[str, float]]:
         index = self.current_set_index
         param_set = self.parameter_sets[index]
         self.current_set_index = (self.current_set_index + 1) % len(self.parameter_sets)
+        logger.debug(f"Using parameter set #{index}: {param_set}")
         return index, param_set
 
     def update_performance(self, parameter_set_index: int, profit: float, is_winning: bool):
@@ -432,11 +447,18 @@ class ParameterOptimizer:
             self.performance[parameter_set_index]["trades"] += 1
             if is_winning:
                 self.performance[parameter_set_index]["winning_trades"] += 1
+            logger.debug(
+                f"Updated performance for set #{parameter_set_index}: "
+                f"Profit={self.performance[parameter_set_index]['profit']:.6f}, "
+                f"Trades={self.performance[parameter_set_index]['trades']}, "
+                f"Winning={self.performance[parameter_set_index]['winning_trades']}"
+            )
 
     def optimize(self):
         current_time = time.time()
         if current_time - self.last_optimization_time < self.optimization_interval:
             return
+        logger.info("Running parameter optimization...")
         self.get_current_best_parameters()
         self.last_optimization_time = current_time
 
@@ -451,35 +473,92 @@ class BlockchainHelper:
         self.token_contracts: Dict[str, Any] = {}
         self._initialize_providers()
 
-    def _initialize_providers(self):
-        for chain_key, chain_config in self.chains.items():
-            rpc_url = chain_config["rpcs"][0]
-            if "wss:" in rpc_url:
-                provider = Web3.WebsocketProvider(rpc_url)
+    def _test_rpc_endpoint(self, rpc_url: str) -> bool:
+        """Test if an RPC endpoint is working."""
+        try:
+            if rpc_url.startswith("wss://"):
+                w3 = Web3(Web3.WebsocketProvider(rpc_url, websocket_timeout=5))
             else:
-                provider = Web3.HTTPProvider(rpc_url)
+                w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={'timeout': 5}))
+            
+            # Test with a simple call
+            block_number = w3.eth.block_number
+            logger.info(f"RPC endpoint {rpc_url} is working (block: {block_number})")
+            return True
+        except Exception as e:
+            logger.warning(f"RPC endpoint {rpc_url} failed: {e}")
+            return False
+
+    def _initialize_providers(self):
+        """Initialize Web3 providers with fallback."""
+        chain_key = self.state.current_chain_key
+        if chain_key not in self.chains:
+            logger.error(f"Chain {chain_key} not found in CHAINS configuration")
+            return
+
+        chain_config = self.chains[chain_key]
+        rpc_urls = chain_config["rpcs"]
+        
+        for rpc_url in rpc_urls:
+            if self._test_rpc_endpoint(rpc_url):
+                if chain_key in ["polygon", "arbitrum", "base", "optimism"]:
+                    if rpc_url.startswith("wss://"):
+                        provider = Web3.WebsocketProvider(rpc_url, websocket_timeout=10)
+                    else:
+                        provider = Web3.HTTPProvider(rpc_url, request_kwargs={'timeout': 10})
+                    w3 = Web3(provider)
+                    w3.middleware_onion.inject(ExtraDataToPOAMiddleware(), layer=0, name="extradata_to_poa")
+                else:
+                    if rpc_url.startswith("wss://"):
+                        provider = Web3.WebsocketProvider(rpc_url, websocket_timeout=10)
+                    else:
+                        provider = Web3.HTTPProvider(rpc_url, request_kwargs={'timeout': 10})
+                    w3 = Web3(provider)
+                
+                self.web3_providers[chain_key] = w3
+                logger.info(f"Using RPC endpoint: {rpc_url}")
+                break
+        else:
+            logger.error(f"All RPC endpoints failed for {chain_key}")
+            # Fallback to first endpoint even if it failed
+            rpc_url = rpc_urls[0]
+            if rpc_url.startswith("wss://"):
+                provider = Web3.WebsocketProvider(rpc_url, websocket_timeout=10)
+            else:
+                provider = Web3.HTTPProvider(rpc_url, request_kwargs={'timeout': 10})
             w3 = Web3(provider)
             if chain_key in ["polygon", "arbitrum", "base", "optimism"]:
                 w3.middleware_onion.inject(ExtraDataToPOAMiddleware(), layer=0, name="extradata_to_poa")
             self.web3_providers[chain_key] = w3
+            logger.warning(f"Falling back to {rpc_url} despite failure")
 
     def get_web3(self, chain_key: str) -> Web3:
         if chain_key not in self.web3_providers:
+            logger.warning(f"Web3 provider for {chain_key} not initialized, reinitializing...")
             self._initialize_providers()
-        return self.web3_providers[chain_key]
+        return self.web3_providers.get(chain_key)
 
     async def get_factory_contract(self, chain_key: str) -> Any:
         if chain_key in self.factory_contracts:
             return self.factory_contracts[chain_key]
         w3 = self.get_web3(chain_key)
+        if not w3:
+            logger.error(f"No Web3 provider for {chain_key}")
+            return None
+        
         chain_config = self.chains[chain_key]
         factory_address = to_checksum_address(chain_config["factory"])
-        factory_contract = w3.eth.contract(
-            address=factory_address,
-            abi=UNISWAP_V3_FACTORY_ABI,
-        )
-        self.factory_contracts[chain_key] = factory_contract
-        return factory_contract
+        try:
+            factory_contract = w3.eth.contract(
+                address=factory_address,
+                abi=UNISWAP_V3_FACTORY_ABI,
+            )
+            self.factory_contracts[chain_key] = factory_contract
+            logger.debug(f"Factory contract initialized for {chain_key} at {factory_address}")
+            return factory_contract
+        except Exception as e:
+            logger.error(f"Failed to initialize factory contract for {chain_key}: {e}")
+            return None
 
     async def get_pool_contract(self, pool_address: str, chain_key: str) -> Any:
         pool_address = to_checksum_address(pool_address)
@@ -487,9 +566,17 @@ class BlockchainHelper:
         if cache_key in self.pool_contracts:
             return self.pool_contracts[cache_key]
         w3 = self.get_web3(chain_key)
-        pool_contract = w3.eth.contract(address=pool_address, abi=UNISWAP_V3_POOL_ABI)
-        self.pool_contracts[cache_key] = pool_contract
-        return pool_contract
+        if not w3:
+            logger.error(f"No Web3 provider for {chain_key}")
+            return None
+        try:
+            pool_contract = w3.eth.contract(address=pool_address, abi=UNISWAP_V3_POOL_ABI)
+            self.pool_contracts[cache_key] = pool_contract
+            logger.debug(f"Pool contract initialized for {short(pool_address)}")
+            return pool_contract
+        except Exception as e:
+            logger.error(f"Failed to initialize pool contract for {short(pool_address)}: {e}")
+            return None
 
     async def get_token_contract(self, token_address: str, chain_key: str) -> Any:
         token_address = to_checksum_address(token_address)
@@ -497,31 +584,51 @@ class BlockchainHelper:
         if cache_key in self.token_contracts:
             return self.token_contracts[cache_key]
         w3 = self.get_web3(chain_key)
-        token_contract = w3.eth.contract(address=token_address, abi=ERC20_ABI)
-        self.token_contracts[cache_key] = token_contract
-        return token_contract
+        if not w3:
+            logger.error(f"No Web3 provider for {chain_key}")
+            return None
+        try:
+            token_contract = w3.eth.contract(address=token_address, abi=ERC20_ABI)
+            self.token_contracts[cache_key] = token_contract
+            logger.debug(f"Token contract initialized for {short(token_address)}")
+            return token_contract
+        except Exception as e:
+            logger.error(f"Failed to initialize token contract for {short(token_address)}: {e}")
+            return None
 
     async def get_pool_address(self, token0: str, token1: str, fee: int, chain_key: str) -> Optional[str]:
         try:
             factory = await self.get_factory_contract(chain_key)
+            if not factory:
+                logger.error(f"No factory contract for {chain_key}")
+                return None
+            
             token0_checksum = to_checksum_address(token0)
             token1_checksum = to_checksum_address(token1)
             pool_address = factory.functions.getPool(token0_checksum, token1_checksum, fee).call()
             if pool_address == "0x0000000000000000000000000000000000000000":
+                logger.debug(f"No pool found for {short(token0)}-{short(token1)} with fee {fee}")
                 return None
+            logger.debug(f"Found pool for {short(token0)}-{short(token1)}: {short(pool_address)}")
             return pool_address
         except Exception as e:
-            logger.error(f"Error getting pool address for {short(token0)}-{short(token1)}: {e}")
+            logger.error(f"Error getting pool address for {short(token0)}-{short(token1)}: {e}", exc_info=True)
             return None
 
     async def get_pool_price(self, pool_address: str, chain_key: str) -> Optional[float]:
         try:
             pool_address_checksum = to_checksum_address(pool_address)
             pool = await self.get_pool_contract(pool_address_checksum, chain_key)
+            if not pool:
+                return None
+            
             slot0 = pool.functions.slot0().call()
             sqrt_price_x96 = slot0[0]
-            return self._sqrt_price_x96_to_price(sqrt_price_x96)
+            price = self._sqrt_price_x96_to_price(sqrt_price_x96)
+            logger.debug(f"Got price from pool {short(pool_address)}: {price}")
+            return price
         except Exception as e:
+            logger.error(f"Error getting price from pool {short(pool_address)}: {e}", exc_info=True)
             return None
 
     def _sqrt_price_x96_to_price(self, sqrt_price_x96: int) -> float:
@@ -533,8 +640,11 @@ class BlockchainHelper:
             return self.state.token_decimals[token_address]
         try:
             token_contract = await self.get_token_contract(token_address, chain_key)
+            if not token_contract:
+                return 18
             decimals = token_contract.functions.decimals().call()
             self.state.token_decimals[token_address] = decimals
+            logger.debug(f"Got decimals for {short(token_address)}: {decimals}")
             return decimals
         except Exception as e:
             logger.error(f"Error getting token decimals for {short(token_address)}: {e}")
@@ -545,9 +655,12 @@ class BlockchainHelper:
             return self.state.token_symbols[token_address]
         try:
             token_contract = await self.get_token_contract(token_address, chain_key)
+            if not token_contract:
+                return short(token_address)
             symbol = token_contract.functions.symbol().call()
             self.state.token_symbols[token_address] = symbol
             self.state.token_addresses[symbol] = token_address
+            logger.debug(f"Got symbol for {short(token_address)}: {symbol}")
             return symbol
         except Exception as e:
             logger.error(f"Error getting token symbol for {short(token_address)}: {e}")
@@ -564,6 +677,7 @@ class TokenDiscovery:
 
     async def initialize_known_tokens(self, chain_key: str):
         """Initialize with WETH, stables, top pool tokens, and CoinGecko tokens."""
+        logger.info(f"Initializing known tokens for {chain_key}")
         chain_config = CHAINS[chain_key]
         wrapped_native = to_checksum_address(chain_config["wrappedNative"])
         quote_label = chain_config["quoteLabel"]
@@ -572,11 +686,14 @@ class TokenDiscovery:
         if wrapped_native not in self.state.token_symbols:
             self.state.token_symbols[wrapped_native] = quote_label
             self.state.token_addresses[quote_label] = wrapped_native
+            logger.debug(f"Added WETH: {wrapped_native}")
         if wrapped_native not in self.state.observed_tokens:
             self.state.observed_tokens.add(wrapped_native)
+            logger.debug(f"Added WETH to observed tokens")
         if wrapped_native not in self.state.prices:
             self.state.prices[wrapped_native] = 1.0
             self._update_price_history(wrapped_native, 1.0)
+            logger.debug(f"Set WETH price to 1.0")
 
         # Add known tokens from NETWORK_TOKENS
         for symbol, address in NETWORK_TOKENS.get(chain_key, {}).items():
@@ -584,23 +701,29 @@ class TokenDiscovery:
             if checksum_addr not in self.state.token_symbols:
                 self.state.token_symbols[checksum_addr] = symbol
                 self.state.token_addresses[symbol] = checksum_addr
+                logger.debug(f"Added known token: {symbol} ({short(checksum_addr)})")
             if checksum_addr not in self.state.observed_tokens:
                 self.state.observed_tokens.add(checksum_addr)
+                logger.debug(f"Added {symbol} to observed tokens")
 
         # Add stables
         for stable in chain_config.get("stables", []):
             stable = to_checksum_address(stable)
             if stable not in self.state.observed_tokens:
                 self.state.observed_tokens.add(stable)
+                logger.debug(f"Added stablecoin to observed tokens: {short(stable)}")
 
         # Add top pool tokens
         await self._add_top_pool_tokens(chain_key)
 
         # Add tokens from CoinGecko
         await self._add_coingecko_tokens(chain_key)
+        
+        logger.info(f"Initialized {len(self.state.observed_tokens)} known tokens")
 
     async def _add_coingecko_tokens(self, chain_key: str):
         """Add tokens from CoinGecko's Arbitrum list."""
+        logger.info("Adding tokens from CoinGecko...")
         coingecko_tokens = fetch_coingecko_tokens()
         for token in coingecko_tokens:
             address = to_checksum_address(token["address"])
@@ -610,6 +733,7 @@ class TokenDiscovery:
                 self.state.token_symbols[address] = symbol
                 self.state.token_addresses[symbol] = address
                 logger.debug(f"Added CoinGecko token: {symbol} ({short(address)})")
+        logger.info(f"Added {len(coingecko_tokens)} tokens from CoinGecko")
 
     async def _add_top_pool_tokens(self, chain_key: str):
         """Add tokens from the top pools for the chain."""
@@ -618,21 +742,26 @@ class TokenDiscovery:
             for token_addr in [to_checksum_address(token0), to_checksum_address(token1)]:
                 if token_addr not in self.state.observed_tokens:
                     self.state.observed_tokens.add(token_addr)
+                    logger.debug(f"Added top pool token to observed tokens: {short(token_addr)}")
 
     async def discover_tokens_from_blocks(self, chain_key: str, blocks_to_scan: int = 5):
         """Scan recent blocks for Swap events to discover new tokens."""
         try:
             w3 = self.blockchain.get_web3(chain_key)
+            if not w3:
+                logger.error(f"No Web3 provider for {chain_key}")
+                return
+            
             current_block = w3.eth.block_number
             last_scanned = self.last_block.get(chain_key, current_block - blocks_to_scan)
 
             if current_block <= last_scanned:
+                logger.debug(f"No new blocks to scan on {chain_key} (current: {current_block}, last scanned: {last_scanned})")
                 return
 
             from_block = max(0, current_block - blocks_to_scan)
             to_block = current_block
-
-            logger.debug(f"Scanning blocks {from_block} to {to_block} on {chain_key} for Swap events...")
+            logger.info(f"Scanning blocks {from_block} to {to_block} on {chain_key} for Swap events...")
 
             try:
                 logs = w3.eth.get_logs({
@@ -640,6 +769,7 @@ class TokenDiscovery:
                     'toBlock': to_block,
                     'topics': [self.swap_topic]
                 })
+                logger.debug(f"Found {len(logs)} Swap logs in blocks {from_block}-{to_block}")
             except Exception as e:
                 logger.warning(f"Error fetching Swap logs: {e}")
                 return
@@ -651,12 +781,16 @@ class TokenDiscovery:
                     if pool_address in self.active_pools:
                         continue
                     self.active_pools.add(pool_address)
+                    logger.debug(f"Found new pool: {short(pool_address)}")
 
                     pool_contract = await self.blockchain.get_pool_contract(pool_address, chain_key)
+                    if not pool_contract:
+                        continue
+                    
                     token0 = to_checksum_address(pool_contract.functions.token0().call())
                     token1 = to_checksum_address(pool_contract.functions.token1().call())
-
                     new_tokens.update([token0, token1])
+                    logger.debug(f"Discovered tokens in pool {short(pool_address)}: {short(token0)}, {short(token1)}")
                 except Exception as e:
                     logger.warning(f"Error processing Swap log: {e}")
                     continue
@@ -667,8 +801,9 @@ class TokenDiscovery:
                     logger.info(f"Discovered new token: {short(token_addr)}")
 
             self.last_block[chain_key] = current_block
+            logger.info(f"Token discovery complete. Total observed tokens: {len(self.state.observed_tokens)}")
         except Exception as e:
-            logger.error(f"Error in token discovery: {e}")
+            logger.error(f"Error in token discovery: {e}", exc_info=True)
 
     def _update_price_history(self, token: str, price: float):
         """Update price history for a token."""
@@ -677,6 +812,7 @@ class TokenDiscovery:
         self.state.price_history[token].append({"price": price, "timestamp": time.time()})
         if len(self.state.price_history[token]) > self.state.config.MAX_PRICE_HISTORY:
             self.state.price_history[token] = self.state.price_history[token][-self.state.config.MAX_PRICE_HISTORY:]
+        logger.debug(f"Updated price history for {short(token)}: {price}")
 
 # ========== PATTERN DETECTION ==========
 class PatternDetector:
@@ -686,6 +822,7 @@ class PatternDetector:
 
     def detect_all_patterns(self):
         """Detect patterns for all observed tokens using the current parameter set."""
+        logger.info(f"Starting pattern detection for {len(self.state.observed_tokens)} tokens")
         tokens = list(self.state.observed_tokens)
         new_active_patterns = {}
         best_params = self.optimizer.get_current_best_parameters()
@@ -693,8 +830,10 @@ class PatternDetector:
         for token in tokens:
             history = self.state.get_token_history(token)
             if history is None or len(history) < 5:
+                logger.debug(f"Skipping {short(token)}: insufficient history ({len(history) if history else 0} points)")
                 continue
             buy_patterns = self._detect_buy_patterns(history, token, best_params)
+            logger.debug(f"Found {len(buy_patterns)} buy patterns for {short(token)}")
             for pattern in buy_patterns:
                 if not self._is_valid_pattern(pattern, best_params):
                     continue
@@ -708,15 +847,18 @@ class PatternDetector:
                         "first_seen": pattern["timestamp"],
                         "last_seen": pattern["timestamp"]
                     }
+                    logger.debug(f"Added new pattern for {short(token)}: {pattern_key}")
                 else:
                     existing = new_active_patterns[existing_key]
                     existing["occurrences"] += 1
                     existing["last_seen"] = max(existing["last_seen"], pattern["timestamp"])
+                    logger.debug(f"Updated existing pattern for {short(token)}: {pattern_key}")
 
         self._validate_patterns(new_active_patterns, best_params)
         self.state.active_patterns = new_active_patterns
         self._update_pattern_stats()
         self.state.last_detection_time = time.time()
+        logger.info(f"Pattern detection complete. Found {len(new_active_patterns)} active patterns")
 
     def _detect_buy_patterns(self, history: List[Dict[str, Any]], token: str, params: Dict[str, float]) -> List[Dict[str, Any]]:
         """Detect buy patterns (dips + rises) for a token."""
@@ -753,6 +895,10 @@ class PatternDetector:
                                     "rise_time": rise_time,
                                     "timestamp": current["timestamp"],
                                 })
+                                logger.debug(
+                                    f"Detected buy pattern for {short(token)}: "
+                                    f"drop={abs(drop_pct)*100:.2f}%, rise={rise_pct*100:.2f}%"
+                                )
                                 break
                         break
         return patterns
@@ -760,14 +906,19 @@ class PatternDetector:
     def _is_valid_pattern(self, pattern: Dict[str, Any], params: Dict[str, float]) -> bool:
         """Check if a pattern meets validity criteria."""
         if pattern["drop_pct"] > 100 or pattern["rise_pct"] > 100:
+            logger.debug(f"Invalid pattern: drop_pct or rise_pct > 100")
             return False
         if pattern["drop_pct"] < 0 or pattern["rise_pct"] < 0:
+            logger.debug(f"Invalid pattern: negative drop_pct or rise_pct")
             return False
         if pattern["drop_time"] > 600 or pattern["rise_time"] > 600:
+            logger.debug(f"Invalid pattern: drop_time or rise_time > 600")
             return False
         if pattern["drop_time"] < 1 or pattern["rise_time"] < 1:
+            logger.debug(f"Invalid pattern: drop_time or rise_time < 1")
             return False
         if pattern["rise_pct"] < params["MIN_PROFIT_PERCENT"]:
+            logger.debug(f"Invalid pattern: rise_pct < MIN_PROFIT_PERCENT")
             return False
         return True
 
@@ -788,6 +939,7 @@ class PatternDetector:
             or pattern["rise_pct"] < params["MIN_PROFIT_PERCENT"]
         ]
         for key in keys_to_delete:
+            logger.debug(f"Removing invalid pattern: {key}")
             del patterns[key]
 
     def _update_pattern_stats(self):
@@ -795,6 +947,7 @@ class PatternDetector:
         patterns_list = list(self.state.active_patterns.values())
         self.state.pattern_stats["total_patterns"] = len(patterns_list)
         self.state.pattern_stats["tokens_with_patterns"] = len({p["token"] for p in patterns_list})
+        logger.debug(f"Updated pattern stats: {self.state.pattern_stats}")
 
 # ========== TRADE EXECUTION ==========
 class Trader:
@@ -806,7 +959,7 @@ class Trader:
         self.blockchain = BlockchainHelper(state)
         self.token_discovery = TokenDiscovery(state, self.blockchain)
         self.live_mode = os.getenv("PRIVATE_KEY", "") != ""
-        logger.info(f"Live mode: {'ON' if self.live_mode else 'OFF (shadow mode)'}")
+        logger.info(f"Trader initialized - Live mode: {'ON' if self.live_mode else 'OFF (shadow mode)'}")
 
     def calculate_trade_amount(self) -> float:
         try:
@@ -820,9 +973,11 @@ class Trader:
             min_trade = self.config.MIN_TRADE_AMOUNT_ETH
             amount_after_fees = percent_amount - (total_gas_cost / max_trades)
             trade_amount = max(min(percent_amount, amount_after_fees), min_trade)
-            return min(trade_amount, available_eth * 0.95)
+            result = min(trade_amount, available_eth * 0.95)
+            logger.debug(f"Calculated trade amount: {result:.12f} ETH (gas_cost_per_trade: {gas_cost_per_trade:.12f}, total_gas_cost: {total_gas_cost:.12f})")
+            return result
         except Exception as e:
-            logger.error(f"Error calculating trade amount: {e}")
+            logger.error(f"Error calculating trade amount: {e}", exc_info=True)
             return self.config.MIN_TRADE_AMOUNT_ETH
 
     def simulate_trade(self, token: str, action: str, token_amount: float, current_price: float) -> Dict[str, Any]:
@@ -846,6 +1001,7 @@ class Trader:
         if result["slippage"] > self.config.MAX_SLIPPAGE:
             result["success"] = False
             result["reason"] = f"Slippage too high: {result['slippage']:.4f}% > {self.config.MAX_SLIPPAGE}%"
+            logger.warning(f"Trade simulation failed for {short(token)}: {result['reason']}")
             return result
         if action == "buy":
             result["execution_price"] = current_price * (1 + result["slippage"] / 100)
@@ -854,6 +1010,7 @@ class Trader:
         result["amount_eth"] = token_amount * result["execution_price"]
         if action == "buy":
             result["token_amount"] = result["amount_eth"] / result["execution_price"]
+        logger.debug(f"Simulated {action} trade for {short(token)}: amount_eth={result['amount_eth']:.12f}, execution_price={result['execution_price']:.8f}, slippage={result['slippage']:.4f}%")
         return result
 
     def _estimate_gas(self, action: str, token: str) -> int:
@@ -867,20 +1024,24 @@ class Trader:
         if action == "buy":
             base_gas += 10000
         base_gas += random.randint(0, 15000)
-        return min(base_gas, self.config.GAS_LIMIT)
+        result = min(base_gas, self.config.GAS_LIMIT)
+        logger.debug(f"Estimated gas for {action} {short(token)}: {result}")
+        return result
 
     def _calculate_price_impact(self, token: str, token_amount: float) -> float:
         token_price = self.state.get_token_price(token) or 1.0
         token_value_eth = token_amount * token_price
         liquidity_eth = 100000
-        return min((token_value_eth / liquidity_eth) * 100, 2.0)
+        result = min((token_value_eth / liquidity_eth) * 100, 2.0)
+        logger.debug(f"Calculated price impact for {short(token)}: {result:.4f}%")
+        return result
 
     def create_trade(
         self, token: str, action: str, price: float, token_amount: float, amount_eth: float,
         pattern: str, status: str, reason: Optional[str] = None,
         parameter_set_index: Optional[int] = None, **kwargs
     ) -> Dict[str, Any]:
-        return {
+        trade = {
             "id": f"trade_{int(time.time())}_{random.randint(1000, 9999)}",
             "timestamp": datetime.now().isoformat(),
             "token": token,
@@ -900,6 +1061,8 @@ class Trader:
             "parameter_set_index": parameter_set_index,
             "network": self.state.current_network,
         }
+        logger.debug(f"Created trade: {trade['id']} - {action} {token_amount:.8f} {short(token)} at {price:.8f} ETH")
+        return trade
 
     def update_portfolio(self, trade: Dict[str, Any], action: str, trade_result: Dict[str, Any]):
         token = trade["token"]
@@ -915,6 +1078,7 @@ class Trader:
                 trade["reason"] = "Insufficient ETH (including fees)"
                 self.state.portfolio["failed_trades"] += 1
                 self.state.trades.append(trade)
+                logger.warning(f"Trade failed: {trade['reason']}")
                 return
             self.state.portfolio["balances"]["ETH"] = eth_balance - total_trade_cost
             if token not in self.state.portfolio["balances"]:
@@ -939,11 +1103,13 @@ class Trader:
                     "parameter_set_index": trade.get("parameter_set_index")
                 }
                 self.state.portfolio["positions"].append(position)
+                logger.info(f"Opened new position: {trade_result['token_amount']:.8f} {short(token)} at {trade_result['execution_price']:.8f} ETH")
             else:
                 position["amount"] += trade_result["token_amount"]
                 position["usd_value"] += trade_result["amount_eth"]
                 position["gas_paid"] += gas_cost_eth
                 position["fees_paid"] += fee_cost_eth
+                logger.info(f"Added to existing position: {trade_result['token_amount']:.8f} {short(token)}")
             self.state.portfolio["gas_spent"] += gas_cost_eth
             self.state.portfolio["fees_paid"] += fee_cost_eth
             self.state.portfolio["total_fees"] += total_cost_eth
@@ -957,6 +1123,7 @@ class Trader:
                 trade["reason"] = "No open position to sell"
                 self.state.portfolio["failed_trades"] += 1
                 self.state.trades.append(trade)
+                logger.warning(f"Trade failed: {trade['reason']}")
                 return
             position = open_positions[0]
             amount_to_sell = min(trade_result["token_amount"], position["amount"])
@@ -978,8 +1145,10 @@ class Trader:
                 self.state.portfolio["realized_pnl"] += pnl
                 if pnl > 0:
                     self.state.portfolio["winning_trades"] += 1
+                    logger.info(f"Closed position with profit: +{pnl:.12f} ETH")
                 elif pnl < 0:
                     self.state.portfolio["losing_trades"] += 1
+                    logger.info(f"Closed position with loss: {pnl:.12f} ETH")
             self.state.portfolio["balances"]["ETH"] = self.state.portfolio["balances"].get("ETH", 0) + (
                 sell_value_eth - total_cost_eth
             )
@@ -999,6 +1168,7 @@ class Trader:
                 trade.get("pnl", 0),
                 trade.get("pnl", 0) > 0
             )
+        logger.info(f"Trade {trade['id']} {action} {trade['token_amount']:.8f} {short(token)} - Status: {trade['status']}, PnL: {trade.get('pnl', 0):+.12f} ETH")
 
     def _update_portfolio_equity(self):
         total_eth = self.state.portfolio["balances"].get("ETH", 0)
@@ -1023,6 +1193,7 @@ class Trader:
         self.state.portfolio["equity_history"].append({"timestamp": time.time(), "eth_value": total_eth})
         if len(self.state.portfolio["equity_history"]) > 1000:
             self.state.portfolio["equity_history"] = self.state.portfolio["equity_history"][-1000:]
+        logger.debug(f"Updated portfolio equity: {total_eth:.12f} ETH (realized_pnl: {self.state.portfolio['realized_pnl']:.12f}, unrealized_pnl: {self.state.portfolio['unrealized_pnl']:.12f})")
 
     async def execute_trade(
         self, token: str, action: str, pattern_desc: str = "Manual",
@@ -1030,14 +1201,16 @@ class Trader:
         parameter_set_index: Optional[int] = None
     ) -> Optional[Dict[str, Any]]:
         if not self.state.is_running:
+            logger.warning(f"Cannot execute trade: bot is not running")
             return None
         if amount_eth is None:
             amount_eth = self.calculate_trade_amount()
         current_price = self.state.get_token_price(token)
         if current_price is None:
-            logger.warning(f"No price available for token {token}")
+            logger.warning(f"No price available for token {short(token)}")
             return None
         if amount_eth <= 0:
+            logger.warning(f"Trade amount is <= 0: {amount_eth}")
             return None
         open_positions = len([p for p in self.state.portfolio["positions"] if p["status"] == "open"])
         if open_positions >= self.config.MAX_TRADES:
@@ -1045,6 +1218,7 @@ class Trader:
             return None
         last_trade_time = self.state.last_trade_times.get(token)
         if last_trade_time and (time.time() - last_trade_time) < self.config.TRADE_COOLDOWN:
+            logger.info(f"Trade cooldown active for {short(token)} (last trade: {time.time() - last_trade_time:.0f}s ago)")
             return None
         if self.state.current_gas_price > self.config.MAX_GAS_PRICE:
             logger.info(f"Gas price too high: {self.state.current_gas_price:.2f} gwei > {self.config.MAX_GAS_PRICE} gwei")
@@ -1052,6 +1226,7 @@ class Trader:
         if action == "sell":
             token_balance = self.state.portfolio["balances"].get(token, 0)
             if token_balance <= 0:
+                logger.warning(f"Cannot sell {short(token)}: balance is 0")
                 return None
         token_amount = amount_eth / current_price
         trade_result = self.simulate_trade(token, action, token_amount, current_price)
@@ -1066,6 +1241,7 @@ class Trader:
             logger.warning(f"Trade failed: {trade_result['reason']}")
             return failed_trade
         if self.config.PREVENT_SEQUENTIAL_TRADES and self.state.last_traded_token == token:
+            logger.info(f"Prevented sequential trade for {short(token)}")
             return None
         token_amount = trade_result["token_amount"]
         trade = self.create_trade(
@@ -1084,12 +1260,12 @@ class Trader:
                 "entry_time": time.time(),
                 "parameter_set_index": parameter_set_index,
             }
-            logger.info(f"[Set {parameter_set_index}] Bought {trade_result['token_amount']:.6f} {token} at {trade_result['execution_price']:.8f} ETH")
+            logger.info(f"[Set {parameter_set_index}] Bought {trade_result['token_amount']:.6f} {short(token)} at {trade_result['execution_price']:.8f} ETH")
         if action == "sell":
             if token in self.state.open_buy_orders:
                 del self.state.open_buy_orders[token]
             pnl_text = f"+{trade['pnl']:.8f}" if trade["pnl"] >= 0 else f"{trade['pnl']:.8f}"
-            logger.info(f"[Set {parameter_set_index}] Sold {trade_result['token_amount']:.6f} {token} at {trade_result['execution_price']:.8f} ETH (PnL: {pnl_text} ETH)")
+            logger.info(f"[Set {parameter_set_index}] Sold {trade_result['token_amount']:.6f} {short(token)} at {trade_result['execution_price']:.8f} ETH (PnL: {pnl_text} ETH)")
         return trade
 
     async def check_patterns_for_token(self, token: str):
@@ -1098,9 +1274,11 @@ class Trader:
             return
         history = self.state.get_token_history(token)
         if history is None or len(history) < 2:
+            logger.debug(f"Skipping pattern check for {short(token)}: insufficient history")
             return
         current_price = self.state.get_token_price(token)
         if current_price is None:
+            logger.debug(f"Skipping pattern check for {short(token)}: no price")
             return
         best_params = self.optimizer.get_current_best_parameters()
         open_position = next(
@@ -1112,9 +1290,11 @@ class Trader:
             cost_basis = (open_position["amount"] * open_position["entry_price"]) + open_position["fees_paid"] + open_position["gas_paid"]
             profit_eth = current_value - cost_basis
             profit_pct = (profit_eth / cost_basis) * 100 if cost_basis > 0 else 0
+            logger.debug(f"Open position for {short(token)}: value={current_value:.12f}, cost_basis={cost_basis:.12f}, profit_pct={profit_pct:.2f}%")
             if profit_pct >= best_params["MIN_PROFIT_PERCENT"] and profit_eth > 0:
                 sell_amount_eth = open_position["amount"] * current_price
                 parameter_set_index = open_position.get("parameter_set_index", 0)
+                logger.info(f"Profit target reached for {short(token)}: {profit_pct:.2f}% - Selling...")
                 await self.execute_trade(
                     token, "sell", f"Profit target ({profit_pct:.2f}%) reached",
                     sell_amount_eth, None, parameter_set_index
@@ -1125,13 +1305,17 @@ class Trader:
             if p["token"] == token
         ]
         buy_patterns = [p for p in token_patterns if p["type"] == "buy"]
+        logger.debug(f"Found {len(buy_patterns)} buy patterns for {short(token)}")
         for pattern in buy_patterns:
             if self._check_pattern_match(token, pattern):
                 if self.config.PREVENT_SEQUENTIAL_TRADES and self.state.last_traded_token == token:
+                    logger.debug(f"Skipping pattern for {short(token)}: sequential trades prevented")
                     continue
                 if token in self.state.open_buy_orders:
+                    logger.debug(f"Skipping pattern for {short(token)}: open buy order exists")
                     continue
                 trade_amount = self.calculate_trade_amount()
+                logger.info(f"Executing buy trade for {short(token)} based on pattern: {pattern}")
                 await self.execute_trade(
                     token, "buy", f"Buy dip: {pattern['drop_pct']:.2f}% drop, {pattern['rise_pct']:.2f}% target",
                     trade_amount, pattern, pattern.get("parameter_set_index")
@@ -1141,9 +1325,11 @@ class Trader:
         """Check if current price matches a pattern."""
         history = self.state.get_token_history(token)
         if history is None or len(history) < 2:
+            logger.debug(f"Cannot check pattern match for {short(token)}: insufficient history")
             return False
         current_price = self.state.get_token_price(token)
         if current_price is None:
+            logger.debug(f"Cannot check pattern match for {short(token)}: no price")
             return False
         recent_history = history[-10:]
         for i in range(len(recent_history) - 1, -1, -1):
@@ -1158,25 +1344,31 @@ class Trader:
                 ):
                     price_diff = abs(current_price - current["price"]) / current["price"]
                     if price_diff < 0.02:
+                        logger.debug(f"Pattern match found for {short(token)}: drop_pct={abs(drop_pct)*100:.2f}%, time_diff={time_diff:.0f}s")
                         return True
+        logger.debug(f"No pattern match found for {short(token)}")
         return False
 
     def start_pattern_detection(self):
         """Start the pattern detection loop."""
         if self.state.pattern_detection_active:
+            logger.warning("Pattern detection is already active")
             return
         self.state.pattern_detection_active = True
         self.detector.detect_all_patterns()
         def loop():
             while self.state.is_running and self.state.pattern_detection_active:
+                logger.debug("Running pattern detection loop...")
                 self.detector.detect_all_patterns()
                 self.optimizer.optimize()
                 time.sleep(3)
         threading.Thread(target=loop, daemon=True).start()
+        logger.info("Pattern detection started")
 
     def stop_pattern_detection(self):
         """Stop the pattern detection loop."""
         self.state.pattern_detection_active = False
+        logger.info("Pattern detection stopped")
 
 # ========== PRICE UPDATER ==========
 class PriceUpdater:
@@ -1191,15 +1383,19 @@ class PriceUpdater:
         """Update prices for all observed tokens."""
         with self.price_update_lock:
             try:
+                logger.info("Starting price update...")
                 chain_key = self.state.current_network
                 chain_config = CHAINS[chain_key]
                 w3 = self.blockchain.get_web3(chain_key)
+                if not w3:
+                    logger.error(f"No Web3 provider for {chain_key}")
+                    return
 
                 # Get gas price
                 try:
                     gas_price_wei = w3.eth.gas_price
                     self.state.current_gas_price = gas_price_wei / 1e9
-                    logger.debug(f"Gas price: {self.state.current_gas_price:.2f} gwei")
+                    logger.info(f"Gas price: {self.state.current_gas_price:.2f} gwei")
                 except Exception as e:
                     logger.warning(f"Could not fetch gas price: {e}")
                     self.state.current_gas_price = self.state.config.MAX_GAS_PRICE
@@ -1208,6 +1404,7 @@ class PriceUpdater:
 
                 # Initialize with known tokens if empty
                 if not self.state.observed_tokens:
+                    logger.info("No observed tokens, initializing known tokens...")
                     await self.token_discovery.initialize_known_tokens(chain_key)
 
                 # Discover new tokens from blocks
@@ -1221,6 +1418,7 @@ class PriceUpdater:
                     if current_time - last_updated > 10:
                         tokens_to_update.append(token)
 
+                logger.info(f"Updating prices for {len(tokens_to_update)} tokens")
                 # Update prices for tokens that need it
                 for token in tokens_to_update:
                     try:
@@ -1237,6 +1435,7 @@ class PriceUpdater:
                             self.state.prices[token] = price
                             self.token_discovery._update_price_history(token, price)
                             self.last_price_update[token] = current_time
+                            logger.info(f"Updated price for {short(token)}: {price:.8f} ETH")
                             continue
 
                         # If we still don't have a price, log but don't remove the token
@@ -1244,13 +1443,14 @@ class PriceUpdater:
                             logger.debug(f"No price found for {short(token)} (will retry)")
 
                     except Exception as e:
-                        logger.error(f"Error updating price for {short(token)}: {e}")
+                        logger.error(f"Error updating price for {short(token)}: {e}", exc_info=True)
                         continue
 
                 self.state.last_price_update = current_time
+                logger.info(f"Price update complete. Updated {len(tokens_to_update)} tokens")
 
             except Exception as e:
-                logger.error(f"Error in price update: {e}")
+                logger.error(f"Error in price update: {e}", exc_info=True)
 
     async def _get_price_for_token(self, token: str, chain_key: str) -> Optional[float]:
         """Get price for a token by finding its pool with WETH."""
@@ -1269,11 +1469,13 @@ class PriceUpdater:
                 if pool_address:
                     price = await self.blockchain.get_pool_price(pool_address, chain_key)
                     if price is not None:
+                        logger.debug(f"Got price for {short(token)} from pool {short(pool_address)} (fee: {fee}): {price}")
                         return price
             except Exception as e:
                 logger.debug(f"Error getting price for {short(token)} at fee {fee}: {e}")
                 continue
 
+        logger.debug(f"No price found for {short(token)} after trying all fee tiers")
         return None
 
 # ========== STATE PERSISTENCE ==========
@@ -1287,22 +1489,23 @@ class StateManager:
         try:
             with open(os.path.join(self.data_dir, "full_state.json"), "w") as f:
                 json.dump(self.state.to_dict(), f, indent=2)
-            logger.debug("State saved to data/full_state.json.")
+            logger.info("State saved to data/full_state.json")
         except Exception as e:
-            logger.error(f"Error saving state: {e}")
+            logger.error(f"Error saving state: {e}", exc_info=True)
 
     def load_state(self) -> bool:
         try:
             full_state_path = os.path.join(self.data_dir, "full_state.json")
             if not os.path.exists(full_state_path):
+                logger.info("No saved state found")
                 return False
             with open(full_state_path, "r") as f:
                 state_dict = json.load(f)
             self.state.from_dict(state_dict)
-            logger.info("State loaded from data/full_state.json.")
+            logger.info("State loaded from data/full_state.json")
             return True
         except Exception as e:
-            logger.error(f"Error loading state: {e}")
+            logger.error(f"Error loading state: {e}", exc_info=True)
             return False
 
 # ========== MAIN BOT CLASS ==========
@@ -1322,25 +1525,30 @@ class Bot:
     def _start_event_loop(self):
         """Start a dedicated event loop in a background thread."""
         if self._event_loop is not None:
+            logger.warning("Event loop already started")
             return
 
         def run_loop():
             self._event_loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self._event_loop)
+            logger.info("Event loop started in background thread")
             self._event_loop.run_forever()
 
         self._event_loop_thread = threading.Thread(target=run_loop, daemon=True)
         self._event_loop_thread.start()
-        time.sleep(0.1)
+        time.sleep(0.1)  # Give the loop time to start
+        logger.info("Background event loop initialized")
 
     def _stop_event_loop(self):
         """Stop the event loop."""
         if self._event_loop is not None:
+            logger.info("Stopping event loop...")
             self._event_loop.call_soon_threadsafe(self._event_loop.stop)
             if self._event_loop_thread:
                 self._event_loop_thread.join(timeout=1)
             self._event_loop = None
             self._event_loop_thread = None
+            logger.info("Event loop stopped")
 
     def start(self):
         if self.running:
@@ -1357,6 +1565,7 @@ class Bot:
         self.state.start_time = time.time()
 
         # Initialize known tokens
+        logger.info("Initializing known tokens...")
         asyncio.run_coroutine_threadsafe(
             self.trader.token_discovery.initialize_known_tokens(self.state.current_chain_key),
             self._event_loop
@@ -1365,6 +1574,7 @@ class Bot:
         # Start price updates
         async def price_loop():
             while self.running:
+                logger.debug("Running price update loop...")
                 await self.price_updater.update_prices()
                 await asyncio.sleep(10)
 
@@ -1376,6 +1586,7 @@ class Bot:
         # Start state saving
         def state_saver():
             while self.running:
+                logger.debug("Saving state...")
                 self.state_manager.save_state()
                 time.sleep(30)
 
@@ -1384,6 +1595,7 @@ class Bot:
         # Start pattern checking
         async def pattern_checker():
             while self.running:
+                logger.debug("Running pattern checker...")
                 for token in list(self.state.observed_tokens):
                     await self.trader.check_patterns_for_token(token)
                 await asyncio.sleep(1)
@@ -1431,7 +1643,7 @@ class Bot:
 
     def print_status(self):
         status = self._get_status()
-        print("\n=== Uniswap Quick Swap Trader v7.0.0 - Profit-Only Mode ===")
+        print("\n=== Uniswap Quick Swap Trader v7.0.0 - Enhanced Debug Mode ===")
         print(f"Status: {'Running' if status['is_running'] else 'Stopped'}")
         print(f"Uptime: {status['uptime']}")
         print(f"Live Mode: {'ON' if self.trader.live_mode else 'OFF (shadow mode)'}")
@@ -1550,11 +1762,12 @@ class Bot:
 
 # ========== MAIN ==========
 def main():
-    print("Uniswap Quick Swap Trader v7.0.0 - Python Console Version")
+    print("Uniswap Quick Swap Trader v7.0.0 - Enhanced Debug Version")
     print("Profit-Only Mode: Buys dips and sells ONLY at profit")
     print("Arbitrum-Only Mode: Only works on Arbitrum network")
-    print("Dynamic Token Discovery: Populates tokens from CoinGecko's Arbitrum list.\n")
-    logger.info("Uniswap Quick Swap Trader v7.0.0 started.")
+    print("Dynamic Token Discovery: Populates tokens from CoinGecko's Arbitrum list.")
+    print("Enhanced Logging: Detailed logs for debugging\n")
+    logger.info("Uniswap Quick Swap Trader v7.0.0 (Enhanced Debug) started.")
 
     bot = Bot()
     bot.state_manager.load_state()
