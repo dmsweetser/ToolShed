@@ -10,17 +10,20 @@ import hashlib
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set, Tuple, Any
+
 from dotenv import load_dotenv
 from web3 import Web3
 from web3.middleware import ExtraDataToPOAMiddleware
 import sqlite3
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 # Load environment variables
 load_dotenv()
 
 # Configure logging
 logging.basicConfig(
-    level=logging.ERROR,
+    level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
     handlers=[
         logging.FileHandler("app.log"),
@@ -47,18 +50,45 @@ def to_checksum_address(address: str) -> str:
         return address
 
 # ========== COINGECKO TOKEN FETCHER ==========
+import json
+from pathlib import Path
+
+TOKEN_LIST_URL = "https://tokens.coingecko.com/arbitrum-one/all.json"
+LOCAL_TOKEN_FILE = Path("data/arbitrum_tokens.json")
+
 def fetch_coingecko_tokens(chain_id: int = 42161) -> List[Dict[str, Any]]:
-    url = "https://tokens.coingecko.com/arbitrum-one/all.json"
+    # Try local file first
+    if LOCAL_TOKEN_FILE.exists():
+        try:
+            with open(LOCAL_TOKEN_FILE, "r") as f:
+                data = json.load(f)
+                tokens = data.get("tokens", [])
+                logger.info(f"Loaded {len(tokens)} tokens from local cache")
+                return [token for token in tokens if token.get("chainId") == chain_id]
+        except Exception as e:
+            logger.warning(f"Failed to load local token cache: {e}")
+
+    # Fall back to API with retry
     try:
-        logger.debug(f"Fetching CoinGecko tokens from {url}")
-        response = requests.get(url, timeout=15)
+        logger.info("Fetching fresh token list from CoinGecko...")
+        session = requests.Session()
+        retry = Retry(total=3, backoff_factor=5, status_forcelist=[429])
+        session.mount("https://", HTTPAdapter(max_retries=retry))
+
+        response = session.get(TOKEN_LIST_URL, timeout=15)
         response.raise_for_status()
         data = response.json()
+
+        # Save to local file
+        LOCAL_TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(LOCAL_TOKEN_FILE, "w") as f:
+            json.dump(data, f, indent=2)
+
         tokens = data.get("tokens", [])
-        logger.info(f"Fetched {len(tokens)} tokens from CoinGecko")
+        logger.info(f"Fetched and cached {len(tokens)} tokens from CoinGecko")
         return [token for token in tokens if token.get("chainId") == chain_id]
     except Exception as e:
-        logger.error(f"Failed to fetch CoinGecko tokens: {e}", exc_info=True)
+        logger.error(f"Failed to fetch CoinGecko tokens: {e}")
         return []
 
 # ========== PARAMETER GENERATION ==========
