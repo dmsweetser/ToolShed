@@ -795,65 +795,33 @@ class SwapEventListener:
         self._lock = threading.Lock()
         self._event_loop = None
 
-    def start(self):
-        if self.running:
-            logger.info("Bot is already running")
-            return
+    async def start(self):
+        """Start listening for swap events and building price graph"""
+        if self.active:
+            return True
 
-        logger.info("Starting Uniswap Quick Swap Trader (BFS Graph Approach)...")
-        self.running = True
+        self.active = True
+        w3 = self.blockchain.get_web3(self.state.current_chain_key)
+        if not w3:
+            self.active = False
+            return False
 
-        # Initialize providers first (sync)
-        self.shared_blockchain._initialize_providers()
+        try:
+            self.current_block = w3.eth.block_number
+            self.last_block_check = self.current_block
+            logger.info(f"SwapEventListener started at block {self.current_block}")
 
-        if not self.live_mode:
-            # Initialize shared components
-            asyncio.create_task(self._initialize_and_start_simulators())
-        else:
-            # Live mode initialization
-            self.state.is_running = True
-            self.state.start_time = time.time()
+            # Initialize with known pools from top tokens
+            await self._initialize_known_pools()
 
-            asyncio.create_task(self._initialize_live_mode())
+            # Start block polling
+            asyncio.create_task(self._poll_blocks())
 
-        logger.info("Bot started! Press Ctrl+C to stop.")
-        logger.info("Commands: start, stop, status, prices, params, reset, help")
-        self._interactive_loop()
-
-    async def _initialize_and_start_simulators(self):
-        """Async initialization for non-live mode"""
-        chain_key = self.shared_state.current_chain_key
-        await self.token_discovery.initialize_known_tokens(chain_key)
-        await self._update_initial_prices()
-
-        logger.info(f"Starting {len(self.simulators)} parallel parameter set simulations")
-        for simulator in self.simulators:
-            simulator.start()
-
-        # Start shared swap event listener
-        asyncio.create_task(self._run_shared_listener())
-
-    async def _initialize_live_mode(self):
-        """Async initialization for live mode"""
-        chain_key = self.state.current_chain_key
-        await self.token_discovery.initialize_known_tokens(chain_key)
-        await self._update_initial_prices()
-
-        # Start swap listener
-        asyncio.create_task(self._run_listener())
-
-        # Start pattern detection
-        self.trader.start_pattern_detection()
-
-        # Start trade checking
-        async def trade_checker():
-            while self.running:
-                with self.state._lock:
-                    tokens = list(self.state.observed_tokens)
-                for token in tokens:
-                    await self.trader.check_patterns_for_token(token)
-                await asyncio.sleep(1)
-        asyncio.create_task(trade_checker())
+            return True
+        except Exception as e:
+            logger.error(f"Failed to start SwapEventListener: {e}")
+            self.active = False
+            return False
 
     async def stop(self):
         """Stop the event listener"""
@@ -1926,12 +1894,14 @@ class Simulator:
         # Start pattern detection
         self.trader.start_pattern_detection()
 
-        # Start trade checking - FIXED to use async properly
+        # Start trade checking
         def trade_loop():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(self._trade_loop_async())
-            loop.close()
+            while self.running:
+                with self.shared_state._lock:
+                    tokens = list(self.shared_state.observed_tokens)
+                for token in tokens:
+                    asyncio.run(self.trader.check_patterns_for_token(token))
+                time.sleep(1)
 
         threading.Thread(target=trade_loop, daemon=True).start()
 
@@ -1941,16 +1911,8 @@ class Simulator:
                 self.state_manager.save_state()
                 self.state_manager.emit_state_files()
                 time.sleep(30)
-        threading.Thread(target=state_saver, daemon=True).start()
 
-    async def _trade_loop_async(self):
-        """Async trade checking loop"""
-        while self.running:
-            with self.shared_state._lock:
-                tokens = list(self.shared_state.observed_tokens)
-            for token in tokens:
-                await self.trader.check_patterns_for_token(token)
-            await asyncio.sleep(1)
+        threading.Thread(target=state_saver, daemon=True).start()
 
     def stop(self):
         if not self.running:
@@ -2087,7 +2049,7 @@ class Bot:
         """Initialize shared state with known tokens and metadata"""
         chain_key = self.shared_state.current_chain_key
         await self.token_discovery.initialize_known_tokens(chain_key)
-        self.shared_blockchain._initialize_providers()  # <-- REMOVE await (it's sync)
+        await self.shared_blockchain._initialize_providers()
         await self._update_initial_prices()
 
     async def _update_initial_prices(self):
