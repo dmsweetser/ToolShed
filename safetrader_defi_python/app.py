@@ -2049,7 +2049,7 @@ class Bot:
         """Initialize shared state with known tokens and metadata"""
         chain_key = self.shared_state.current_chain_key
         await self.token_discovery.initialize_known_tokens(chain_key)
-        await self.shared_blockchain._initialize_providers()
+        self.shared_blockchain._initialize_providers()
         await self._update_initial_prices()
 
     async def _update_initial_prices(self):
