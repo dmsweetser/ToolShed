@@ -2008,7 +2008,7 @@ class Bot:
                 simulator.start()
 
             # Start shared swap event listener
-            asyncio.create_task(self._run_shared_listener())
+            threading.Thread(target=lambda: asyncio.run(self._run_shared_listener()), daemon=True).start()
 
         else:
             # Live mode
@@ -2018,7 +2018,7 @@ class Bot:
             asyncio.run(self._initialize_shared_components())
 
             # Start swap listener
-            asyncio.create_task(self._run_listener())
+            threading.Thread(target=lambda: asyncio.run(self._run_listener()), daemon=True).start()
 
             # Start pattern detection
             self.trader.start_pattern_detection()
