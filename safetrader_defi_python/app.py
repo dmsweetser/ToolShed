@@ -14,6 +14,7 @@ from collections import deque
 
 from dotenv import load_dotenv
 from web3 import Web3
+from web3.providers.legacy_websocket import LegacyWebSocketProvider
 from web3.middleware import ExtraDataToPOAMiddleware
 import sqlite3
 from requests.adapters import HTTPAdapter
@@ -282,14 +283,12 @@ UNISWAP_V3_POOL_ABI = json.loads('''
 ]
 ''')
 
-ERC20_ABI = json.loads('''
-[
+ERC20_ABI = [
     {"inputs": [], "name": "symbol", "outputs": [{"internalType": "string", "name": "", "type": "string"}], "stateMutability": "view", "type": "function"},
     {"inputs": [], "name": "decimals", "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}], "stateMutability": "view", "type": "function"},
     {"inputs": [], "name": "name", "outputs": [{"internalType": "string", "name": "", "type": "string"}], "stateMutability": "view", "type": "function"},
     {"inputs": [{"internalType": "address", "name": "account"}], "name": "balanceOf", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}
 ]
-''')
 
 # SWAP EVENT ABI for filtering
 SWAP_EVENT_ABI = json.loads('''
@@ -644,7 +643,7 @@ class BlockchainHelper:
     def _test_rpc_endpoint(self, rpc_url: str) -> bool:
         try:
             if rpc_url.startswith("wss://"):
-                w3 = Web3(Web3.WebsocketProvider(rpc_url, websocket_timeout=5))
+                w3 = Web3(LegacyWebSocketProvider(rpc_url, websocket_timeout=5))
             else:
                 w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={'timeout': 5}))
             block_number = w3.eth.block_number
@@ -672,7 +671,7 @@ class BlockchainHelper:
 
         if working_rpc:
             if working_rpc.startswith("wss://"):
-                provider = Web3.WebsocketProvider(working_rpc, websocket_timeout=10)
+                provider = LegacyWebSocketProvider(working_rpc, websocket_timeout=10)
             else:
                 provider = Web3.HTTPProvider(working_rpc, request_kwargs={'timeout': 10})
             w3 = Web3(provider)
