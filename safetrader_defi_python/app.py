@@ -47,18 +47,39 @@ def to_checksum_address(address: str) -> str:
         return address
 
 # ========== COINGECKO TOKEN FETCHER ==========
-def fetch_coingecko_tokens(chain_id: int = 42161) -> List[Dict[str, Any]]:
+# Replace the existing fetch_coingecko_tokens function with this:
+def fetch_coingecko_tokens(chain_id: int = 42161, state: Optional[State] = None) -> List[Dict[str, Any]]:
+    """Fetch tokens from CoinGecko's Arbitrum token list with caching."""
+    # Return cached tokens if available
+    if state and hasattr(state, '_coingecko_tokens') and state._coingecko_tokens is not None:
+        return state._coingecko_tokens
+
     url = "https://tokens.coingecko.com/arbitrum-one/all.json"
     try:
         logger.debug(f"Fetching CoinGecko tokens from {url}")
         response = requests.get(url, timeout=15)
+
+        # Handle rate limiting (429)
+        if response.status_code == 429:
+            logger.warning("CoinGecko rate limit hit. Using cached tokens if available.")
+            if state and hasattr(state, '_coingecko_tokens') and state._coingecko_tokens is not None:
+                return state._coingecko_tokens
+            return []
+
         response.raise_for_status()
         data = response.json()
-        tokens = data.get("tokens", [])
+        tokens = [token for token in data.get("tokens", []) if token.get("chainId") == chain_id]
+
+        # Cache the result in the state
+        if state:
+            state._coingecko_tokens = tokens
+
         logger.info(f"Fetched {len(tokens)} tokens from CoinGecko")
-        return [token for token in tokens if token.get("chainId") == chain_id]
+        return tokens
     except Exception as e:
-        logger.error(f"Failed to fetch CoinGecko tokens: {e}", exc_info=True)
+        logger.error(f"Failed to fetch CoinGecko tokens: {e}")
+        if state and hasattr(state, '_coingecko_tokens') and state._coingecko_tokens is not None:
+            return state._coingecko_tokens
         return []
 
 # ========== PARAMETER GENERATION ==========
