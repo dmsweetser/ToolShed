@@ -1678,25 +1678,65 @@ class StateManager:
     def _save_component(self, component_name: str, data: Any):
         """Save a single component if it has changed."""
         try:
-            data_json = json.dumps(data, default=str, indent=2)
-            data_hash = hashlib.md5(data_json.encode()).hexdigest()
+            # Handle multi-column components (prices, patterns)
+            if component_name == "prices":
+                prices_data = json.dumps(data.get("prices", {}), default=str, indent=2)
+                price_history_data = json.dumps(data.get("price_history", {}), default=str, indent=2)
+                data_hash = hashlib.md5((prices_data + price_history_data).encode()).hexdigest()
 
-            if data_hash == self.last_component_hashes[component_name]:
-                logger.debug(f"Component {component_name} unchanged, skipping save")
-                return
+                if data_hash == self.last_component_hashes[component_name]:
+                    logger.debug(f"Component {component_name} unchanged, skipping save")
+                    return
 
-            table_name = f"state_{component_name}"
-            column_name = f"{component_name}_data"
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        INSERT INTO state_prices (timestamp, prices_data, price_history_data)
+                        VALUES (datetime('now'), ?, ?)
+                    ''', (prices_data, price_history_data))
+                    conn.commit()
+                    self.last_component_hashes[component_name] = data_hash
 
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute(f'''
-                    INSERT INTO {table_name} (timestamp, {column_name})
-                    VALUES (datetime('now'), ?)
-                ''', (data_json,))
-                conn.commit()
-                self.last_component_hashes[component_name] = data_hash
-                logger.debug(f"Saved component {component_name} to SQLite")
+            elif component_name == "patterns":
+                patterns_data = json.dumps(data.get("active_patterns", {}), default=str, indent=2)
+                pattern_stats_data = json.dumps(data.get("pattern_stats", {}), default=str, indent=2)
+                data_hash = hashlib.md5((patterns_data + pattern_stats_data).encode()).hexdigest()
+
+                if data_hash == self.last_component_hashes[component_name]:
+                    logger.debug(f"Component {component_name} unchanged, skipping save")
+                    return
+
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('''
+                        INSERT INTO state_patterns (timestamp, patterns_data, pattern_stats_data)
+                        VALUES (datetime('now'), ?, ?)
+                    ''', (patterns_data, pattern_stats_data))
+                    conn.commit()
+                    self.last_component_hashes[component_name] = data_hash
+
+            # Default single-column case (config, portfolio, trades, misc)
+            else:
+                data_json = json.dumps(data, default=str, indent=2)
+                data_hash = hashlib.md5(data_json.encode()).hexdigest()
+
+                if data_hash == self.last_component_hashes[component_name]:
+                    logger.debug(f"Component {component_name} unchanged, skipping save")
+                    return
+
+                table_name = f"state_{component_name}"
+                column_name = f"{component_name}_data"
+
+                with sqlite3.connect(self.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(f'''
+                        INSERT INTO {table_name} (timestamp, {column_name})
+                        VALUES (datetime('now'), ?)
+                    ''', (data_json,))
+                    conn.commit()
+                    self.last_component_hashes[component_name] = data_hash
+
+            logger.debug(f"Saved component {component_name} to SQLite")
         except Exception as e:
             logger.error(f"Error saving component {component_name} to SQLite: {e}", exc_info=True)
 
