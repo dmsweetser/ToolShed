@@ -6,6 +6,7 @@ import asyncio
 import threading
 import logging
 import requests
+import hashlib
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set, Tuple, Any
@@ -19,7 +20,7 @@ load_dotenv()
 
 # Configure logging with enhanced verbosity
 logging.basicConfig(
-    level=logging.INFO,  # Set to DEBUG for maximum verbosity
+    level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
     handlers=[
         logging.FileHandler("app.log"),
@@ -79,12 +80,13 @@ class ParameterRange:
             current += self.step
         return values
 
+# Modified ranges to include an aggressive set
 DEFAULT_PARAMETER_RANGES = {
-    "MIN_PRICE_CHANGE":    ParameterRange(min=0.01, max=0.5,  step=0.49),   # 2 values: 0.01, 0.5
-    "MIN_TIME_WINDOW":     ParameterRange(min=2,     max=30,   step=28),    # 2 values: 2, 30
-    "MAX_TIME_WINDOW":     ParameterRange(min=30,    max=300,  step=270),   # 2 values: 30, 300
-    "MIN_OCCURRENCES":     ParameterRange(min=1,     max=3,    step=1),     # 3 values: 1, 2, 3
-    "MIN_PROFIT_PERCENT":  ParameterRange(min=0.1,   max=5.0,  step=4.9),   # 2 values: 0.1, 5.0
+    "MIN_PRICE_CHANGE":    ParameterRange(min=0.001, max=0.5,  step=0.499),   # 0.001, 0.5
+    "MIN_TIME_WINDOW":     ParameterRange(min=1,     max=30,   step=29),     # 1, 30
+    "MAX_TIME_WINDOW":     ParameterRange(min=60,    max=300,  step=240),    # 60, 300
+    "MIN_OCCURRENCES":     ParameterRange(min=1,     max=3,    step=1),      # 1, 2, 3
+    "MIN_PROFIT_PERCENT":  ParameterRange(min=0.01,  max=5.0,  step=4.99),    # 0.01, 5.0
 }
 
 class ParameterGenerator:
@@ -92,7 +94,19 @@ class ParameterGenerator:
         self.ranges = ranges or DEFAULT_PARAMETER_RANGES
         self.max_combinations = max_combinations
         self.parameter_sets = self._generate_parameter_sets()
-        logger.info(f"Generated {len(self.parameter_sets)} parameter sets")
+        # Add an explicit aggressive set
+        aggressive_set = {
+            "MIN_PRICE_CHANGE": 0.001,
+            "MIN_TIME_WINDOW": 1,
+            "MAX_TIME_WINDOW": 60,
+            "MIN_OCCURRENCES": 1,
+            "MIN_PROFIT_PERCENT": 0.01
+        }
+        if aggressive_set not in [dict(p) for p in self.parameter_sets]:
+            self.parameter_sets.append(aggressive_set)
+            if len(self.parameter_sets) > self.max_combinations:
+                self.parameter_sets.pop(0)
+        logger.info(f"Generated {len(self.parameter_sets)} parameter sets (including aggressive set)")
 
     def _generate_parameter_sets(self) -> List[Dict[str, float]]:
         param_values = {name: rng.generate_values() for name, rng in self.ranges.items()}
@@ -134,11 +148,11 @@ class Config:
     MIN_TRADE_AMOUNT_ETH: float = 0.0003
     MAX_TRADES: int = 10
     TRADE_COOLDOWN: int = 60
-    MIN_PRICE_CHANGE: float = 0.1  # Lowered for testing
+    MIN_PRICE_CHANGE: float = 0.1
     MIN_TIME_WINDOW: int = 5
     MAX_TIME_WINDOW: int = 120
     MIN_OCCURRENCES: int = 2
-    MIN_PROFIT_PERCENT: float = 1.0  # Lowered for testing
+    MIN_PROFIT_PERCENT: float = 1.0
     MAX_SLIPPAGE: float = 0.5
     MAX_GAS_PRICE: int = 200
     GAS_LIMIT: int = 300000
@@ -152,7 +166,6 @@ class Config:
 POOL_FEES = {"LOW": 500, "MEDIUM": 3000, "HIGH": 10000}
 PATTERN_TYPES = {"BUY": "buy"}
 
-# Known token symbols and their addresses for Arbitrum
 NETWORK_TOKENS = {
     "arbitrum": {
         "WETH": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
@@ -166,7 +179,6 @@ NETWORK_TOKENS = {
     }
 }
 
-# Arbitrum RPC endpoints with fallback
 ARBITRUM_RPC_ENDPOINTS = [
     "https://arbitrum-mainnet.public.blastapi.io",
     "https://arb1.arbitrum.io/rpc",
@@ -512,8 +524,6 @@ class BlockchainHelper:
                 w3 = Web3(Web3.WebsocketProvider(rpc_url, websocket_timeout=5))
             else:
                 w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={'timeout': 5}))
-            
-            # Test with a simple call
             block_number = w3.eth.block_number
             logger.info(f"RPC endpoint {rpc_url} is working (block: {block_number})")
             return True
@@ -530,7 +540,7 @@ class BlockchainHelper:
 
         chain_config = self.chains[chain_key]
         rpc_urls = chain_config["rpcs"]
-        
+
         for rpc_url in rpc_urls:
             if self._test_rpc_endpoint(rpc_url):
                 if chain_key in ["polygon", "arbitrum", "base", "optimism"]:
@@ -546,13 +556,12 @@ class BlockchainHelper:
                     else:
                         provider = Web3.HTTPProvider(rpc_url, request_kwargs={'timeout': 10})
                     w3 = Web3(provider)
-                
+
                 self.web3_providers[chain_key] = w3
                 logger.info(f"Using RPC endpoint: {rpc_url}")
                 break
         else:
             logger.error(f"All RPC endpoints failed for {chain_key}")
-            # Fallback to first endpoint even if it failed
             rpc_url = rpc_urls[0]
             if rpc_url.startswith("wss://"):
                 provider = Web3.WebsocketProvider(rpc_url, websocket_timeout=10)
@@ -577,7 +586,7 @@ class BlockchainHelper:
         if not w3:
             logger.error(f"No Web3 provider for {chain_key}")
             return None
-        
+
         chain_config = self.chains[chain_key]
         factory_address = to_checksum_address(chain_config["factory"])
         try:
@@ -634,7 +643,7 @@ class BlockchainHelper:
             if not factory:
                 logger.error(f"No factory contract for {chain_key}")
                 return None
-            
+
             token0_checksum = to_checksum_address(token0)
             token1_checksum = to_checksum_address(token1)
             pool_address = factory.functions.getPool(token0_checksum, token1_checksum, fee).call()
@@ -653,7 +662,7 @@ class BlockchainHelper:
             pool = await self.get_pool_contract(pool_address_checksum, chain_key)
             if not pool:
                 return None
-            
+
             slot0 = pool.functions.slot0().call()
             sqrt_price_x96 = slot0[0]
             price = self._sqrt_price_x96_to_price(sqrt_price_x96)
@@ -714,7 +723,6 @@ class TokenDiscovery:
         wrapped_native = to_checksum_address(chain_config["wrappedNative"])
         quote_label = chain_config["quoteLabel"]
 
-        # Add WETH/ETH
         if wrapped_native not in self.state.token_symbols:
             self.state.token_symbols[wrapped_native] = quote_label
             self.state.token_addresses[quote_label] = wrapped_native
@@ -727,7 +735,6 @@ class TokenDiscovery:
             self._update_price_history(wrapped_native, 1.0)
             logger.debug(f"Set WETH price to 1.0")
 
-        # Add known tokens from NETWORK_TOKENS
         for symbol, address in NETWORK_TOKENS.get(chain_key, {}).items():
             checksum_addr = to_checksum_address(address)
             if checksum_addr not in self.state.token_symbols:
@@ -738,19 +745,14 @@ class TokenDiscovery:
                 self.state.observed_tokens.add(checksum_addr)
                 logger.debug(f"Added {symbol} to observed tokens")
 
-        # Add stables
         for stable in chain_config.get("stables", []):
             stable = to_checksum_address(stable)
             if stable not in self.state.observed_tokens:
                 self.state.observed_tokens.add(stable)
                 logger.debug(f"Added stablecoin to observed tokens: {short(stable)}")
 
-        # Add top pool tokens
         await self._add_top_pool_tokens(chain_key)
-
-        # Add tokens from CoinGecko
         await self._add_coingecko_tokens(chain_key)
-        
         logger.info(f"Initialized {len(self.state.observed_tokens)} known tokens")
 
     async def _add_coingecko_tokens(self, chain_key: str):
@@ -783,7 +785,7 @@ class TokenDiscovery:
             if not w3:
                 logger.error(f"No Web3 provider for {chain_key}")
                 return
-            
+
             current_block = w3.eth.block_number
             last_scanned = self.last_block.get(chain_key, current_block - blocks_to_scan)
 
@@ -818,7 +820,7 @@ class TokenDiscovery:
                     pool_contract = await self.blockchain.get_pool_contract(pool_address, chain_key)
                     if not pool_contract:
                         continue
-                    
+
                     token0 = to_checksum_address(pool_contract.functions.token0().call())
                     token1 = to_checksum_address(pool_contract.functions.token1().call())
                     new_tokens.update([token0, token1])
@@ -1423,7 +1425,6 @@ class PriceUpdater:
                     logger.error(f"No Web3 provider for {chain_key}")
                     return
 
-                # Get gas price
                 try:
                     gas_price_wei = w3.eth.gas_price
                     self.state.current_gas_price = gas_price_wei / 1e9
@@ -1434,15 +1435,12 @@ class PriceUpdater:
 
                 wrapped_native = to_checksum_address(chain_config["wrappedNative"])
 
-                # Initialize with known tokens if empty
                 if not self.state.observed_tokens:
                     logger.info("No observed tokens, initializing known tokens...")
                     await self.token_discovery.initialize_known_tokens(chain_key)
 
-                # Discover new tokens from blocks
                 await self.token_discovery.discover_tokens_from_blocks(chain_key, blocks_to_scan=5)
 
-                # Get all tokens that need price updates
                 current_time = time.time()
                 tokens_to_update = []
                 for token in self.state.observed_tokens:
@@ -1451,17 +1449,14 @@ class PriceUpdater:
                         tokens_to_update.append(token)
 
                 logger.info(f"Updating prices for {len(tokens_to_update)} tokens")
-                # Update prices for tokens that need it
                 for token in tokens_to_update:
                     try:
-                        # Skip WETH/ETH as price is always 1.0
                         if norm(token) == norm(wrapped_native):
                             self.state.prices[token] = 1.0
                             self.token_discovery._update_price_history(token, 1.0)
                             self.last_price_update[token] = current_time
                             continue
 
-                        # Try to get price from existing pools
                         price = await self._get_price_for_token(token, chain_key)
                         if price is not None:
                             self.state.prices[token] = price
@@ -1470,7 +1465,6 @@ class PriceUpdater:
                             logger.info(f"Updated price for {short(token)}: {price:.8f} ETH")
                             continue
 
-                        # If we still don't have a price, log but don't remove the token
                         if token not in self.state.prices:
                             logger.debug(f"No price found for {short(token)} (will retry)")
 
@@ -1488,11 +1482,8 @@ class PriceUpdater:
         """Get price for a token by finding its pool with WETH."""
         chain_config = CHAINS[chain_key]
         wrapped_native = to_checksum_address(chain_config["wrappedNative"])
-
-        # First, try to get the checksummed address
         token_checksum = to_checksum_address(token)
 
-        # Try all fee tiers
         for fee in [POOL_FEES["MEDIUM"], POOL_FEES["LOW"], POOL_FEES["HIGH"]]:
             try:
                 pool_address = await self.blockchain.get_pool_address(
@@ -1511,21 +1502,79 @@ class PriceUpdater:
         return None
 
 # ========== STATE PERSISTENCE ==========
-
 class StateManager:
-    def __init__(self, state: 'State'):  # Use string annotation to avoid circular import
+    def __init__(self, state: State):
         self.state = state
         self.db_path = "data/state.db"
-        self.max_backups = 100  # Keep last 100 states to prevent DB bloat
+        self.max_backups = 100
+        self.last_component_hashes: Dict[str, str] = {
+            "config": "",
+            "prices": "",
+            "portfolio": "",
+            "trades": "",
+            "patterns": "",
+            "misc": ""
+        }
         os.makedirs("data", exist_ok=True)
         self._init_db()
         self._cleanup_old_states()
 
     def _init_db(self):
-        """Initialize the SQLite database schema."""
+        """Initialize the SQLite database schema with separate tables for each component."""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
+                # Config table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS state_config (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+                        config_data TEXT NOT NULL
+                    )
+                ''')
+                # Prices table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS state_prices (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+                        prices_data TEXT NOT NULL,
+                        price_history_data TEXT NOT NULL
+                    )
+                ''')
+                # Portfolio table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS state_portfolio (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+                        portfolio_data TEXT NOT NULL
+                    )
+                ''')
+                # Trades table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS state_trades (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+                        trades_data TEXT NOT NULL
+                    )
+                ''')
+                # Patterns table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS state_patterns (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+                        patterns_data TEXT NOT NULL,
+                        pattern_stats_data TEXT NOT NULL
+                    )
+                ''')
+                # Misc table
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS state_misc (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+                        misc_data TEXT NOT NULL
+                    )
+                ''')
+                # Legacy table for backward compatibility
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS bot_state (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1548,24 +1597,71 @@ class StateManager:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                cursor.execute('''
-                    DELETE FROM bot_state
-                    WHERE id NOT IN (
-                        SELECT id FROM bot_state
-                        ORDER BY timestamp DESC
-                        LIMIT ?
-                    )
-                ''', (self.max_backups,))
+                for table in ["bot_state", "state_config", "state_prices", "state_portfolio", "state_trades", "state_patterns", "state_misc"]:
+                    cursor.execute(f'''
+                        DELETE FROM {table}
+                        WHERE id NOT IN (
+                            SELECT id FROM {table}
+                            ORDER BY timestamp DESC
+                            LIMIT ?
+                        )
+                    ''', (self.max_backups,))
                 conn.commit()
         except Exception as e:
             logger.error(f"Error cleaning up old states: {e}", exc_info=True)
 
     def save_state(self):
-        """Save the current state to SQLite database."""
+        """Save the current state to SQLite database incrementally."""
         try:
             state_dict = self.state.to_dict()
-            state_json = json.dumps(state_dict, default=str, indent=2)  # Handle non-serializable types
 
+            # Save each component separately
+            self._save_component(
+                "config",
+                {"config": asdict(self.state.config)}
+            )
+            self._save_component(
+                "prices",
+                {
+                    "prices": state_dict["prices"],
+                    "price_history": {k: v for k, v in state_dict["price_history"].items()}
+                }
+            )
+            self._save_component(
+                "portfolio",
+                state_dict["portfolio"]
+            )
+            self._save_component(
+                "trades",
+                state_dict["trades"]
+            )
+            self._save_component(
+                "patterns",
+                {
+                    "active_patterns": state_dict["active_patterns"],
+                    "pattern_stats": state_dict["pattern_stats"]
+                }
+            )
+            self._save_component(
+                "misc",
+                {
+                    "is_running": state_dict["is_running"],
+                    "current_network": state_dict["current_network"],
+                    "last_traded_token": state_dict["last_traded_token"],
+                    "last_trade_times": state_dict["last_trade_times"],
+                    "start_time": state_dict["start_time"],
+                    "last_price_update": state_dict["last_price_update"],
+                    "current_gas_price": state_dict["current_gas_price"],
+                    "observed_tokens": list(state_dict["observed_tokens"]),
+                    "open_buy_orders": state_dict["open_buy_orders"],
+                    "token_symbols": state_dict["token_symbols"],
+                    "token_addresses": state_dict["token_addresses"],
+                    "timestamp": state_dict["timestamp"]
+                }
+            )
+
+            # Also save to legacy table for backward compatibility
+            state_json = json.dumps(state_dict, default=str, indent=2)
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
@@ -1574,31 +1670,143 @@ class StateManager:
                 ''', (state_json,))
                 conn.commit()
                 self._cleanup_old_states()
-            logger.info("State saved to SQLite database")
+
+            logger.info("State saved to SQLite database (incremental)")
         except Exception as e:
             logger.error(f"Error saving state to SQLite: {e}", exc_info=True)
+
+    def _save_component(self, component_name: str, data: Any):
+        """Save a single component if it has changed."""
+        try:
+            data_json = json.dumps(data, default=str, indent=2)
+            data_hash = hashlib.md5(data_json.encode()).hexdigest()
+
+            if data_hash == self.last_component_hashes[component_name]:
+                logger.debug(f"Component {component_name} unchanged, skipping save")
+                return
+
+            table_name = f"state_{component_name}"
+            column_name = f"{component_name}_data"
+
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute(f'''
+                    INSERT INTO {table_name} (timestamp, {column_name})
+                    VALUES (datetime('now'), ?)
+                ''', (data_json,))
+                conn.commit()
+                self.last_component_hashes[component_name] = data_hash
+                logger.debug(f"Saved component {component_name} to SQLite")
+        except Exception as e:
+            logger.error(f"Error saving component {component_name} to SQLite: {e}", exc_info=True)
+
+    def emit_state_files(self):
+        """Emit parts of state as human-readable txt files in the data directory."""
+        try:
+            os.makedirs("data", exist_ok=True)
+
+            # Emit prices.txt
+            with open("data/prices.txt", "w") as f:
+                f.write("=== Current Token Prices ===\n")
+                f.write(f"Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                for token, price in sorted(self.state.prices.items()):
+                    symbol = self.state.get_token_symbol(token)
+                    f.write(f"{symbol}: {price:.8f} ETH\n")
+
+            # Emit holdings.txt
+            with open("data/holdings.txt", "w") as f:
+                f.write("=== Portfolio Balances ===\n")
+                f.write(f"Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                f.write("Balances:\n")
+                for token, amount in self.state.portfolio["balances"].items():
+                    symbol = self.state.get_token_symbol(token)
+                    f.write(f"  {symbol}: {amount:.12f}\n")
+                f.write("\nOpen Positions:\n")
+                for pos in self.state.portfolio["positions"]:
+                    if pos["status"] == "open":
+                        symbol = self.state.get_token_symbol(pos["token"])
+                        current_price = self.state.get_token_price(pos["token"]) or pos["entry_price"]
+                        current_value = pos["amount"] * current_price
+                        f.write(f"  {symbol}: {pos['amount']:.12f} @ {pos['entry_price']:.8f} ETH (Value: {current_value:.12f} ETH)\n")
+
+            # Emit pnl.txt
+            with open("data/pnl.txt", "w") as f:
+                f.write("=== Profit & Loss ===\n")
+                f.write(f"Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                f.write(f"Starting ETH: {self.state.portfolio['starting_eth']:.12f} ETH\n")
+                f.write(f"Current ETH: {self.state.portfolio['current_eth']:.12f} ETH\n")
+                f.write(f"Realized PnL: {self.state.portfolio['realized_pnl']:.12f} ETH\n")
+                f.write(f"Unrealized PnL: {self.state.portfolio['unrealized_pnl']:.12f} ETH\n")
+                total_pnl = self.state.portfolio['realized_pnl'] + self.state.portfolio['unrealized_pnl']
+                f.write(f"Total PnL: {total_pnl:.12f} ETH\n")
+                if self.state.portfolio['starting_eth'] > 0:
+                    return_pct = (total_pnl / self.state.portfolio['starting_eth']) * 100
+                    f.write(f"Return: {return_pct:.2f}%\n")
+
+            logger.info("State emitted to TXT files in data/")
+        except Exception as e:
+            logger.error(f"Error emitting state files: {e}", exc_info=True)
 
     def load_state(self) -> bool:
         """Load the most recent state from SQLite database."""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT state_data FROM bot_state
-                    ORDER BY timestamp DESC
-                    LIMIT 1
-                ''')
-                result = cursor.fetchone()
+                state_dict = {}
 
-                if result is None:
-                    logger.info("No saved state found in SQLite database")
-                    return False
+                # Load each component from its table
+                components = {
+                    "config": ("state_config", "config_data", "config"),
+                    "prices": ("state_prices", ["prices_data", "price_history_data"], ["prices", "price_history"]),
+                    "portfolio": ("state_portfolio", "portfolio_data", "portfolio"),
+                    "trades": ("state_trades", "trades_data", "trades"),
+                    "patterns": ("state_patterns", ["patterns_data", "pattern_stats_data"], ["active_patterns", "pattern_stats"]),
+                    "misc": ("state_misc", "misc_data", None)
+                }
 
-                state_json = result[0]
-                state_dict = json.loads(state_json)
-                self.state.from_dict(state_dict)
-                logger.info("State loaded from SQLite database")
-                return True
+                for component_key, (table_name, column_names, state_keys) in components.items():
+                    if isinstance(column_names, str):
+                        cursor.execute(f'SELECT {column_names} FROM {table_name} ORDER BY timestamp DESC LIMIT 1')
+                        result = cursor.fetchone()
+                        if result:
+                            component_data = json.loads(result[0])
+                            if isinstance(state_keys, str):
+                                state_dict[state_keys] = component_data
+                            else:
+                                state_dict.update(component_data)
+                    else:
+                        cursor.execute(f'SELECT {", ".join(column_names)} FROM {table_name} ORDER BY timestamp DESC LIMIT 1')
+                        result = cursor.fetchone()
+                        if result:
+                            for col, key in zip(column_names, state_keys):
+                                state_dict[key] = json.loads(result[column_names.index(col)])
+
+                # Load misc data
+                if "misc" in state_dict:
+                    for key, value in state_dict["misc"].items():
+                        state_dict[key] = value
+                    del state_dict["misc"]
+
+                # Fallback to legacy table if components are missing
+                if not state_dict or "config" not in state_dict:
+                    cursor.execute('SELECT state_data FROM bot_state ORDER BY timestamp DESC LIMIT 1')
+                    result = cursor.fetchone()
+                    if result:
+                        full_state = json.loads(result[0])
+                        for key in full_state:
+                            if key not in state_dict:
+                                state_dict[key] = full_state[key]
+
+                if state_dict:
+                    # Ensure observed_tokens is a set
+                    if "observed_tokens" in state_dict and isinstance(state_dict["observed_tokens"], list):
+                        state_dict["observed_tokens"] = set(state_dict["observed_tokens"])
+                    self.state.from_dict(state_dict)
+                    logger.info("State loaded from SQLite database (incremental)")
+                    return True
+
+            logger.info("No saved state found in SQLite database")
+            return False
         except Exception as e:
             logger.error(f"Error loading state from SQLite: {e}", exc_info=True)
             return False
@@ -1631,7 +1839,7 @@ class Bot:
 
         self._event_loop_thread = threading.Thread(target=run_loop, daemon=True)
         self._event_loop_thread.start()
-        time.sleep(0.1)  # Give the loop time to start
+        time.sleep(0.1)
         logger.info("Background event loop initialized")
 
     def _stop_event_loop(self):
@@ -1651,7 +1859,7 @@ class Bot:
             return
 
         logger.info("Starting Uniswap Quick Swap Trader (Profit-Only Mode)...")
-        logger.info(f"Generated {len(self.optimizer.parameter_sets)} parameter sets from ranges.")
+        logger.info(f"Generated {len(self.optimizer.parameter_sets)} parameter sets (including aggressive set).")
 
         self._start_event_loop()
 
@@ -1678,11 +1886,12 @@ class Bot:
         # Start pattern detection
         self.trader.start_pattern_detection()
 
-        # Start state saving
+        # Start state saving and file emission
         def state_saver():
             while self.running:
-                logger.debug("Saving state...")
+                logger.debug("Saving state and emitting files...")
                 self.state_manager.save_state()
+                self.state_manager.emit_state_files()
                 time.sleep(30)
 
         threading.Thread(target=state_saver, daemon=True).start()
@@ -1713,6 +1922,7 @@ class Bot:
         self.trader.stop_pattern_detection()
         self._stop_event_loop()
         self.state_manager.save_state()
+        self.state_manager.emit_state_files()
         logger.info("Bot stopped!")
 
     def _interactive_loop(self):
@@ -1738,7 +1948,7 @@ class Bot:
 
     def print_status(self):
         status = self._get_status()
-        print("\n=== Uniswap Quick Swap Trader v7.0.0 - Enhanced Debug Mode ===")
+        print("\n=== Uniswap Quick Swap Trader v7.1.0 - Enhanced Debug Mode ===")
         print(f"Status: {'Running' if status['is_running'] else 'Stopped'}")
         print(f"Uptime: {status['uptime']}")
         print(f"Live Mode: {'ON' if self.trader.live_mode else 'OFF (shadow mode)'}")
@@ -1767,7 +1977,13 @@ class Bot:
         for i, params in enumerate(self.optimizer.parameter_sets):
             perf = self.optimizer.performance[i]
             marker = " (BEST)" if i == self.optimizer.best_set_index else ""
-            print(f"Set {i}{marker}: Profit={perf['profit']:.6f} ETH, Trades={perf['trades']}, Winning={perf['winning_trades']}")
+            is_aggressive = (
+                params.get("MIN_PRICE_CHANGE", 1) == 0.001 and
+                params.get("MIN_PROFIT_PERCENT", 1) == 0.01 and
+                params.get("MIN_TIME_WINDOW", 1) == 1
+            )
+            aggressive_marker = " (AGGRESSIVE)" if is_aggressive else ""
+            print(f"Set {i}{marker}{aggressive_marker}: Profit={perf['profit']:.6f} ETH, Trades={perf['trades']}, Winning={perf['winning_trades']}")
 
         open_positions = [p for p in self.state.portfolio["positions"] if p["status"] == "open"]
         if open_positions:
@@ -1809,7 +2025,13 @@ class Bot:
         for i, params in enumerate(self.optimizer.parameter_sets):
             perf = self.optimizer.performance[i]
             is_best = " (BEST)" if i == self.optimizer.best_set_index else ""
-            print(f"\nSet {i}{is_best}:")
+            is_aggressive = (
+                params.get("MIN_PRICE_CHANGE", 1) == 0.001 and
+                params.get("MIN_PROFIT_PERCENT", 1) == 0.01 and
+                params.get("MIN_TIME_WINDOW", 1) == 1
+            )
+            aggressive_marker = " (AGGRESSIVE)" if is_aggressive else ""
+            print(f"\nSet {i}{is_best}{aggressive_marker}:")
             for key, value in params.items():
                 print(f"  {key}: {value}")
             print(f"  Performance: Profit={perf['profit']:.6f} ETH, Trades={perf['trades']}, Winning={perf['winning_trades']}")
@@ -1857,12 +2079,14 @@ class Bot:
 
 # ========== MAIN ==========
 def main():
-    print("Uniswap Quick Swap Trader v7.0.0 - Enhanced Debug Version")
+    print("Uniswap Quick Swap Trader v7.1.0 - Enhanced Debug Version")
     print("Profit-Only Mode: Buys dips and sells ONLY at profit")
     print("Arbitrum-Only Mode: Only works on Arbitrum network")
     print("Dynamic Token Discovery: Populates tokens from CoinGecko's Arbitrum list.")
-    print("Enhanced Logging: Detailed logs for debugging\n")
-    logger.info("Uniswap Quick Swap Trader v7.0.0 (Enhanced Debug) started.")
+    print("Enhanced Logging: Detailed logs for debugging")
+    print("Incremental DB Persistence: Only updates changed state components")
+    print("State Files: Emits prices.txt, holdings.txt, pnl.txt to data/\n")
+    logger.info("Uniswap Quick Swap Trader v7.1.0 (Enhanced Debug) started.")
 
     bot = Bot()
     bot.state_manager.load_state()
