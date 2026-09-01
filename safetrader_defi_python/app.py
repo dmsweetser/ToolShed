@@ -831,7 +831,7 @@ class SwapEventListener:
     async def _initialize_known_pools(self):
         """Initialize price graph with known pools from configuration"""
         chain_key = self.state.current_chain_key
-        chain_config = self.chains[chain_key]
+        chain_config = CHAINS[chain_key]
         wrapped_native = to_checksum_address(chain_config['wrappedNative'])
 
         # Add known token addresses from NETWORK_TOKENS
