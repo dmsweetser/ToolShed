@@ -10,6 +10,7 @@ import hashlib
 from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Set, Tuple, Any
+from collections import deque
 
 from dotenv import load_dotenv
 from web3 import Web3
@@ -21,9 +22,9 @@ from urllib3.util.retry import Retry
 # Load environment variables
 load_dotenv()
 
-# Configure logging - MORE VERBOSE FOR DEBUGGING
+# Configure logging
 logging.basicConfig(
-    level=logging.DEBUG,  # Changed from INFO to DEBUG
+    level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
     handlers=[
         logging.FileHandler("app.log"),
@@ -50,14 +51,12 @@ def to_checksum_address(address: str) -> str:
         return address
 
 # ========== COINGECKO TOKEN FETCHER ==========
-import json
 from pathlib import Path
 
 TOKEN_LIST_URL = "https://tokens.coingecko.com/arbitrum-one/all.json"
 LOCAL_TOKEN_FILE = Path("data/arbitrum_tokens.json")
 
 def fetch_coingecko_tokens(chain_id: int = 42161) -> List[Dict[str, Any]]:
-    # Try local file first
     if LOCAL_TOKEN_FILE.exists():
         try:
             with open(LOCAL_TOKEN_FILE, "r") as f:
@@ -67,23 +66,17 @@ def fetch_coingecko_tokens(chain_id: int = 42161) -> List[Dict[str, Any]]:
                 return [token for token in tokens if token.get("chainId") == chain_id]
         except Exception as e:
             logger.warning(f"Failed to load local token cache: {e}")
-
-    # Fall back to API with retry
     try:
         logger.info("Fetching fresh token list from CoinGecko...")
         session = requests.Session()
-        retry = Retry(total=3, backoff_factor=5, status_forcelist=[429, 500, 502, 503, 504])
+        retry = Retry(total=3, backoff_factor=5, status_forcelist=[429])
         session.mount("https://", HTTPAdapter(max_retries=retry))
-
-        response = session.get(TOKEN_LIST_URL, timeout=30)  # Increased timeout
+        response = session.get(TOKEN_LIST_URL, timeout=15)
         response.raise_for_status()
         data = response.json()
-
-        # Save to local file
         LOCAL_TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
         with open(LOCAL_TOKEN_FILE, "w") as f:
             json.dump(data, f, indent=2)
-
         tokens = data.get("tokens", [])
         logger.info(f"Fetched and cached {len(tokens)} tokens from CoinGecko")
         return [token for token in tokens if token.get("chainId") == chain_id]
@@ -106,13 +99,12 @@ class ParameterRange:
             current += self.step
         return values
 
-# Aggressive parameter ranges + explicit aggressive set
 DEFAULT_PARAMETER_RANGES = {
-    "MIN_PRICE_CHANGE":    ParameterRange(min=0.001, max=0.001,  step=0.01),
-    "MIN_TIME_WINDOW":     ParameterRange(min=1,     max=1,   step=30),
-    "MAX_TIME_WINDOW":     ParameterRange(min=60,    max=60,  step=120),
-    "MIN_OCCURRENCES":     ParameterRange(min=1,     max=1,    step=1),
-    "MIN_PROFIT_PERCENT":  ParameterRange(min=0.01,  max=0.01,  step=0.01),
+    "MIN_PRICE_CHANGE":    ParameterRange(min=0.1, max=0.1, step=0.499),
+    "MIN_TIME_WINDOW":     ParameterRange(min=3, max=3, step=29),
+    "MAX_TIME_WINDOW":     ParameterRange(min=600, max=600, step=240),
+    "MIN_OCCURRENCES":     ParameterRange(min=2, max=2, step=1),
+    "MIN_PROFIT_PERCENT":  ParameterRange(min=2.0, max=2.0, step=4.99),
 }
 
 class ParameterGenerator:
@@ -120,19 +112,18 @@ class ParameterGenerator:
         self.ranges = ranges or DEFAULT_PARAMETER_RANGES
         self.max_combinations = max_combinations
         self.parameter_sets = self._generate_parameter_sets()
-        # Add explicit aggressive set
         aggressive_set = {
-            "MIN_PRICE_CHANGE": 0.001,
-            "MIN_TIME_WINDOW": 1,
-            "MAX_TIME_WINDOW": 60,
-            "MIN_OCCURRENCES": 1,
-            "MIN_PROFIT_PERCENT": 0.01
+            "MIN_PRICE_CHANGE": 0.1,
+            "MIN_TIME_WINDOW": 3,
+            "MAX_TIME_WINDOW": 600,
+            "MIN_OCCURRENCES": 2,
+            "MIN_PROFIT_PERCENT": 2.0
         }
         if aggressive_set not in [dict(p) for p in self.parameter_sets]:
             self.parameter_sets.append(aggressive_set)
             if len(self.parameter_sets) > self.max_combinations:
                 self.parameter_sets.pop(0)
-        logger.info(f"Generated {len(self.parameter_sets)} parameter sets (including aggressive set)")
+        logger.info(f"Generated {len(self.parameter_sets)} parameter sets")
 
     def _generate_parameter_sets(self) -> List[Dict[str, float]]:
         param_values = {name: rng.generate_values() for name, rng in self.ranges.items()}
@@ -142,7 +133,6 @@ class ParameterGenerator:
         if total_combinations <= self.max_combinations:
             return self._generate_all_combinations(param_values)
         else:
-            logger.info(f"Total combinations ({total_combinations}) exceeds max ({self.max_combinations}), sampling...")
             return self._sample_combinations(param_values, self.max_combinations)
 
     def _generate_all_combinations(self, param_values: Dict[str, List[float]]) -> List[Dict[str, float]]:
@@ -174,13 +164,13 @@ class Config:
     MAX_TRADES: int = 10
     TRADE_COOLDOWN: int = 60
     MIN_PRICE_CHANGE: float = 0.1
-    MIN_TIME_WINDOW: int = 5
-    MAX_TIME_WINDOW: int = 120
+    MIN_TIME_WINDOW: int = 3
+    MAX_TIME_WINDOW: int = 600
     MIN_OCCURRENCES: int = 2
-    MIN_PROFIT_PERCENT: float = 1.0
+    MIN_PROFIT_PERCENT: float = 2.0
     MAX_SLIPPAGE: float = 0.5
     MAX_GAS_PRICE: int = 200
-    GAS_LIMIT: int = 300000
+    GAS_LIMIT: int = 200000
     PREVENT_SEQUENTIAL_TRADES: bool = True
     PRICE_HISTORY_DURATION: int = 24
     MAX_PRICE_HISTORY: int = 5000
@@ -204,13 +194,11 @@ NETWORK_TOKENS = {
     }
 }
 
-# UPDATED: More reliable RPC endpoints
 ARBITRUM_RPC_ENDPOINTS = [
-    "https://arb1.arbitrum.io/rpc",  # Official Arbitrum
+    "wss://arbitrum-one-rpc.publicnode.com",
+    "https://arb1.arbitrum.io/rpc",
     "https://arbitrum-mainnet.public.blastapi.io",
     "https://arbitrum-mainnet.rpcfast.com",
-    "https://rpc.ankr.com/arbitrum",
-    "https://arbitrum-mainnet.core.chainstack.com",
 ]
 
 CHAINS = {
@@ -223,18 +211,8 @@ CHAINS = {
         "quoteMode": "native",
         "quoteLabel": "ETH",
         "stables": [
-            "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",  # USDC
-            "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",  # USDT
-            "0xDA10009cBd5D07dd0CeCc66161FC93D7c9a9b170",   # DAI
-        ],
-        "topPools": [
-            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0x2f2a2543B76A416654947aaB75B4e35b52a17231", 3000),  # WETH/WBTC
-            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xfa7F8980b0f1E64A2062791cc3b0871572f1F7f0", 3000),  # WETH/UNI
-            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4", 3000),  # WETH/LINK
-            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0x912CE59144196C11c48067255325c5414506085A", 3000),  # WETH/ARB
-            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xfc5A1A6EB076a2C7aD06eD22C5C769A78b3Fa3A1", 3000),  # WETH/GMX
-            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", 500),   # WETH/USDC
-            ("0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", 500),   # WETH/USDT
+            "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+            "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"
         ]
     }
 }
@@ -293,6 +271,13 @@ UNISWAP_V3_POOL_ABI = json.loads('''
         "outputs": [{"internalType": "uint24", "name": "", "type": "uint24"}],
         "stateMutability": "view",
         "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "liquidity",
+        "outputs": [{"internalType": "uint128", "name": "", "type": "uint128"}],
+        "stateMutability": "view",
+        "type": "function"
     }
 ]
 ''')
@@ -306,7 +291,120 @@ ERC20_ABI = json.loads('''
 ]
 ''')
 
-# ========== STATE MANAGEMENT (THREAD-SAFE) ==========
+# SWAP EVENT ABI for filtering
+SWAP_EVENT_ABI = json.loads('''
+[
+    {
+        "anonymous": false,
+        "inputs": [
+            {"indexed": true, "internalType": "address", "name": "sender", "type": "address"},
+            {"indexed": true, "internalType": "address", "name": "recipient", "type": "address"},
+            {"indexed": false, "internalType": "int256", "name": "amount0", "type": "int256"},
+            {"indexed": false, "internalType": "int256", "name": "amount1", "type": "int256"},
+            {"indexed": false, "internalType": "uint160", "name": "sqrtPriceX96", "type": "uint160"},
+            {"indexed": false, "internalType": "uint128", "name": "liquidity", "type": "uint128"},
+            {"indexed": false, "internalType": "int24", "name": "tick", "type": "int24"}
+        ],
+        "name": "Swap",
+        "type": "event"
+    }
+]
+''')
+
+# ========== PRICE GRAPH - BFS TRAVERSAL (Like HTML/JS version) ==========
+class PriceGraph:
+    def __init__(self, chain_config: Dict[str, Any]):
+        self.chain_config = chain_config
+        self.pair_prices: Dict[str, Dict[str, float]] = {}  # token_addr -> {neighbor_addr: price}
+        self.token_metadata: Dict[str, Dict[str, Any]] = {}  # addr -> {symbol, decimals, name}
+        self.stables = set(to_checksum_address(a) for a in chain_config.get('stables', []))
+        self.wrapped_native = to_checksum_address(chain_config['wrappedNative'])
+        self.quote_mode = chain_config.get('quoteMode', 'native')
+        self._lock = threading.Lock()
+
+    def add_pair_price(self, token0: str, token1: str, price: float):
+        """Add direct price relationship between two tokens (BOTH DIRECTIONS)"""
+        token0 = to_checksum_address(token0)
+        token1 = to_checksum_address(token1)
+        if not isinstance(price, (int, float)) or price <= 0:
+            return
+
+        with self._lock:
+            if token0 not in self.pair_prices:
+                self.pair_prices[token0] = {}
+            if token1 not in self.pair_prices:
+                self.pair_prices[token1] = {}
+
+            self.pair_prices[token0][token1] = price
+            self.pair_prices[token1][token0] = 1.0 / price
+            logger.debug(f"Added price pair: {short(token0)} <-> {short(token1)} @ {price:.8f}")
+
+    def get_price(self, token_address: str) -> Optional[float]:
+        """BFS traversal to find price from token to quote token (ETH or stable)"""
+        token_address = to_checksum_address(token_address)
+
+        # Direct checks
+        if self.quote_mode == 'native' and token_address == self.wrapped_native:
+            return 1.0
+        if self.quote_mode == 'usd' and token_address in self.stables:
+            return 1.0
+
+        # BFS queue: (current_token, accumulated_price, depth)
+        queue = deque()
+        queue.append((token_address, 1.0, 0))
+        visited = {token_address}
+
+        while queue:
+            current, accumulated_price, depth = queue.popleft()
+
+            # Limit search depth to prevent infinite loops
+            if depth > 4:
+                continue
+
+            # Check if we reached our target
+            if self.quote_mode == 'native' and current == self.wrapped_native:
+                return accumulated_price
+            if self.quote_mode == 'usd' and current in self.stables:
+                return accumulated_price
+
+            # Explore all neighbors
+            if current in self.pair_prices:
+                for neighbor, edge_price in self.pair_prices[current].items():
+                    if neighbor not in visited:
+                        visited.add(neighbor)
+                        new_price = accumulated_price * edge_price
+                        queue.append((neighbor, new_price, depth + 1))
+
+        logger.debug(f"No price path found for {short(token_address)}")
+        return None
+
+    def is_stable(self, address: str) -> bool:
+        return to_checksum_address(address) in self.stables
+
+    def is_quote_token(self, address: str) -> bool:
+        return to_checksum_address(address) == self.wrapped_native
+
+    def set_token_metadata(self, address: str, symbol: str, decimals: int, name: str = None):
+        address = to_checksum_address(address)
+        with self._lock:
+            self.token_metadata[address] = {
+                'symbol': symbol,
+                'decimals': decimals,
+                'name': name or symbol
+            }
+
+    def get_token_symbol(self, address: str) -> str:
+        address = to_checksum_address(address)
+        with self._lock:
+            if address in self.token_metadata:
+                return self.token_metadata[address]['symbol']
+            return short(address)
+
+    def get_all_tokens(self) -> Set[str]:
+        with self._lock:
+            return set(self.pair_prices.keys())
+
+# ========== STATE MANAGEMENT ==========
 class State:
     def __init__(self, config: Config):
         self.config = config
@@ -532,7 +630,7 @@ class ParameterOptimizer:
         self.get_current_best_parameters()
         self.last_optimization_time = current_time
 
-# ========== BLOCKCHAIN HELPERS - FIXED ==========
+# ========== BLOCKCHAIN HELPERS ==========
 class BlockchainHelper:
     def __init__(self, state: State):
         self.state = state
@@ -565,7 +663,7 @@ class BlockchainHelper:
         chain_config = self.chains[chain_key]
         rpc_urls = chain_config["rpcs"]
 
-        # Test ALL endpoints and find the first working one
+        # Try WebSocket first, then HTTP
         working_rpc = None
         for rpc_url in rpc_urls:
             if self._test_rpc_endpoint(rpc_url):
@@ -573,9 +671,10 @@ class BlockchainHelper:
                 break
 
         if working_rpc:
-            provider = Web3.WebsocketProvider(working_rpc, websocket_timeout=10) \
-                if working_rpc.startswith("wss://") \
-                else Web3.HTTPProvider(working_rpc, request_kwargs={'timeout': 10})
+            if working_rpc.startswith("wss://"):
+                provider = Web3.WebsocketProvider(working_rpc, websocket_timeout=10)
+            else:
+                provider = Web3.HTTPProvider(working_rpc, request_kwargs={'timeout': 10})
             w3 = Web3(provider)
             if chain_key in ["polygon", "arbitrum", "base", "optimism"]:
                 w3.middleware_onion.inject(ExtraDataToPOAMiddleware(), layer=0, name="extradata_to_poa")
@@ -583,7 +682,6 @@ class BlockchainHelper:
             logger.info(f"Using working RPC endpoint: {working_rpc}")
         else:
             logger.error("ALL RPC ENDPOINTS FAILED - using fallback")
-            # Use most reliable fallback
             fallback = "https://arb1.arbitrum.io/rpc"
             provider = Web3.HTTPProvider(fallback, request_kwargs={'timeout': 10})
             w3 = Web3(provider)
@@ -655,7 +753,7 @@ class BlockchainHelper:
                 return None
             token0_checksum = to_checksum_address(token0)
             token1_checksum = to_checksum_address(token1)
-            # Ensure token0 < token1 for consistent pool address
+            # Ensure consistent ordering (token0 < token1)
             if token0_checksum.lower() > token1_checksum.lower():
                 token0_checksum, token1_checksum = token1_checksum, token0_checksum
             pool_address = factory.functions.getPool(token0_checksum, token1_checksum, fee).call()
@@ -666,86 +764,278 @@ class BlockchainHelper:
             logger.error(f"Error getting pool address for {short(token0)}-{short(token1)}: {e}")
             return None
 
-    # ========== FIXED: get_pool_price now handles price direction ==========
-    async def get_pool_price(self, pool_address: str, chain_key: str) -> Optional[float]:
+    def _sqrt_price_x96_to_price(self, sqrt_price_x96: int) -> float:
+        sqrt_price = sqrt_price_x96 / (2**96)
+        return sqrt_price * sqrt_price
+
+    async def get_pool_price_direct(self, pool_address: str, chain_key: str) -> Optional[float]:
+        """Get price directly from pool's slot0 - used for initializing the graph"""
         try:
             pool_address_checksum = to_checksum_address(pool_address)
             pool = await self.get_pool_contract(pool_address_checksum, chain_key)
             if not pool:
                 return None
-
             slot0 = pool.functions.slot0().call()
             sqrt_price_x96 = slot0[0]
-            token0 = to_checksum_address(pool.functions.token0().call())
-            token1 = to_checksum_address(pool.functions.token1().call())
-
-            price = self._sqrt_price_x96_to_price(sqrt_price_x96)
-
-            # Get the wrapped native token for this chain
-            chain_config = self.chains[chain_key]
-            wrapped_native = to_checksum_address(chain_config["wrappedNative"])
-
-            # Case 1: token0 is wrapped native (ETH), token1 is the other token
-            if norm(token0) == norm(wrapped_native):
-                # price = token1 / token0 -> we want token1/ETH
-                return price
-            # Case 2: token1 is wrapped native (ETH), token0 is the other token
-            elif norm(token1) == norm(wrapped_native):
-                # price = token0 / token1 -> we want token0/ETH
-                return 1 / price
-            else:
-                # Neither is ETH - this is a token/token pool
-                # We can't determine ETH price from this pool alone
-                logger.debug(f"Pool {short(pool_address)} is {short(token0)}/{short(token1)} - not ETH pair")
-                return None
-
+            return self._sqrt_price_x96_to_price(sqrt_price_x96)
         except Exception as e:
             logger.error(f"Error getting price from pool {short(pool_address)}: {e}")
             return None
 
-    def _sqrt_price_x96_to_price(self, sqrt_price_x96: int) -> float:
-        sqrt_price = sqrt_price_x96 / (2**96)
-        return sqrt_price * sqrt_price
+# ========== SWAP EVENT LISTENER (Event-Driven like HTML/JS) ==========
+class SwapEventListener:
+    def __init__(self, state: State, blockchain: BlockchainHelper, price_graph: PriceGraph):
+        self.state = state
+        self.blockchain = blockchain
+        self.price_graph = price_graph
+        self.swap_topic = "0xc42079f94a6436c4e6930f05045148f3556048be474e7962b362652246f71625"
+        self.active = False
+        self.current_block = 0
+        self.last_block_check = 0
+        self._lock = threading.Lock()
+        self._event_loop = None
 
-    async def get_token_decimals(self, token_address: str, chain_key: str) -> int:
-        if token_address in self.state.token_decimals:
-            return self.state.token_decimals[token_address]
+    async def start(self):
+        """Start listening for swap events and building price graph"""
+        if self.active:
+            return True
+
+        self.active = True
+        w3 = self.blockchain.get_web3(self.state.current_chain_key)
+        if not w3:
+            self.active = False
+            return False
+
         try:
-            token_contract = await self.get_token_contract(token_address, chain_key)
-            if not token_contract:
-                return 18
-            decimals = token_contract.functions.decimals().call()
-            with self.state._lock:
-                self.state.token_decimals[token_address] = decimals
-            return decimals
+            self.current_block = w3.eth.block_number
+            self.last_block_check = self.current_block
+            logger.info(f"SwapEventListener started at block {self.current_block}")
+
+            # Initialize with known pools from top tokens
+            await self._initialize_known_pools()
+
+            # Start block polling
+            asyncio.create_task(self._poll_blocks())
+
+            return True
         except Exception as e:
-            logger.error(f"Error getting token decimals for {short(token_address)}: {e}")
-            return 18
+            logger.error(f"Failed to start SwapEventListener: {e}")
+            self.active = False
+            return False
 
-    async def get_token_symbol(self, token_address: str, chain_key: str) -> str:
-        if token_address in self.state.token_symbols:
-            return self.state.token_symbols[token_address]
+    async def stop(self):
+        """Stop the event listener"""
+        self.active = False
+        logger.info("SwapEventListener stopped")
+
+    async def _initialize_known_pools(self):
+        """Initialize price graph with known pools from configuration"""
+        chain_key = self.state.current_chain_key
+        chain_config = self.chains[chain_key]
+        wrapped_native = to_checksum_address(chain_config['wrappedNative'])
+
+        # Add known token addresses from NETWORK_TOKENS
+        token_addresses = list(NETWORK_TOKENS.get(chain_key, {}).values())
+        token_addresses.append(wrapped_native)
+        token_addresses.extend(chain_config.get('stables', []))
+
+        # Get all unique pairs
+        pairs = set()
+        for i, addr1 in enumerate(token_addresses):
+            for addr2 in token_addresses[i+1:]:
+                pairs.add((addr1, addr2))
+
+        # Try to get pools for each pair
+        for token0, token1 in pairs:
+            for fee in [POOL_FEES["LOW"], POOL_FEES["MEDIUM"], POOL_FEES["HIGH"]]:
+                pool_address = await self.blockchain.get_pool_address(
+                    token0, token1, fee, chain_key
+                )
+                if pool_address:
+                    price = await self.blockchain.get_pool_price_direct(pool_address, chain_key)
+                    if price is not None:
+                        self.price_graph.add_pair_price(token0, token1, price)
+                        logger.info(f"Initialized pair: {short(token0)}/{short(token1)} @ {price:.8f}")
+                    break  # Found a pool for this pair
+
+        # Load token metadata for known tokens
+        for addr in token_addresses:
+            await self._load_token_metadata(addr)
+
+    async def _poll_blocks(self):
+        """Poll for new blocks and process swap events"""
+        while self.active:
+            try:
+                w3 = self.blockchain.get_web3(self.state.current_chain_key)
+                if not w3:
+                    await asyncio.sleep(5)
+                    continue
+
+                latest_block = w3.eth.block_number
+                if latest_block > self.last_block_check:
+                    # Process blocks in batches of 5 to avoid rate limiting
+                    start_block = self.last_block_check + 1
+                    end_block = min(latest_block, start_block + 4)  # Process 5 blocks at a time
+
+                    for block_num in range(start_block, end_block + 1):
+                        await self._process_block(block_num)
+
+                    self.last_block_check = end_block
+
+                await asyncio.sleep(2)  # Poll every 2 seconds
+
+            except Exception as e:
+                logger.error(f"Error in block polling: {e}")
+                await asyncio.sleep(5)
+
+    async def _process_block(self, block_num: int):
+        """Process all swap events in a block"""
+        w3 = self.blockchain.get_web3(self.state.current_chain_key)
+        if not w3:
+            return
+
         try:
-            token_contract = await self.get_token_contract(token_address, chain_key)
+            logs = w3.eth.get_logs({
+                'fromBlock': block_num,
+                'toBlock': block_num,
+                'topics': [self.swap_topic]
+            })
+
+            for log in logs:
+                await self._process_swap_log(log)
+
+        except Exception as e:
+            logger.error(f"Error processing block {block_num}: {e}")
+
+    async def _process_swap_log(self, log: Dict[str, Any]):
+        """Process a single swap event and update price graph"""
+        try:
+            pool_address = to_checksum_address(log['address'])
+
+            # Get pool contract and tokens
+            pool_contract = await self.blockchain.get_pool_contract(pool_address, self.state.current_chain_key)
+            if not pool_contract:
+                return
+
+            token0 = to_checksum_address(pool_contract.functions.token0().call())
+            token1 = to_checksum_address(pool_contract.functions.token1().call())
+
+            # Get current price from slot0
+            slot0 = pool_contract.functions.slot0().call()
+            sqrt_price_x96 = slot0[0]
+            price = self.blockchain._sqrt_price_x96_to_price(sqrt_price_x96)
+
+            # Add to price graph
+            self.price_graph.add_pair_price(token0, token1, price)
+
+            # Load token metadata if not already loaded
+            for token in [token0, token1]:
+                if token not in self.price_graph.token_metadata:
+                    await self._load_token_metadata(token)
+
+            # Update state with observed tokens
+            with self.state._lock:
+                self.state.observed_tokens.add(token0)
+                self.state.observed_tokens.add(token1)
+
+            # Update prices in state using BFS traversal
+            self._update_token_prices()
+
+            logger.debug(f"Processed swap on pool {short(pool_address)}: {short(token0)}/{short(token1)} @ {price:.8f}")
+
+        except Exception as e:
+            logger.error(f"Error processing swap log: {e}")
+
+    async def _load_token_metadata(self, token_address: str):
+        """Load token symbol, decimals, name from contract"""
+        try:
+            token_address = to_checksum_address(token_address)
+            token_contract = await self.blockchain.get_token_contract(token_address, self.state.current_chain_key)
             if not token_contract:
-                return short(token_address)
+                # Try to get from known tokens
+                for symbol, addr in NETWORK_TOKENS.get(self.state.current_chain_key, {}).items():
+                    if norm(addr) == norm(token_address):
+                        self.price_graph.set_token_metadata(
+                            token_address,
+                            symbol,
+                            18  # Default, will be updated if we get actual decimals
+                        )
+                        with self.state._lock:
+                            self.state.token_symbols[token_address] = symbol
+                            self.state.token_addresses[symbol] = token_address
+                        return
+                return
+
+            # Get metadata from contract
             symbol = token_contract.functions.symbol().call()
+            decimals = token_contract.functions.decimals().call()
+            try:
+                name = token_contract.functions.name().call()
+            except:
+                name = symbol
+
+            self.price_graph.set_token_metadata(token_address, symbol, decimals, name)
+
             with self.state._lock:
                 self.state.token_symbols[token_address] = symbol
                 self.state.token_addresses[symbol] = token_address
-            return symbol
-        except Exception as e:
-            logger.error(f"Error getting token symbol for {short(token_address)}: {e}")
-            return short(token_address)
+                self.state.token_decimals[token_address] = decimals
 
-# ========== TOKEN DISCOVERY (THREAD-SAFE) ==========
+        except Exception as e:
+            logger.error(f"Error loading token metadata for {short(token_address)}: {e}")
+            # Fallback to short address
+            self.price_graph.set_token_metadata(token_address, short(token_address), 18)
+
+    def _update_token_prices(self):
+        """Update all token prices using BFS traversal through the price graph"""
+        with self.state._lock:
+            tokens_to_update = list(self.state.observed_tokens)
+
+        updated_count = 0
+        for token in tokens_to_update:
+            token_checksum = to_checksum_address(token)
+            price = self.price_graph.get_price(token_checksum)
+            if price is not None:
+                with self.state._lock:
+                    old_price = self.state.prices.get(token)
+                    self.state.prices[token] = price
+                    self._update_price_history(token, price)
+                    updated_count += 1
+
+        if updated_count > 0:
+            with self.state._lock:
+                self.state.last_price_update = time.time()
+            logger.debug(f"Updated {updated_count} token prices via BFS traversal")
+
+    def _update_price_history(self, token: str, price: float):
+        with self.state._lock:
+            if token not in self.state.price_history:
+                self.state.price_history[token] = []
+            self.state.price_history[token].append({"price": price, "timestamp": time.time()})
+            if len(self.state.price_history[token]) > self.state.config.MAX_PRICE_HISTORY:
+                self.state.price_history[token] = self.state.price_history[token][-self.state.config.MAX_PRICE_HISTORY:]
+
+    async def update_gas_price(self):
+        """Update current gas price from the network"""
+        try:
+            w3 = self.blockchain.get_web3(self.state.current_chain_key)
+            if not w3:
+                return
+            gas_price_wei = w3.eth.gas_price
+            with self.state._lock:
+                self.state.current_gas_price = gas_price_wei / 1e9
+            logger.debug(f"Gas price updated: {self.state.current_gas_price:.2f} gwei")
+        except Exception as e:
+            logger.error(f"Error updating gas price: {e}")
+            with self.state._lock:
+                self.state.current_gas_price = self.state.config.MAX_GAS_PRICE
+
+# ========== TOKEN DISCOVERY ==========
 class TokenDiscovery:
-    def __init__(self, state: State, blockchain: BlockchainHelper):
+    def __init__(self, state: State, blockchain: BlockchainHelper, price_graph: PriceGraph):
         self.state = state
         self.blockchain = blockchain
-        self.active_pools: Set[str] = set()
-        self.last_block: Dict[str, int] = {}
-        self.swap_topic = "0xc42079f94a6436c4e6930f05045148f3556048be474e7962b362652246f71625"
+        self.price_graph = price_graph
 
     async def initialize_known_tokens(self, chain_key: str):
         logger.info(f"Initializing known tokens for {chain_key}")
@@ -761,7 +1051,7 @@ class TokenDiscovery:
                 self.state.observed_tokens.add(wrapped_native)
             if wrapped_native not in self.state.prices:
                 self.state.prices[wrapped_native] = 1.0
-                self._update_price_history(wrapped_native, 1.0)
+                self.price_graph.set_token_metadata(wrapped_native, quote_label, 18)
 
             for symbol, address in NETWORK_TOKENS.get(chain_key, {}).items():
                 checksum_addr = to_checksum_address(address)
@@ -770,83 +1060,15 @@ class TokenDiscovery:
                     self.state.token_addresses[symbol] = checksum_addr
                 if checksum_addr not in self.state.observed_tokens:
                     self.state.observed_tokens.add(checksum_addr)
+                if checksum_addr not in self.price_graph.token_metadata:
+                    self.price_graph.set_token_metadata(checksum_addr, symbol, 18)
 
             for stable in chain_config.get("stables", []):
                 stable = to_checksum_address(stable)
                 if stable not in self.state.observed_tokens:
                     self.state.observed_tokens.add(stable)
 
-        await self._add_top_pool_tokens(chain_key)
-        await self._add_coingecko_tokens(chain_key)
         logger.info(f"Initialized {len(self.state.observed_tokens)} known tokens")
-
-    async def _add_coingecko_tokens(self, chain_key: str):
-        logger.info("Adding tokens from CoinGecko...")
-        coingecko_tokens = fetch_coingecko_tokens()
-        with self.state._lock:
-            for token in coingecko_tokens:
-                address = to_checksum_address(token["address"])
-                symbol = token.get("symbol", short(address))
-                if address not in self.state.observed_tokens:
-                    self.state.observed_tokens.add(address)
-                    self.state.token_symbols[address] = symbol
-                    self.state.token_addresses[symbol] = address
-        logger.info(f"Added {len(coingecko_tokens)} tokens from CoinGecko")
-
-    async def _add_top_pool_tokens(self, chain_key: str):
-        chain_config = CHAINS[chain_key]
-        with self.state._lock:
-            for token0, token1, _ in chain_config.get("topPools", []):
-                for token_addr in [to_checksum_address(token0), to_checksum_address(token1)]:
-                    if token_addr not in self.state.observed_tokens:
-                        self.state.observed_tokens.add(token_addr)
-
-    async def discover_tokens_from_blocks(self, chain_key: str, blocks_to_scan: int = 5):
-        try:
-            w3 = self.blockchain.get_web3(chain_key)
-            if not w3:
-                return
-            current_block = w3.eth.block_number
-            last_scanned = self.last_block.get(chain_key, current_block - blocks_to_scan)
-            if current_block <= last_scanned:
-                return
-            from_block = max(0, current_block - blocks_to_scan)
-            to_block = current_block
-            try:
-                logs = w3.eth.get_logs({'fromBlock': from_block, 'toBlock': to_block, 'topics': [self.swap_topic]})
-            except Exception as e:
-                logger.warning(f"Error fetching Swap logs: {e}")
-                return
-            new_tokens = set()
-            for log in logs:
-                try:
-                    pool_address = to_checksum_address(log['address'])
-                    if pool_address in self.active_pools:
-                        continue
-                    self.active_pools.add(pool_address)
-                    pool_contract = await self.blockchain.get_pool_contract(pool_address, chain_key)
-                    if not pool_contract:
-                        continue
-                    token0 = to_checksum_address(pool_contract.functions.token0().call())
-                    token1 = to_checksum_address(pool_contract.functions.token1().call())
-                    new_tokens.update([token0, token1])
-                except Exception:
-                    continue
-            with self.state._lock:
-                for token_addr in new_tokens:
-                    if token_addr not in self.state.observed_tokens:
-                        self.state.observed_tokens.add(token_addr)
-            self.last_block[chain_key] = current_block
-        except Exception as e:
-            logger.error(f"Error in token discovery: {e}")
-
-    def _update_price_history(self, token: str, price: float):
-        with self.state._lock:
-            if token not in self.state.price_history:
-                self.state.price_history[token] = []
-            self.state.price_history[token].append({"price": price, "timestamp": time.time()})
-            if len(self.state.price_history[token]) > self.state.config.MAX_PRICE_HISTORY:
-                self.state.price_history[token] = self.state.price_history[token][-self.state.config.MAX_PRICE_HISTORY:]
 
 # ========== PATTERN DETECTION ==========
 class PatternDetector:
@@ -859,6 +1081,7 @@ class PatternDetector:
         tokens = list(self.state.observed_tokens)
         new_active_patterns = {}
         best_params = self.optimizer.get_current_best_parameters()
+
         for token in tokens:
             history = self.state.get_token_history(token)
             if history is None or len(history) < 5:
@@ -881,9 +1104,12 @@ class PatternDetector:
                     existing = new_active_patterns[existing_key]
                     existing["occurrences"] += 1
                     existing["last_seen"] = max(existing["last_seen"], pattern["timestamp"])
+
         self._validate_patterns(new_active_patterns, best_params)
+
         with self.state._lock:
             self.state.active_patterns = new_active_patterns
+
         self._update_pattern_stats()
         logger.info(f"Pattern detection complete. Found {len(new_active_patterns)} active patterns")
 
@@ -893,6 +1119,7 @@ class PatternDetector:
         min_time = params["MIN_TIME_WINDOW"]
         max_time = params["MAX_TIME_WINDOW"]
         min_profit = params["MIN_PROFIT_PERCENT"]
+
         for i in range(2, len(history) - 2):
             current = history[i]
             is_minima = (
@@ -968,7 +1195,6 @@ class Trader:
         self.optimizer = optimizer
         self.detector = PatternDetector(state, optimizer)
         self.blockchain = shared_blockchain if shared_blockchain else BlockchainHelper(state)
-        self.token_discovery = TokenDiscovery(state, self.blockchain)
         self.live_mode = os.getenv("PRIVATE_KEY", "") != ""
 
     def calculate_trade_amount(self) -> float:
@@ -1346,198 +1572,7 @@ class Trader:
     def stop_pattern_detection(self):
         self.state.pattern_detection_active = False
 
-# ========== PRICE UPDATER - COMPLETELY FIXED ==========
-class PriceUpdater:
-    def __init__(self, state: State, shared_blockchain: Optional[BlockchainHelper] = None):
-        self.state = state
-        self.blockchain = shared_blockchain if shared_blockchain else BlockchainHelper(state)
-        self.token_discovery = TokenDiscovery(state, self.blockchain)
-        self.price_update_lock = threading.Lock()
-        self.last_price_update: Dict[str, float] = {}
-        # Rate limiting
-        self.last_request_time = 0
-        self.request_count = 0
-
-    async def _get_coingecko_price(self, token_address: str) -> Optional[float]:
-        """Fallback: Get ETH price from CoinGecko API"""
-        try:
-            # Rate limiting: max 30 requests per minute
-            current_time = time.time()
-            if current_time - self.last_request_time < 2:  # 2 seconds between requests
-                time.sleep(max(0, 2 - (current_time - self.last_request_time)))
-                current_time = time.time()
-
-            # CoinGecko uses lowercase addresses without 0x prefix for path
-            addr = token_address.lower().replace("0x", "")
-            url = f"https://api.coingecko.com/api/v3/simple/token_price/arbitrum-one?contract_addresses={addr}&vs_currencies=eth"
-
-            session = requests.Session()
-            retry = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
-            session.mount("https://", HTTPAdapter(max_retries=retry))
-
-            response = session.get(url, timeout=15)
-            response.raise_for_status()
-            data = response.json()
-
-            # CoinGecko returns data keyed by lowercase checksum address
-            checksum_addr = Web3.to_checksum_address(token_address).lower()
-            if checksum_addr in data:
-                price = data[checksum_addr].get('eth')
-                if price is not None:
-                    logger.debug(f"CoinGecko price for {short(token_address)}: {price:.8f}")
-                    return price
-            elif token_address.lower() in data:
-                price = data[token_address.lower()].get('eth')
-                if price is not None:
-                    logger.debug(f"CoinGecko price for {short(token_address)}: {price:.8f}")
-                    return price
-
-            logger.debug(f"CoinGecko returned no price for {short(token_address)}")
-        except Exception as e:
-            logger.debug(f"CoinGecko fallback failed for {short(token_address)}: {e}")
-        return None
-
-    # ========== COMPLETELY REWRITTEN PRICE FETCHER ==========
-    async def _get_price_for_token(self, token: str, chain_key: str) -> Optional[float]:
-        chain_config = CHAINS[chain_key]
-        wrapped_native = to_checksum_address(chain_config["wrappedNative"])
-        token_checksum = to_checksum_address(token)
-
-        # Skip if this IS the wrapped native token
-        if norm(token_checksum) == norm(wrapped_native):
-            return 1.0
-
-        # Strategy 1: Try direct pools with WETH (all fee tiers)
-        for fee in [POOL_FEES["MEDIUM"], POOL_FEES["LOW"], POOL_FEES["HIGH"]]:
-            try:
-                pool_address = await self.blockchain.get_pool_address(
-                    token_checksum, wrapped_native, fee, chain_key
-                )
-                if pool_address:
-                    price = await self.blockchain.get_pool_price(pool_address, chain_key)
-                    if price is not None:
-                        logger.debug(f"Pool price (WETH) for {short(token)}: {price:.8f} (fee={fee})")
-                        return price
-            except Exception as e:
-                logger.debug(f"Pool lookup failed for {short(token)} fee={fee}: {e}")
-                continue
-
-        # Strategy 2: Try pools with USDC/USDT (stablecoins) and convert
-        for stable in chain_config.get("stables", []):
-            stable_checksum = to_checksum_address(stable)
-            for fee in [POOL_FEES["LOW"], POOL_FEES["MEDIUM"]]:
-                try:
-                    pool_address = await self.blockchain.get_pool_address(
-                        token_checksum, stable_checksum, fee, chain_key
-                    )
-                    if pool_address:
-                        pool = await self.blockchain.get_pool_contract(pool_address, chain_key)
-                        if pool:
-                            slot0 = pool.functions.slot0().call()
-                            sqrt_price_x96 = slot0[0]
-                            token0 = to_checksum_address(pool.functions.token0().call())
-                            token1 = to_checksum_address(pool.functions.token1().call())
-
-                            price = self.blockchain._sqrt_price_x96_to_price(sqrt_price_x96)
-
-                            # Determine which token is which
-                            if norm(token0) == norm(token_checksum):
-                                # token is token0, stable is token1
-                                # price = stable / token -> we want token / stable
-                                token_price_in_stable = 1 / price
-                            else:
-                                # stable is token0, token is token1
-                                # price = token / stable
-                                token_price_in_stable = price
-
-                            # Now convert stable to ETH
-                            stable_price_eth = self.state.get_token_price(stable_checksum)
-                            if stable_price_eth is not None:
-                                token_price_eth = token_price_in_stable * stable_price_eth
-                                logger.debug(f"Stable pool price for {short(token)}: {token_price_eth:.8f} (via {short(stable)})")
-                                return token_price_eth
-                except Exception as e:
-                    logger.debug(f"Stable pool lookup failed for {short(token)}: {e}")
-                    continue
-
-        # Strategy 3: CoinGecko API fallback
-        cg_price = await self._get_coingecko_price(token_checksum)
-        if cg_price is not None:
-            return cg_price
-
-        logger.warning(f"Could not fetch price for {short(token)}")
-        return None
-
-    async def update_prices(self):
-        with self.price_update_lock:
-            try:
-                chain_key = self.state.current_network
-                chain_config = self.chains[chain_key]
-                w3 = self.blockchain.get_web3(chain_key)
-
-                if not w3:
-                    logger.error("No Web3 provider available")
-                    return
-
-                # Update gas price
-                try:
-                    gas_price_wei = w3.eth.gas_price
-                    with self.state._lock:
-                        self.state.current_gas_price = gas_price_wei / 1e9
-                    logger.debug(f"Gas price: {self.state.current_gas_price:.2f} gwei")
-                except Exception as e:
-                    logger.warning(f"Could not fetch gas price: {e}")
-                    with self.state._lock:
-                        self.state.current_gas_price = self.state.config.MAX_GAS_PRICE
-
-                # Initialize tokens if needed
-                with self.state._lock:
-                    if not self.state.observed_tokens:
-                        logger.info("Initializing token list...")
-                        await self.token_discovery.initialize_known_tokens(chain_key)
-
-                # Discover new tokens from recent blocks
-                await self.token_discovery.discover_tokens_from_blocks(chain_key, blocks_to_scan=5)
-
-                current_time = time.time()
-                with self.state._lock:
-                    tokens_to_update = list(self.state.observed_tokens)
-                    logger.info(f"Updating prices for {len(tokens_to_update)} tokens...")
-
-                success_count = 0
-                fail_count = 0
-
-                # Add rate limiting between price requests
-                for i, token in enumerate(tokens_to_update):
-                    try:
-                        # Rate limit: 10 requests per second max
-                        if i > 0 and i % 10 == 0:
-                            time.sleep(0.1)
-
-                        price = await self._get_price_for_token(token, chain_key)
-                        if price is not None:
-                            with self.state._lock:
-                                old_price = self.state.prices.get(token)
-                                self.state.prices[token] = price
-                                self.token_discovery._update_price_history(token, price)
-                                self.last_price_update[token] = current_time
-                            success_count += 1
-                        else:
-                            fail_count += 1
-                    except Exception as e:
-                        logger.debug(f"Price update failed for {short(token)}: {e}")
-                        fail_count += 1
-                        continue
-
-                with self.state._lock:
-                    self.state.last_price_update = current_time
-
-                logger.info(f"Price update complete: {success_count} succeeded, {fail_count} failed")
-
-            except Exception as e:
-                logger.error(f"Error in price update: {e}")
-
-# ========== STATE PERSISTENCE (INCREMENTAL + TXT FILES) ==========
+# ========== STATE PERSISTENCE ==========
 class StateManager:
     def __init__(self, state: State, data_dir: str = "data"):
         self.state = state
@@ -1810,11 +1845,13 @@ class StateManager:
 # ========== SIMULATOR (Parallel Parameter Set) ==========
 class Simulator:
     def __init__(self, param_set_index: int, param_set: Dict[str, float],
-                 shared_state: State, shared_blockchain: BlockchainHelper, base_data_dir: str = "data"):
+                 shared_state: State, shared_blockchain: BlockchainHelper,
+                 shared_price_graph: PriceGraph, base_data_dir: str = "data"):
         self.param_set_index = param_set_index
         self.param_set = param_set
         self.shared_state = shared_state
         self.shared_blockchain = shared_blockchain
+        self.shared_price_graph = shared_price_graph
         self.data_dir = os.path.join(base_data_dir, f"param_set_{param_set_index}")
         os.makedirs(self.data_dir, exist_ok=True)
 
@@ -1825,7 +1862,7 @@ class Simulator:
 
         # Initialize isolated state
         self.state = State(self.config)
-        # Reference shared blockchain data (read-only)
+        # Reference shared data (read-only)
         self.state.prices = shared_state.prices
         self.state.price_history = shared_state.price_history
         self.state.observed_tokens = shared_state.observed_tokens
@@ -1842,32 +1879,10 @@ class Simulator:
 
         # Initialize trader with shared blockchain helper
         self.trader = Trader(self.state, self.optimizer, self.shared_blockchain)
-        self.price_updater = PriceUpdater(self.state, self.shared_blockchain)
         self.state_manager = StateManager(self.state, self.data_dir)
 
         self.running = False
         self.thread = None
-        self._event_loop = None
-        self._event_loop_thread = None
-
-    def _start_event_loop(self):
-        if self._event_loop is not None:
-            return
-        def run_loop():
-            self._event_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(self._event_loop)
-            self._event_loop.run_forever()
-        self._event_loop_thread = threading.Thread(target=run_loop, daemon=True)
-        self._event_loop_thread.start()
-        time.sleep(0.1)
-
-    def _stop_event_loop(self):
-        if self._event_loop is not None:
-            self._event_loop.call_soon_threadsafe(self._event_loop.stop)
-            if self._event_loop_thread:
-                self._event_loop_thread.join(timeout=1)
-            self._event_loop = None
-            self._event_loop_thread = None
 
     def start(self):
         if self.running:
@@ -1875,26 +1890,20 @@ class Simulator:
         self.running = True
         self.state.is_running = True
         self.state.start_time = time.time()
-        self._start_event_loop()
-
-        # Initialize known tokens (only once, shared across all simulators)
-        asyncio.run_coroutine_threadsafe(
-            self.trader.token_discovery.initialize_known_tokens(self.state.current_chain_key),
-            self._event_loop
-        )
 
         # Start pattern detection
         self.trader.start_pattern_detection()
 
         # Start trade checking
-        async def trade_loop():
+        def trade_loop():
             while self.running:
                 with self.shared_state._lock:
                     tokens = list(self.shared_state.observed_tokens)
                 for token in tokens:
-                    await self.trader.check_patterns_for_token(token)
-                await asyncio.sleep(1)
-        asyncio.run_coroutine_threadsafe(trade_loop(), self._event_loop)
+                    asyncio.run(self.trader.check_patterns_for_token(token))
+                time.sleep(1)
+
+        threading.Thread(target=trade_loop, daemon=True).start()
 
         # Start state saving
         def state_saver():
@@ -1902,6 +1911,7 @@ class Simulator:
                 self.state_manager.save_state()
                 self.state_manager.emit_state_files()
                 time.sleep(30)
+
         threading.Thread(target=state_saver, daemon=True).start()
 
     def stop(self):
@@ -1910,7 +1920,6 @@ class Simulator:
         self.running = False
         self.state.is_running = False
         self.trader.stop_pattern_detection()
-        self._stop_event_loop()
         self.state_manager.save_state()
         self.state_manager.emit_state_files()
 
@@ -1945,10 +1954,13 @@ class Bot:
         self.parameter_generator = ParameterGenerator(self.parameter_ranges, self.config.MAX_PARAMETER_SETS)
         self.parameter_sets = self.parameter_generator.get_parameter_sets()
 
-        # Shared state for blockchain data (prices, tokens, etc.)
+        # Shared state and components
         self.shared_state = State(self.config)
         self.shared_blockchain = BlockchainHelper(self.shared_state)
-        self.token_discovery = TokenDiscovery(self.shared_state, self.shared_blockchain)
+        self.shared_price_graph = PriceGraph(CHAINS[self.config.BLOCKCHAIN_NETWORK])
+
+        # Initialize token discovery with shared components
+        self.token_discovery = TokenDiscovery(self.shared_state, self.shared_blockchain, self.shared_price_graph)
 
         # In non-live mode, create a simulator for each parameter set
         self.live_mode = os.getenv("PRIVATE_KEY", "") != ""
@@ -1961,6 +1973,7 @@ class Bot:
                     param_set=param_set,
                     shared_state=self.shared_state,
                     shared_blockchain=self.shared_blockchain,
+                    shared_price_graph=self.shared_price_graph,
                     base_data_dir="data"
                 )
                 self.simulators.append(simulator)
@@ -1970,72 +1983,47 @@ class Bot:
             self.state = State(self.config)
             self.optimizer = ParameterOptimizer(self.state, self.parameter_ranges)
             self.trader = Trader(self.state, self.optimizer)
-            self.price_updater = PriceUpdater(self.state)
+            self.swap_listener = SwapEventListener(self.state, self.shared_blockchain, self.shared_price_graph)
             self.state_manager = StateManager(self.state)
             logger.info("Running in LIVE MODE (single parameter set)")
 
         self.running = False
-        self._event_loop = None
-        self._event_loop_thread = None
-
-    def _start_event_loop(self):
-        if self._event_loop is not None:
-            return
-        def run_loop():
-            self._event_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(self._event_loop)
-            self._event_loop.run_forever()
-        self._event_loop_thread = threading.Thread(target=run_loop, daemon=True)
-        self._event_loop_thread.start()
-        time.sleep(0.1)
-
-    def _stop_event_loop(self):
-        if self._event_loop is not None:
-            self._event_loop.call_soon_threadsafe(self._event_loop.stop)
-            if self._event_loop_thread:
-                self._event_loop_thread.join(timeout=1)
-            self._event_loop = None
-            self._event_loop_thread = None
+        self.swap_listener_active = False
 
     def start(self):
         if self.running:
             logger.info("Bot is already running")
             return
 
-        logger.info("Starting Uniswap Quick Swap Trader...")
-        self._start_event_loop()
+        logger.info("Starting Uniswap Quick Swap Trader (BFS Graph Approach)...")
         self.running = True
 
         if not self.live_mode:
+            # Initialize shared components
+            asyncio.run(self._initialize_shared_components())
+
             # Start all simulators in parallel
             logger.info(f"Starting {len(self.simulators)} parallel parameter set simulations")
             for simulator in self.simulators:
                 simulator.start()
 
-            # Start shared price updates
-            async def shared_price_loop():
-                while self.running:
-                    await self._update_shared_prices()
-                    await asyncio.sleep(10)
-            asyncio.run_coroutine_threadsafe(shared_price_loop(), self._event_loop)
+            # Start shared swap event listener
+            asyncio.create_task(self._run_shared_listener())
+
         else:
-            # Live mode: original behavior
+            # Live mode
             self.state.is_running = True
             self.state.start_time = time.time()
 
-            asyncio.run_coroutine_threadsafe(
-                self.trader.token_discovery.initialize_known_tokens(self.state.current_chain_key),
-                self._event_loop
-            )
+            asyncio.run(self._initialize_shared_components())
 
-            async def price_loop():
-                while self.running:
-                    await self.price_updater.update_prices()
-                    await asyncio.sleep(10)
-            asyncio.run_coroutine_threadsafe(price_loop(), self._event_loop)
+            # Start swap listener
+            asyncio.create_task(self._run_listener())
 
+            # Start pattern detection
             self.trader.start_pattern_detection()
 
+            # Start state saving
             def state_saver():
                 while self.running:
                     self.state_manager.save_state()
@@ -2043,67 +2031,62 @@ class Bot:
                     time.sleep(30)
             threading.Thread(target=state_saver, daemon=True).start()
 
-            async def pattern_checker():
+            # Start trade checking
+            async def trade_checker():
                 while self.running:
                     with self.state._lock:
                         tokens = list(self.state.observed_tokens)
                     for token in tokens:
                         await self.trader.check_patterns_for_token(token)
                     await asyncio.sleep(1)
-            asyncio.run_coroutine_threadsafe(pattern_checker(), self._event_loop)
+            asyncio.create_task(trade_checker())
 
         logger.info("Bot started! Press Ctrl+C to stop.")
         logger.info("Commands: start, stop, status, prices, params, reset, help")
         self._interactive_loop()
 
-    async def _update_shared_prices(self):
-        """Update shared prices for all simulators."""
-        try:
-            chain_key = self.shared_state.current_network
-            chain_config = CHAINS[chain_key]
-            w3 = self.shared_blockchain.get_web3(chain_key)
-            if not w3:
-                return
-            try:
-                gas_price_wei = w3.eth.gas_price
+    async def _initialize_shared_components(self):
+        """Initialize shared state with known tokens and metadata"""
+        chain_key = self.shared_state.current_chain_key
+        await self.token_discovery.initialize_known_tokens(chain_key)
+        await self.shared_blockchain._initialize_providers()
+        await self._update_initial_prices()
+
+    async def _update_initial_prices(self):
+        """Update initial prices from the price graph"""
+        tokens = list(self.shared_state.observed_tokens)
+        for token in tokens:
+            token_checksum = to_checksum_address(token)
+            price = self.shared_price_graph.get_price(token_checksum)
+            if price is not None:
                 with self.shared_state._lock:
-                    self.shared_state.current_gas_price = gas_price_wei / 1e9
-            except Exception:
-                with self.shared_state._lock:
-                    self.shared_state.current_gas_price = self.config.MAX_GAS_PRICE
+                    self.shared_state.prices[token] = price
+        logger.info(f"Initialized {len(self.shared_state.prices)} token prices")
 
-            # Update prices in shared state
-            with self.shared_state._lock:
-                if not self.shared_state.observed_tokens:
-                    self.token_discovery.initialize_known_tokens(chain_key)
-            await self.token_discovery.discover_tokens_from_blocks(chain_key, blocks_to_scan=5)
+    async def _run_shared_listener(self):
+        """Run the shared swap event listener for all simulators"""
+        self.swap_listener_active = True
+        listener = SwapEventListener(
+            self.shared_state,
+            self.shared_blockchain,
+            self.shared_price_graph
+        )
+        await listener.start()
 
-            current_time = time.time()
-            with self.shared_state._lock:
-                tokens_to_update = list(self.shared_state.observed_tokens)
+        # Periodically update gas price
+        while self.swap_listener_active and self.running:
+            await listener.update_gas_price()
+            await asyncio.sleep(15)
 
-            # Use the PriceUpdater from the first simulator (they share state)
-            if self.simulators:
-                updater = self.simulators[0].price_updater
-                for token in tokens_to_update:
-                    price = await updater._get_price_for_token(token, chain_key)
-                    if price is not None:
-                        with self.shared_state._lock:
-                            self.shared_state.prices[token] = price
-                            self.token_discovery._update_price_history(token, price)
-                            self.token_discovery.last_price_update[token] = current_time
+    async def _run_listener(self):
+        """Run the swap event listener for live mode"""
+        self.swap_listener_active = True
+        await self.swap_listener.start()
 
-            # Propagate shared prices to all simulators
-            with self.shared_state._lock:
-                for simulator in self.simulators:
-                    simulator.state.current_gas_price = self.shared_state.current_gas_price
-                    simulator.state.last_price_update = current_time
-                self.shared_state.last_price_update = current_time
-
-            logger.info(f"Updated {len([t for t in tokens_to_update if t in self.shared_state.prices])} shared prices")
-
-        except Exception as e:
-            logger.error(f"Error in shared price update: {e}")
+        # Periodically update gas price
+        while self.swap_listener_active and self.running:
+            await self.swap_listener.update_gas_price()
+            await asyncio.sleep(15)
 
     def stop(self):
         if not self.running:
@@ -2112,6 +2095,7 @@ class Bot:
 
         logger.info("Stopping bot...")
         self.running = False
+        self.swap_listener_active = False
 
         if not self.live_mode:
             for simulator in self.simulators:
@@ -2121,7 +2105,6 @@ class Bot:
             self.state.manually_stopped = True
             self.trader.stop_pattern_detection()
 
-        self._stop_event_loop()
         logger.info("Bot stopped!")
 
     def _interactive_loop(self):
@@ -2147,12 +2130,12 @@ class Bot:
 
     def print_status(self):
         if not self.live_mode:
-            print("\n=== Parallel Parameter Set Simulations ===")
+            print("\n=== Parallel Parameter Set Simulations (BFS Graph Approach) ===")
             for simulator in self.simulators:
                 status = simulator.get_status()
                 is_aggressive = (
-                    status["param_set"].get("MIN_PRICE_CHANGE", 1) == 0.001 and
-                    status["param_set"].get("MIN_PROFIT_PERCENT", 1) == 0.01
+                    status["param_set"].get("MIN_PRICE_CHANGE", 1) == 0.1 and
+                    status["param_set"].get("MIN_PROFIT_PERCENT", 1) == 2.0
                 )
                 marker = " (AGGRESSIVE)" if is_aggressive else ""
                 print(f"\n--- Parameter Set #{status['param_set_index']}{marker} ---")
@@ -2166,9 +2149,7 @@ class Bot:
                 print(f"Trades: {status['total_trades']} (Win: {status['winning_trades']}, Lose: {status['losing_trades']}, Fail: {status['failed_trades']})")
                 print(f"Win Rate: {status['win_rate']:.2f}%")
                 print(f"Open Positions: {status['open_positions']}")
-                print(f"Data Dir: {status['data_dir']}")
 
-                # Show open positions
                 with simulator.state._lock:
                     open_positions = [p for p in simulator.state.portfolio["positions"] if p["status"] == "open"]
                 if open_positions:
@@ -2183,7 +2164,6 @@ class Bot:
                         age = int(time.time() - pos["entry_time"])
                         print(f"  {symbol}: {pos['amount']:.8f} @ {pos['entry_price']:.8f} (Value: {current_value:.8f}, PnL: {unrealized_pnl:+.8f} ({return_pct:+.2f}%), Age: {age}s)")
 
-                # Show recent trades
                 with simulator.state._lock:
                     recent_trades = simulator.state.trades[-3:]
                 if recent_trades:
@@ -2192,14 +2172,12 @@ class Bot:
                         pnl_str = f"+{trade['pnl']:.8f}" if trade.get("pnl", 0) >= 0 else f"{trade.get('pnl', 0):.8f}"
                         print(f"  {trade['timestamp'][:19]} | {trade['type'].upper()} {trade['token_amount']:.8f} {trade['token']} @ {trade['price']:.8f} | PnL: {pnl_str}")
         else:
-            # Live mode: original status printing
             status = self._get_status()
-            print("\n=== Uniswap Quick Swap Trader v7.2.0 - LIVE MODE ===")
+            print("\n=== Uniswap Quick Swap Trader - BFS Graph Approach ===")
             print(f"Status: {'Running' if status['is_running'] else 'Stopped'}")
             print(f"Uptime: {status['uptime']}")
             print(f"Network: {self.state.current_network}")
-            print(f"Best Parameter Set: {self.optimizer.best_set_index}")
-            print("\n--- Portfolio ---")
+            print(f"\n--- Portfolio ---")
             print(f"Current Value: {status['current_eth']:.12f} ETH")
             print(f"Starting Budget: {self.state.portfolio['starting_eth']:.12f} ETH")
             print(f"Realized PnL: {status['realized_pnl']:.12f} ETH")
@@ -2230,7 +2208,6 @@ class Bot:
                     cost_basis = (pos["amount"] * pos["entry_price"]) + pos["fees_paid"] + pos["gas_paid"]
                     return_pct = (unrealized_pnl / cost_basis) * 100 if cost_basis > 0 else 0
                     age = int(time.time() - pos["entry_time"])
-                    set_index = pos.get("parameter_set_index", "N/A")
                     print(f"{pos['token']}: {pos['amount']:.8f} @ {pos['entry_price']:.8f} (Value: {current_value:.8f}, PnL: {unrealized_pnl:+.8f} ({return_pct:+.2f}%), Age: {age}s)")
 
             with self.state._lock:
@@ -2244,11 +2221,9 @@ class Bot:
 
     def print_prices(self):
         if not self.live_mode and self.simulators:
-            # Use the first simulator's shared state for prices
             simulator = self.simulators[0]
-            print("\n--- Current Prices (Shared Across All Simulators) ---")
+            print("\n--- Current Prices (BFS Graph) ---")
             with simulator.state._lock:
-                # Sort by price descending
                 sorted_prices = sorted(
                     simulator.state.prices.items(),
                     key=lambda x: x[1] if x[1] is not None else 0,
@@ -2260,7 +2235,7 @@ class Bot:
                     symbol = simulator.state.get_token_symbol(token)
                     print(f"{symbol}: {price:.8f} ETH")
         elif self.live_mode:
-            print("\n--- Current Prices ---")
+            print("\n--- Current Prices (BFS Graph) ---")
             with self.state._lock:
                 sorted_prices = sorted(
                     self.state.prices.items(),
@@ -2278,8 +2253,8 @@ class Bot:
             print("\n--- All Parameter Sets (Parallel Simulations) ---")
             for i, param_set in enumerate(self.parameter_sets):
                 is_aggressive = (
-                    param_set.get("MIN_PRICE_CHANGE", 1) == 0.001 and
-                    param_set.get("MIN_PROFIT_PERCENT", 1) == 0.01
+                    param_set.get("MIN_PRICE_CHANGE", 1) == 0.1 and
+                    param_set.get("MIN_PROFIT_PERCENT", 1) == 2.0
                 )
                 marker = " (AGGRESSIVE)" if is_aggressive else ""
                 print(f"\nSet {i}{marker}:")
@@ -2293,12 +2268,7 @@ class Bot:
             for i, params in enumerate(self.optimizer.parameter_sets):
                 perf = self.optimizer.performance[i]
                 is_best = " (BEST)" if i == self.optimizer.best_set_index else ""
-                is_aggressive = (
-                    params.get("MIN_PRICE_CHANGE", 1) == 0.001 and
-                    params.get("MIN_PROFIT_PERCENT", 1) == 0.01
-                )
-                aggressive_marker = " (AGGRESSIVE)" if is_aggressive else ""
-                print(f"\nSet {i}{is_best}{aggressive_marker}:")
+                print(f"\nSet {i}{is_best}:")
                 for key, value in params.items():
                     print(f"  {key}: {value}")
                 print(f"  Performance: Profit={perf['profit']:.6f} ETH, Trades={perf['trades']}, Winning={perf['winning_trades']}")
@@ -2308,7 +2278,7 @@ class Bot:
             print("Cannot reset while bot is running. Stop the bot first.")
             return
         if input("Are you sure you want to reset? This will clear all data. (y/n): ").lower() == "y":
-            self._stop_event_loop()
+            self.swap_listener_active = False
             if not self.live_mode:
                 for simulator in self.simulators:
                     simulator.stop()
@@ -2321,6 +2291,7 @@ class Bot:
                         param_set=param_set,
                         shared_state=self.shared_state,
                         shared_blockchain=self.shared_blockchain,
+                        shared_price_graph=self.shared_price_graph,
                         base_data_dir="data"
                     )
                     self.simulators.append(simulator)
@@ -2328,9 +2299,9 @@ class Bot:
                 self.state = State(self.config)
                 self.optimizer = ParameterOptimizer(self.state, self.parameter_ranges)
                 self.trader = Trader(self.state, self.optimizer)
-                self.price_updater = PriceUpdater(self.state)
+                self.swap_listener = SwapEventListener(self.state, self.shared_blockchain, self.shared_price_graph)
                 self.state_manager = StateManager(self.state)
-            # Clear all data directories
+
             if os.path.exists("data"):
                 for item in os.listdir("data"):
                     item_path = os.path.join("data", item)
@@ -2375,15 +2346,16 @@ class Bot:
 def main():
     print("""
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║  Uniswap Quick Swap Trader v7.3.0 - FIXED PRICE DATA                        ║
+║  Uniswap Quick Swap Trader v7.3.0 - BFS GRAPH APPROACH                    ║
+║  ✓ Event-Driven Architecture (like HTML/JS version)                      ║
+║  ✓ BFS Price Graph Traversal for indirect price discovery                ║
+║  ✓ On-Chain Data Only (no external API calls)                           ║
+║  ✓ Token Metadata Loading from Contracts                                ║
+║  ✓ Swap Event Processing for real-time price updates                     ║
 ║  ✓ Parallel Parameter Set Simulations                                    ║
-║  ✓ Multiple Price Sources (Uniswap Pools + CoinGecko API)              ║
-║  ✓ Fixed RPC Provider with Automatic Failover                          ║
-║  ✓ Thread-Safe with Proper Error Handling                               ║
-║  ✓ Isolated Persistence per Parameter Set                               ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
     """)
-    logger.info("Uniswap Quick Swap Trader v7.3.0 (Fixed Price Data) started.")
+    logger.info("Uniswap Quick Swap Trader v7.3.0 (BFS Graph Approach) started.")
 
     bot = Bot()
     if not bot.live_mode:
@@ -2395,9 +2367,9 @@ def main():
     print("\nCommands:")
     print("  start   - Start the bot")
     print("  stop    - Stop the bot")
-    print("  status  - Show status of all parameter sets (or live mode)")
-    print("  prices  - Show current prices")
-    print("  params  - Show parameter sets and their performance")
+    print("  status  - Show status of all parameter sets")
+    print("  prices  - Show current prices from BFS graph")
+    print("  params  - Show parameter sets and performance")
     print("  reset   - Reset all data")
     print("  help    - Show this help\n")
 
@@ -2422,14 +2394,7 @@ def main():
         elif cmd == "reset":
             bot.reset()
         elif cmd == "help":
-            print("\nCommands:")
-            print("  start   - Start the bot")
-            print("  stop    - Stop the bot")
-            print("  status  - Show status")
-            print("  prices  - Show current prices")
-            print("  params  - Show parameter sets")
-            print("  reset   - Reset all data")
-            print("  help    - Show this help")
+            print("Commands: start, stop, status, prices, params, reset, help")
         elif cmd:
             print("Unknown command. Type 'help' for options.")
 
