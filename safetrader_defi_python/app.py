@@ -196,10 +196,10 @@ NETWORK_TOKENS = {
 }
 
 ARBITRUM_RPC_ENDPOINTS = [
-    "wss://arbitrum-one-rpc.publicnode.com",
-    "https://arb1.arbitrum.io/rpc",
+    "https://arb1.arbitrum.io/rpc",           # Official Arbitrum
     "https://arbitrum-mainnet.public.blastapi.io",
     "https://arbitrum-mainnet.rpcfast.com",
+    "https://arbitrum-one-rpc.publicnode.com", # WebSocket - move last
 ]
 
 CHAINS = {
@@ -284,10 +284,42 @@ UNISWAP_V3_POOL_ABI = json.loads('''
 ''')
 
 ERC20_ABI = [
-    {"inputs": [], "name": "symbol", "outputs": [{"internalType": "string", "name": "", "type": "string"}], "stateMutability": "view", "type": "function"},
-    {"inputs": [], "name": "decimals", "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}], "stateMutability": "view", "type": "function"},
-    {"inputs": [], "name": "name", "outputs": [{"internalType": "string", "name": "", "type": "string"}], "stateMutability": "view", "type": "function"},
-    {"inputs": [{"internalType": "address", "name": "account"}], "name": "balanceOf", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}
+    {
+        "constant": True,
+        "inputs": [],
+        "name": "symbol",
+        "outputs": [{"name": "", "type": "string"}],
+        "payable": False,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": True,
+        "inputs": [],
+        "name": "decimals",
+        "outputs": [{"name": "", "type": "uint8"}],
+        "payable": False,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": True,
+        "inputs": [],
+        "name": "name",
+        "outputs": [{"name": "", "type": "string"}],
+        "payable": False,
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "constant": True,
+        "inputs": [{"name": "account", "type": "address"}],
+        "name": "balanceOf",
+        "outputs": [{"name": "", "type": "uint256"}],
+        "payable": False,
+        "stateMutability": "view",
+        "type": "function"
+    }
 ]
 
 # SWAP EVENT ABI for filtering
@@ -646,7 +678,17 @@ class BlockchainHelper:
                 w3 = Web3(LegacyWebSocketProvider(rpc_url, websocket_timeout=5))
             else:
                 w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={'timeout': 5}))
+
+            # Test block number first
             block_number = w3.eth.block_number
+
+            # Test a simple contract call (WETH is always available)
+            weth_addr = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"
+            try:
+                w3.eth.contract(address=weth_addr, abi=ERC20_ABI).functions.symbol().call()
+            except:
+                pass  # Some RPCs block contract calls in test mode
+
             logger.info(f"RPC endpoint {rpc_url} is working (block: {block_number})")
             return True
         except Exception as e:
@@ -946,44 +988,45 @@ class SwapEventListener:
             logger.error(f"Error processing swap log: {e}")
 
     async def _load_token_metadata(self, token_address: str):
-        """Load token symbol, decimals, name from contract"""
-        try:
-            token_address = to_checksum_address(token_address)
-            token_contract = await self.blockchain.get_token_contract(token_address, self.state.current_chain_key)
-            if not token_contract:
-                # Try to get from known tokens
-                for symbol, addr in NETWORK_TOKENS.get(self.state.current_chain_key, {}).items():
-                    if norm(addr) == norm(token_address):
-                        self.price_graph.set_token_metadata(
-                            token_address,
-                            symbol,
-                            18  # Default, will be updated if we get actual decimals
-                        )
-                        with self.state._lock:
-                            self.state.token_symbols[token_address] = symbol
-                            self.state.token_addresses[symbol] = token_address
-                        return
+        token_address = to_checksum_address(token_address)
+
+        # First try known tokens (no RPC call needed)
+        for symbol, addr in NETWORK_TOKENS.get(self.state.current_chain_key, {}).items():
+            if norm(addr) == norm(token_address):
+                self.price_graph.set_token_metadata(token_address, symbol, 18)
+                with self.state._lock:
+                    self.state.token_symbols[token_address] = symbol
+                    self.state.token_addresses[symbol] = token_address
+                logger.debug(f"Loaded {symbol} from known tokens")
                 return
 
-            # Get metadata from contract
-            symbol = token_contract.functions.symbol().call()
-            decimals = token_contract.functions.decimals().call()
+        # Then try contract call with retry
+        for attempt in range(3):
             try:
-                name = token_contract.functions.name().call()
-            except:
-                name = symbol
+                token_contract = await self.blockchain.get_token_contract(token_address, self.state.current_chain_key)
+                if not token_contract:
+                    return
 
-            self.price_graph.set_token_metadata(token_address, symbol, decimals, name)
+                symbol = token_contract.functions.symbol().call()
+                decimals = token_contract.functions.decimals().call()
+                try:
+                    name = token_contract.functions.name().call()
+                except:
+                    name = symbol
 
-            with self.state._lock:
-                self.state.token_symbols[token_address] = symbol
-                self.state.token_addresses[symbol] = token_address
-                self.state.token_decimals[token_address] = decimals
+                self.price_graph.set_token_metadata(token_address, symbol, decimals, name)
+                with self.state._lock:
+                    self.state.token_symbols[token_address] = symbol
+                    self.state.token_addresses[symbol] = token_address
+                    self.state.token_decimals[token_address] = decimals
+                return
 
-        except Exception as e:
-            logger.error(f"Error loading token metadata for {short(token_address)}: {e}")
-            # Fallback to short address
-            self.price_graph.set_token_metadata(token_address, short(token_address), 18)
+            except Exception as e:
+                if attempt == 2:
+                    logger.error(f"Failed to load metadata for {short(token_address)}: {e}")
+                    # Fallback to address as symbol
+                    self.price_graph.set_token_metadata(token_address, short(token_address), 18)
+                await asyncio.sleep(1)
 
     def _update_token_prices(self):
         """Update all token prices using BFS traversal through the price graph"""
