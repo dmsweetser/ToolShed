@@ -1931,12 +1931,17 @@ class Simulator:
 
         # Start trade checking
         def trade_loop():
-            while self.running:
-                with self.shared_state._lock:
-                    tokens = list(self.shared_state.observed_tokens)
-                for token in tokens:
-                    asyncio.run(self.trader.check_patterns_for_token(token))
-                time.sleep(1)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                while self.running:
+                    with self.shared_state._lock:
+                        tokens = list(self.shared_state.observed_tokens)
+                    for token in tokens:
+                        loop.run_until_complete(self.trader.check_patterns_for_token(token))
+                    time.sleep(1)
+            finally:
+                loop.close()
 
         threading.Thread(target=trade_loop, daemon=True).start()
 
@@ -2145,7 +2150,10 @@ class Bot:
     def _interactive_loop(self):
         try:
             while self.running:
-                cmd = input("> ").strip().lower()
+                try:
+                    cmd = input("> ").strip().lower()
+                except EOFError:
+                    break
                 if cmd == "stop":
                     self.stop()
                 elif cmd == "status":
