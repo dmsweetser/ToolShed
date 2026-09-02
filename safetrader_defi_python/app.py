@@ -885,14 +885,18 @@ class SwapEventListener:
     async def _process_swap_log(self, log: Dict[str, Any]):
         try:
             pool_address = to_checksum_address(log['address'])
+            logger.info(f"Processing swap log for pool: {pool_address}")
             pool_contract = await self.blockchain.get_pool_contract(pool_address, self.state.current_chain_key)
             if not pool_contract:
+                logger.warning(f"Failed to get pool contract for {pool_address}")
                 return
             token0 = to_checksum_address(pool_contract.functions.token0().call())
             token1 = to_checksum_address(pool_contract.functions.token1().call())
+            logger.info(f"Pool tokens: {token0}, {token1}")
             slot0 = pool_contract.functions.slot0().call()
             sqrt_price_x96 = slot0[0]
             price = self.blockchain._sqrt_price_x96_to_price(sqrt_price_x96)
+            logger.info(f"Updated price for {token0}/{token1}: {price}")
             self.price_graph.add_pair_price(token0, token1, price)
             for token in [token0, token1]:
                 if token not in self.price_graph.token_metadata:
