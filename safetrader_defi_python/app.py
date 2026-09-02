@@ -15,7 +15,9 @@ from collections import deque
 from dotenv import load_dotenv
 from web3 import Web3
 from web3.middleware import ExtraDataToPOAMiddleware
-from web3.providers import WebSocketProvider
+from web3.providers import HTTPProvider
+from web3 import AsyncWeb3
+from web3.providers.persistent import WebSocketProvider
 import sqlite3
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -101,14 +103,6 @@ class ParameterRange:
             current += self.step
         return values
 
-# Adjusted to generate multiple parameter sets
-# DEFAULT_PARAMETER_RANGES = {
-#     "MIN_PRICE_CHANGE": ParameterRange(min=0.01, max=0.5, step=0.01),
-#     "MIN_TIME_WINDOW": ParameterRange(min=1, max=10, step=1),
-#     "MAX_TIME_WINDOW": ParameterRange(min=10, max=60, step=5),
-#     "MIN_OCCURRENCES": ParameterRange(min=1, max=3, step=1),
-#     "MIN_PROFIT_PERCENT": ParameterRange(min=0.1, max=2.0, step=0.1),
-# }
 DEFAULT_PARAMETER_RANGES = {
     "MIN_PRICE_CHANGE": ParameterRange(min=0.01, max=0.5, step=0.01),
     "MIN_TIME_WINDOW": ParameterRange(min=1, max=10, step=1),
@@ -170,7 +164,7 @@ class Config:
     UNISWAP_VERSION: str = "v3"
     STARTING_ETH: float = 0.0033
     TRADE_AMOUNT_PERCENT: float = 0.5
-    MIN_TRADE_AMOUNT_ETH: float = 0.0001  # Lowered to allow more trades
+    MIN_TRADE_AMOUNT_ETH: float = 0.0001
     MAX_TRADES: int = 10
     TRADE_COOLDOWN: int = 60
     MIN_PRICE_CHANGE: float = 0.1
@@ -180,8 +174,8 @@ class Config:
     MIN_PROFIT_PERCENT: float = 2.0
     MAX_SLIPPAGE: float = 0.5
     MAX_GAS_PRICE: int = 200
-    GAS_LIMIT: int = 150000  # Lowered gas limit
-    PREVENT_SEQUENTIAL_TRADES: bool = False  # Disabled for testing
+    GAS_LIMIT: int = 150000
+    PREVENT_SEQUENTIAL_TRADES: bool = False
     PRICE_HISTORY_DURATION: int = 24
     MAX_PRICE_HISTORY: int = 5000
     OPTIMIZATION_INTERVAL: int = 300
@@ -236,18 +230,6 @@ UNISWAP_V3_FACTORY_ABI = json.loads('''
         "outputs": [{"internalType": "address", "name": "", "type": "address"}],
         "stateMutability": "view",
         "type": "function"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {"indexed": true, "internalType": "address", "name": "token0", "type": "address"},
-            {"indexed": true, "internalType": "address", "name": "token1", "type": "address"},
-            {"indexed": false, "internalType": "uint24", "name": "fee", "type": "uint24"},
-            {"indexed": false, "internalType": "int24", "name": "tickSpacing", "type": "int24"},
-            {"indexed": false, "internalType": "address", "name": "pool", "type": "address"}
-        ],
-        "name": "PoolCreated",
-        "type": "event"
     }
 ]
 ''')
@@ -259,12 +241,7 @@ UNISWAP_V3_POOL_ABI = json.loads('''
         "name": "slot0",
         "outputs": [
             {"internalType": "uint160", "name": "sqrtPriceX96", "type": "uint160"},
-            {"internalType": "int24", "name": "tick", "type": "int24"},
-            {"internalType": "uint16", "name": "observationIndex", "type": "uint16"},
-            {"internalType": "uint16", "name": "observationCardinality", "type": "uint16"},
-            {"internalType": "uint16", "name": "observationCardinalityNext", "type": "uint16"},
-            {"internalType": "uint8", "name": "feeProtocol", "type": "uint8"},
-            {"internalType": "bool", "name": "unlocked", "type": "bool"}
+            {"internalType": "int24", "name": "tick", "type": "int24"}
         ],
         "stateMutability": "view",
         "type": "function"
@@ -287,13 +264,6 @@ UNISWAP_V3_POOL_ABI = json.loads('''
         "inputs": [],
         "name": "fee",
         "outputs": [{"internalType": "uint24", "name": "", "type": "uint24"}],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "liquidity",
-        "outputs": [{"internalType": "uint128", "name": "", "type": "uint128"}],
         "stateMutability": "view",
         "type": "function"
     }
@@ -347,10 +317,7 @@ SWAP_EVENT_ABI = json.loads('''
             {"indexed": true, "internalType": "address", "name": "sender", "type": "address"},
             {"indexed": true, "internalType": "address", "name": "recipient", "type": "address"},
             {"indexed": false, "internalType": "int256", "name": "amount0", "type": "int256"},
-            {"indexed": false, "internalType": "int256", "name": "amount1", "type": "int256"},
-            {"indexed": false, "internalType": "uint160", "name": "sqrtPriceX96", "type": "uint160"},
-            {"indexed": false, "internalType": "uint128", "name": "liquidity", "type": "uint128"},
-            {"indexed": false, "internalType": "int24", "name": "tick", "type": "int24"}
+            {"indexed": false, "internalType": "int256", "name": "amount1", "type": "int256"}
         ],
         "name": "Swap",
         "type": "event"
@@ -382,7 +349,6 @@ class PriceGraph:
                 self.pair_prices[token1] = {}
             self.pair_prices[token0][token1] = price
             self.pair_prices[token1][token0] = 1.0 / price
-            logger.debug(f"Added pair price: {token0}/{token1} = {price:.8f}")
 
     def get_price(self, token_address: str) -> Optional[float]:
         token_address = to_checksum_address(token_address)
@@ -422,7 +388,6 @@ class PriceGraph:
                 'decimals': decimals,
                 'name': name or symbol
             }
-            logger.debug(f"Set metadata for {address}: {symbol} (decimals={decimals})")
 
     def get_token_symbol(self, address: str) -> str:
         address = to_checksum_address(address)
@@ -478,7 +443,6 @@ class State:
         self.token_symbols: Dict[str, str] = {}
         self.token_addresses: Dict[str, str] = {}
         self._lock = threading.Lock()
-        logger.info("State initialized with starting ETH: %.12f", config.STARTING_ETH)
 
     def get_token_symbol(self, token: str) -> str:
         with self._lock:
@@ -592,7 +556,6 @@ class State:
             self.open_buy_orders = state_dict["open_buy_orders"]
             self.token_symbols = state_dict.get("token_symbols", {})
             self.token_addresses = state_dict.get("token_addresses", {})
-            logger.info("State loaded from dictionary")
 
 # ========== PARAMETER OPTIMIZER ==========
 class ParameterOptimizer:
@@ -612,7 +575,6 @@ class ParameterOptimizer:
         self.last_optimization_time = 0
         self.optimization_interval = state.config.OPTIMIZATION_INTERVAL
         self.current_set_index = 0
-        logger.info(f"ParameterOptimizer initialized with {len(self.parameter_sets)} parameter sets")
 
     def get_current_best_parameters(self) -> Dict[str, float]:
         if not self.parameter_sets:
@@ -631,8 +593,8 @@ class ParameterOptimizer:
         self.best_set_index = best_index
         if best_score != -float('inf'):
             logger.info(
-                f"Best parameter set #{best_index}: {self.parameter_sets[best_index]} "
-                f"(Score: {best_score:.6f}, Profit: {self.performance[best_index]['profit']:.6f} ETH, "
+                f"Best parameter set #{best_index}: {self.parameter_sets[best_index]}"
+                f"(Score: {best_score:.6f}, Profit: {self.performance[best_index]['profit']:.6f} ETH,"
                 f"Trades: {self.performance[best_index]['trades']}, Winning: {self.performance[best_index]['winning_trades']})"
             )
         else:
@@ -643,7 +605,6 @@ class ParameterOptimizer:
         index = self.current_set_index
         param_set = self.parameter_sets[index]
         self.current_set_index = (self.current_set_index + 1) % len(self.parameter_sets)
-        logger.debug(f"Using parameter set #{index}: {param_set}")
         return index, param_set
 
     def update_performance(self, parameter_set_index: int, profit: float, is_winning: bool):
@@ -678,7 +639,7 @@ class BlockchainHelper:
             if rpc_url.startswith("wss://"):
                 w3 = Web3(WebSocketProvider(rpc_url))
             else:
-                w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={'timeout': 5}))
+                w3 = Web3(HTTPProvider(rpc_url, request_kwargs={'timeout': 5}))
             block_number = w3.eth.block_number
             weth_addr = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"
             try:
@@ -709,7 +670,7 @@ class BlockchainHelper:
                 w3 = Web3(provider)
                 self.ws_providers[chain_key] = provider
             else:
-                provider = Web3.HTTPProvider(working_rpc, request_kwargs={'timeout': 10})
+                provider = HTTPProvider(working_rpc, request_kwargs={'timeout': 10})
                 w3 = Web3(provider)
             if chain_key in ["polygon", "arbitrum", "base", "optimism"]:
                 w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0, name="extradata_to_poa")
@@ -718,7 +679,7 @@ class BlockchainHelper:
         else:
             logger.error("ALL RPC ENDPOINTS FAILED - using fallback")
             fallback = "https://arb1.arbitrum.io/rpc"
-            provider = Web3.HTTPProvider(fallback, request_kwargs={'timeout': 10})
+            provider = HTTPProvider(fallback, request_kwargs={'timeout': 10})
             w3 = Web3(provider)
             w3.middleware_onion.inject(ExtraDataToPOAMiddleware(), layer=0, name="extradata_to_poa")
             self.web3_providers[chain_key] = w3
@@ -835,7 +796,7 @@ class SwapEventListener:
         self.last_block_check = 0
         self.ws_provider = None
         self._lock = threading.Lock()
-        self.event_filters = []  # Track active event filters for cleanup
+        self.event_filters = []
 
     async def start(self):
         if self.active:
@@ -844,14 +805,12 @@ class SwapEventListener:
         chain_key = self.state.current_chain_key
         chain_config = CHAINS[chain_key]
 
-        # Try WebSocket first
         ws_rpc = next((rpc for rpc in chain_config["rpcs"] if rpc.startswith("wss://")), None)
         if ws_rpc:
             try:
                 self.ws_provider = WebSocketProvider(ws_rpc)
                 w3 = Web3(self.ws_provider)
                 logger.info(f"Using WebSocket RPC: {ws_rpc}")
-                # Test WebSocket subscription
                 test_sub = w3.eth.subscribe_new_heads()
                 await test_sub.__aenter__()
                 await test_sub.__aexit__(None, None, None)
@@ -860,12 +819,10 @@ class SwapEventListener:
                 logger.warning(f"WebSocket connection failed: {e}. Falling back to HTTP.")
                 w3 = self.blockchain.get_web3(chain_key)
                 self.ws_provider = None
-                # Fallback to polling
                 asyncio.create_task(self._poll_blocks())
         else:
             w3 = self.blockchain.get_web3(chain_key)
             self.ws_provider = None
-            # Fallback to polling
             asyncio.create_task(self._poll_blocks())
 
         if not w3:
@@ -876,8 +833,6 @@ class SwapEventListener:
             self.current_block = w3.eth.block_number
             self.last_block_check = self.current_block
             logger.info(f"SwapEventListener started at block {self.current_block}")
-
-            # Initialize known pools
             await self._initialize_known_pools()
             return True
         except Exception as e:
@@ -887,7 +842,6 @@ class SwapEventListener:
 
     async def _start_websocket_subscriptions(self, w3):
         try:
-            # Subscribe to new blocks
             new_heads_sub = w3.eth.subscribe_new_heads()
             async for head in new_heads_sub:
                 if not self.active:
@@ -895,7 +849,6 @@ class SwapEventListener:
                 self.current_block = head.number
                 logger.debug(f"New block: {self.current_block}")
 
-            # Subscribe to Swap events
             swap_sub = w3.eth.subscribe_logs({'topics': [self.swap_topic]})
             async for log in swap_sub:
                 if not self.active:
@@ -906,14 +859,12 @@ class SwapEventListener:
         except Exception as e:
             logger.error(f"Failed to start WebSocket subscriptions: {e}")
             self.active = False
-            # Fallback to polling
             asyncio.create_task(self._poll_blocks())
 
     async def stop(self):
         self.active = False
         if self.ws_provider:
             self.ws_provider.close()
-        # Clean up event filters
         for event_filter in self.event_filters:
             try:
                 event_filter.uninstall()
@@ -932,11 +883,11 @@ class SwapEventListener:
                 latest_block = w3.eth.block_number
                 if latest_block > self.last_block_check:
                     start_block = self.last_block_check + 1
-                    end_block = min(latest_block, start_block + 20)  # Process 20 blocks at a time
+                    end_block = min(latest_block, start_block + 20)
                     for block_num in range(start_block, end_block + 1):
                         await self._process_block(block_num)
                     self.last_block_check = end_block
-                await asyncio.sleep(1)  # Poll every 1 second
+                await asyncio.sleep(1)
             except Exception as e:
                 logger.error(f"Error in block polling: {e}")
                 await asyncio.sleep(5)
@@ -959,7 +910,6 @@ class SwapEventListener:
     async def _process_swap_log(self, log: Dict[str, Any]):
         try:
             pool_address = to_checksum_address(log['address'])
-            logger.debug(f"Processing swap log for pool: {pool_address}")
             pool_contract = await self.blockchain.get_pool_contract(pool_address, self.state.current_chain_key)
             if not pool_contract:
                 logger.warning(f"Failed to get pool contract for {pool_address}")
@@ -985,9 +935,7 @@ class SwapEventListener:
             price = self.blockchain._sqrt_price_x96_to_price(sqrt_price_x96)
             if price is not None:
                 self.price_graph.add_pair_price(token0, token1, price)
-                logger.debug(f"Updated price for {short(token0)}/{short(token1)}: {price:.8f}")
 
-            # Ensure prices are updated for all tokens
             self._update_token_prices()
 
         except Exception as e:
@@ -1041,7 +989,6 @@ class SwapEventListener:
         if updated_count > 0:
             with self.state._lock:
                 self.state.last_price_update = time.time()
-                logger.debug(f"Updated prices for {updated_count} tokens")
 
     def _update_price_history(self, token: str, price: float):
         with self.state._lock:
@@ -1069,7 +1016,6 @@ class SwapEventListener:
                     price = await self.blockchain.get_pool_price_direct(pool_address, chain_key)
                     if price is not None:
                         self.price_graph.add_pair_price(token0, token1, price)
-                        logger.info(f"Initialized pair: {short(token0)}/{short(token1)} @ {price:.8f}")
                     break
         for addr in token_addresses:
             await self._load_token_metadata(addr)
@@ -1087,7 +1033,7 @@ class SwapEventListener:
             logger.error(f"Error updating gas price: {e}")
             with self.state._lock:
                 self.state.current_gas_price = self.state.config.MAX_GAS_PRICE
-                
+
 # ========== TOKEN DISCOVERY ==========
 class TokenDiscovery:
     def __init__(self, state: State, blockchain: BlockchainHelper, price_graph: PriceGraph):
@@ -1131,7 +1077,6 @@ class PatternDetector:
         self.optimizer = optimizer
 
     def detect_all_patterns(self):
-        logger.info(f"Starting pattern detection for {len(self.state.observed_tokens)} tokens")
         tokens = list(self.state.observed_tokens)
         new_active_patterns = {}
         best_params = self.optimizer.get_current_best_parameters()
@@ -1161,7 +1106,6 @@ class PatternDetector:
         with self.state._lock:
             self.state.active_patterns = new_active_patterns
         self._update_pattern_stats()
-        logger.info(f"Pattern detection complete. Found {len(new_active_patterns)} active patterns")
 
     def _detect_buy_patterns(self, history: List[Dict[str, Any]], token: str, params: Dict[str, float]) -> List[Dict[str, Any]]:
         patterns = []
@@ -1258,7 +1202,6 @@ class Trader:
             min_trade = self.config.MIN_TRADE_AMOUNT_ETH
             amount_after_fees = percent_amount - (total_gas_cost / max_trades)
             trade_amount = max(min(percent_amount, amount_after_fees), min_trade)
-            logger.debug(f"Trade amount calculation: available_eth={available_eth}, gas_cost_per_trade={gas_cost_per_trade}, total_gas_cost={total_gas_cost}, trade_amount={trade_amount}")
             return min(trade_amount, available_eth * 0.95)
         except Exception as e:
             logger.error(f"Error calculating trade amount: {e}")
@@ -2021,16 +1964,16 @@ class Bot:
         logger.info("Starting Uniswap Quick Swap Trader (BFS Graph Approach)...")
         self.running = True
         if not self.live_mode:
-            await self._initialize_shared_components()  # <-- Await instead of asyncio.run
+            await self._initialize_shared_components()
             logger.info(f"Starting {len(self.simulators)} parallel parameter set simulations")
             for simulator in self.simulators:
                 simulator.start()
-            asyncio.create_task(self._run_shared_listener())  # <-- Use create_task
+            asyncio.create_task(self._run_shared_listener())
         else:
             self.state.is_running = True
             self.state.start_time = time.time()
-            await self._initialize_shared_components()  # <-- Await instead of asyncio.run
-            asyncio.create_task(self._run_listener())  # <-- Use create_task
+            await self._initialize_shared_components()
+            asyncio.create_task(self._run_listener())
             self.trader.start_pattern_detection()
             def state_saver():
                 while self.running:
@@ -2115,11 +2058,10 @@ async def main():
     else:
         bot.state_manager.load_state()
 
-    await bot.start()  # <-- Await the async start method
+    await bot.start()
 
-    # Periodic status logging
     last_status = time.time()
-    status_interval = 60  # Log status every 60 seconds
+    status_interval = 60
 
     try:
         while bot.running:
@@ -2137,7 +2079,7 @@ async def main():
                         logger.info(f"Tracked tokens: {len(bot.state.observed_tokens)}, Prices: {len(bot.state.prices)}, Trades: {bot.state.portfolio['total_trades']}")
     except KeyboardInterrupt:
         logger.info("Shutting down...")
-        await bot.stop()  # <-- Await the async stop method
+        await bot.stop()
 
 if __name__ == "__main__":
     asyncio.run(main())
