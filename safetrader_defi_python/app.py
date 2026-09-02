@@ -15,7 +15,7 @@ from collections import deque
 from dotenv import load_dotenv
 from web3 import Web3
 from web3.middleware import ExtraDataToPOAMiddleware
-from web3.providers.legacy_websocket import LegacyWebSocketProvider
+from web3.providers.websocket import WebsocketProvider
 import sqlite3
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
