@@ -205,10 +205,7 @@ NETWORK_TOKENS = {
 }
 
 ARBITRUM_RPC_ENDPOINTS = [
-    "wss://arbitrum-one-rpc.publicnode.com",  # WebSocket first
-    "https://arb1.arbitrum.io/rpc",
-    "https://arbitrum-mainnet.public.blastapi.io",
-    "https://arbitrum-mainnet.rpcfast.com",
+    "wss://arbitrum-one-rpc.publicnode.com"
 ]
 
 CHAINS = {
@@ -851,7 +848,7 @@ class SwapEventListener:
         ws_rpc = next((rpc for rpc in chain_config["rpcs"] if rpc.startswith("wss://")), None)
         if ws_rpc:
             try:
-                self.ws_provider = WebsocketProvider(ws_rpc, websocket_timeout=10)
+                self.ws_provider = LegacyWebSocketProvider(ws_rpc, websocket_timeout=10)
                 w3 = Web3(self.ws_provider)
                 logger.info(f"Using WebSocket RPC: {ws_rpc}")
             except Exception as e:
@@ -890,7 +887,7 @@ class SwapEventListener:
     async def _start_websocket_subscriptions(self, w3):
         try:
             # Subscribe to new blocks
-            new_heads_filter = w3.eth.filter("new_heads")
+            new_heads_filter = w3.eth.filter("latest")
             new_heads_filter.watch(self._on_new_block)
             self.event_filters.append(new_heads_filter)
 
