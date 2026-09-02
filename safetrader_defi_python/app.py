@@ -15,7 +15,7 @@ from collections import deque
 from dotenv import load_dotenv
 from web3 import Web3
 from web3.middleware import ExtraDataToPOAMiddleware
-from web3.providers.websocket import WebsocketProvider
+from web3.providers import WebSocketProvider
 import sqlite3
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -25,7 +25,7 @@ load_dotenv()
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARN,
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
     handlers=[
         logging.FileHandler("app.log"),
@@ -636,7 +636,7 @@ class ParameterOptimizer:
                 f"Trades: {self.performance[best_index]['trades']}, Winning: {self.performance[best_index]['winning_trades']})"
             )
         else:
-            logger.warning("No valid parameter sets found (all have 0 trades)")
+            logger.info("No valid parameter sets found (all have 0 trades)")
         return self.parameter_sets[best_index]
 
     def get_next_parameter_set(self) -> Tuple[int, Dict[str, float]]:
@@ -667,7 +667,7 @@ class BlockchainHelper:
         self.state = state
         self.chains = CHAINS
         self.web3_providers: Dict[str, Web3] = {}
-        self.ws_providers: Dict[str, LegacyWebSocketProvider] = {}
+        self.ws_providers: Dict[str, WebSocketProvider] = {}
         self.factory_contracts: Dict[str, Any] = {}
         self.pool_contracts: Dict[str, Any] = {}
         self.token_contracts: Dict[str, Any] = {}
@@ -676,7 +676,7 @@ class BlockchainHelper:
     def _test_rpc_endpoint(self, rpc_url: str) -> bool:
         try:
             if rpc_url.startswith("wss://"):
-                w3 = Web3(LegacyWebSocketProvider(rpc_url, websocket_timeout=10))
+                w3 = Web3(WebSocketProvider(rpc_url))
             else:
                 w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={'timeout': 5}))
             block_number = w3.eth.block_number
@@ -705,7 +705,7 @@ class BlockchainHelper:
                 break
         if working_rpc:
             if working_rpc.startswith("wss://"):
-                provider = LegacyWebSocketProvider(working_rpc, websocket_timeout=10)
+                provider = WebSocketProvider(working_rpc)
                 w3 = Web3(provider)
                 self.ws_providers[chain_key] = provider
             else:
@@ -848,7 +848,7 @@ class SwapEventListener:
         ws_rpc = next((rpc for rpc in chain_config["rpcs"] if rpc.startswith("wss://")), None)
         if ws_rpc:
             try:
-                self.ws_provider = LegacyWebSocketProvider(ws_rpc, websocket_timeout=10)
+                self.ws_provider = WebSocketProvider(ws_rpc)
                 w3 = Web3(self.ws_provider)
                 logger.info(f"Using WebSocket RPC: {ws_rpc}")
                 # Test WebSocket subscription
