@@ -110,11 +110,11 @@ class ParameterRange:
 #     "MIN_PROFIT_PERCENT": ParameterRange(min=0.1, max=2.0, step=0.1),
 # }
 DEFAULT_PARAMETER_RANGES = {
-    "MIN_PRICE_CHANGE": ParameterRange(min=0, max=0.5, step=999),
-    "MIN_TIME_WINDOW": ParameterRange(min=0, max=10, step=999),
-    "MAX_TIME_WINDOW": ParameterRange(min=0, max=60, step=999),
+    "MIN_PRICE_CHANGE": ParameterRange(min=0.01, max=0.5, step=0.01),
+    "MIN_TIME_WINDOW": ParameterRange(min=1, max=10, step=1),
+    "MAX_TIME_WINDOW": ParameterRange(min=10, max=600, step=5),
     "MIN_OCCURRENCES": ParameterRange(min=1, max=3, step=1),
-    "MIN_PROFIT_PERCENT": ParameterRange(min=0.0, max=2.0, step=999),
+    "MIN_PROFIT_PERCENT": ParameterRange(min=0.1, max=2.0, step=0.1),
 }
 
 class ParameterGenerator:
@@ -712,7 +712,7 @@ class BlockchainHelper:
                 provider = Web3.HTTPProvider(working_rpc, request_kwargs={'timeout': 10})
                 w3 = Web3(provider)
             if chain_key in ["polygon", "arbitrum", "base", "optimism"]:
-                w3.middleware_onion.inject(ExtraDataToPOAMiddleware(), layer=0, name="extradata_to_poa")
+                w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0, name="extradata_to_poa")
             self.web3_providers[chain_key] = w3
             logger.info(f"Using working RPC endpoint: {working_rpc}")
         else:
@@ -851,13 +851,22 @@ class SwapEventListener:
                 self.ws_provider = LegacyWebSocketProvider(ws_rpc, websocket_timeout=10)
                 w3 = Web3(self.ws_provider)
                 logger.info(f"Using WebSocket RPC: {ws_rpc}")
+                # Test WebSocket subscription
+                test_sub = w3.eth.subscribe_new_heads()
+                await test_sub.__aenter__()
+                await test_sub.__aexit__(None, None, None)
+                await self._start_websocket_subscriptions(w3)
             except Exception as e:
                 logger.warning(f"WebSocket connection failed: {e}. Falling back to HTTP.")
                 w3 = self.blockchain.get_web3(chain_key)
                 self.ws_provider = None
+                # Fallback to polling
+                asyncio.create_task(self._poll_blocks())
         else:
             w3 = self.blockchain.get_web3(chain_key)
             self.ws_provider = None
+            # Fallback to polling
+            asyncio.create_task(self._poll_blocks())
 
         if not w3:
             self.active = False
@@ -870,14 +879,6 @@ class SwapEventListener:
 
             # Initialize known pools
             await self._initialize_known_pools()
-
-            # Start WebSocket subscriptions if available
-            if self.ws_provider:
-                await self._start_websocket_subscriptions(w3)
-            else:
-                # Fallback to polling
-                asyncio.create_task(self._poll_blocks())
-
             return True
         except Exception as e:
             logger.error(f"Failed to start SwapEventListener: {e}")
@@ -887,27 +888,26 @@ class SwapEventListener:
     async def _start_websocket_subscriptions(self, w3):
         try:
             # Subscribe to new blocks
-            new_heads_filter = w3.eth.filter("latest")
-            new_heads_filter.watch(self._on_new_block)
-            self.event_filters.append(new_heads_filter)
-
-            # Subscribe to PoolCreated events
-            factory = await self.blockchain.get_factory_contract(self.state.current_chain_key)
-            if factory:
-                pool_created_filter = factory.events.PoolCreated.create_filter(fromBlock="latest")
-                pool_created_filter.watch(self._on_pool_created)
-                self.event_filters.append(pool_created_filter)
+            new_heads_sub = w3.eth.subscribe_new_heads()
+            async for head in new_heads_sub:
+                if not self.active:
+                    break
+                self.current_block = head.number
+                logger.debug(f"New block: {self.current_block}")
 
             # Subscribe to Swap events
-            swap_filter = w3.eth.filter({"topics": [self.swap_topic]})
-            swap_filter.watch(self._on_swap_log)
-            self.event_filters.append(swap_filter)
+            swap_sub = w3.eth.subscribe_logs({'topics': [self.swap_topic]})
+            async for log in swap_sub:
+                if not self.active:
+                    break
+                await self._process_swap_log(log)
 
-            logger.info("WebSocket subscriptions started for new heads, PoolCreated, and Swap events")
-
+            logger.info("WebSocket subscriptions started for new heads and Swap events")
         except Exception as e:
             logger.error(f"Failed to start WebSocket subscriptions: {e}")
             self.active = False
+            # Fallback to polling
+            asyncio.create_task(self._poll_blocks())
 
     async def stop(self):
         self.active = False
@@ -921,45 +921,6 @@ class SwapEventListener:
                 pass
         self.event_filters = []
         logger.info("SwapEventListener stopped")
-
-    async def _on_new_block(self, block):
-        if not self.active:
-            return
-        self.current_block = block["number"]
-        logger.debug(f"New block: {self.current_block}")
-
-    async def _on_pool_created(self, event):
-        if not self.active:
-            return
-        try:
-            token0 = to_checksum_address(event["args"]["token0"])
-            token1 = to_checksum_address(event["args"]["token1"])
-            pool_address = to_checksum_address(event["args"]["pool"])
-
-            with self.state._lock:
-                old_count = len(self.state.observed_tokens)
-                self.state.observed_tokens.add(token0)
-                self.state.observed_tokens.add(token1)
-                new_count = len(self.state.observed_tokens)
-                if new_count > old_count:
-                    logger.info(f"Discovered new tokens: {short(token0)}, {short(token1)}")
-
-            for token in [token0, token1]:
-                if token not in self.price_graph.token_metadata:
-                    await self._load_token_metadata(token)
-
-            price = await self.blockchain.get_pool_price_direct(pool_address, self.state.current_chain_key)
-            if price is not None:
-                self.price_graph.add_pair_price(token0, token1, price)
-                logger.info(f"Added new pool: {short(token0)}/{short(token1)} @ {price:.8f}")
-
-        except Exception as e:
-            logger.error(f"Error processing PoolCreated event: {e}")
-
-    async def _on_swap_log(self, log):
-        if not self.active:
-            return
-        await self._process_swap_log(log)
 
     async def _poll_blocks(self):
         while self.active:
@@ -1026,6 +987,7 @@ class SwapEventListener:
                 self.price_graph.add_pair_price(token0, token1, price)
                 logger.debug(f"Updated price for {short(token0)}/{short(token1)}: {price:.8f}")
 
+            # Ensure prices are updated for all tokens
             self._update_token_prices()
 
         except Exception as e:
@@ -1125,7 +1087,7 @@ class SwapEventListener:
             logger.error(f"Error updating gas price: {e}")
             with self.state._lock:
                 self.state.current_gas_price = self.state.config.MAX_GAS_PRICE
-
+                
 # ========== TOKEN DISCOVERY ==========
 class TokenDiscovery:
     def __init__(self, state: State, blockchain: BlockchainHelper, price_graph: PriceGraph):
@@ -1319,7 +1281,7 @@ class Trader:
         fee_percent = fee_tier / 1e6
         result["fee_amount"] = result["amount_eth"] * fee_percent
         result["price_impact"] = self._calculate_price_impact(token, token_amount)
-        result["slippage"] = result["price_impact"] + random.uniform(0, 0.1)
+        result["slippage"] = result["price_impact"]
         if result["slippage"] > self.config.MAX_SLIPPAGE:
             result["success"] = False
             result["reason"] = f"Slippage too high: {result['slippage']:.4f}% > {self.config.MAX_SLIPPAGE}%"
@@ -1777,7 +1739,7 @@ class StateManager:
                 "start_time": state_dict["start_time"],
                 "last_price_update": state_dict["last_price_update"],
                 "current_gas_price": state_dict["current_gas_price"],
-                "observed_tokens": list(state_dict["observed_tokens"]),
+                "observed_tokens": list(state_dict.get("observed_tokens", [])),
                 "open_buy_orders": state_dict["open_buy_orders"],
                 "token_symbols": state_dict["token_symbols"],
                 "token_addresses": state_dict["token_addresses"],
@@ -2052,23 +2014,23 @@ class Bot:
         self.running = False
         self.swap_listener_active = False
 
-    def start(self):
+    async def start(self):
         if self.running:
             logger.info("Bot is already running")
             return
         logger.info("Starting Uniswap Quick Swap Trader (BFS Graph Approach)...")
         self.running = True
         if not self.live_mode:
-            asyncio.run(self._initialize_shared_components())
+            await self._initialize_shared_components()  # <-- Await instead of asyncio.run
             logger.info(f"Starting {len(self.simulators)} parallel parameter set simulations")
             for simulator in self.simulators:
                 simulator.start()
-            threading.Thread(target=lambda: asyncio.run(self._run_shared_listener()), daemon=True).start()
+            asyncio.create_task(self._run_shared_listener())  # <-- Use create_task
         else:
             self.state.is_running = True
             self.state.start_time = time.time()
-            asyncio.run(self._initialize_shared_components())
-            threading.Thread(target=lambda: asyncio.run(self._run_listener()), daemon=True).start()
+            await self._initialize_shared_components()  # <-- Await instead of asyncio.run
+            asyncio.create_task(self._run_listener())  # <-- Use create_task
             self.trader.start_pattern_detection()
             def state_saver():
                 while self.running:
@@ -2121,7 +2083,7 @@ class Bot:
             await self.swap_listener.update_gas_price()
             await asyncio.sleep(15)
 
-    def stop(self):
+    async def stop(self):
         if not self.running:
             logger.info("Bot is not running")
             return
@@ -2138,18 +2100,11 @@ class Bot:
         logger.info("Bot stopped!")
 
 # ========== MAIN ==========
-def main():
+async def main():
     print("""
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  Uniswap Quick Swap Trader v7.4.0 - BFS GRAPH APPROACH (Headless Mode)       ║
-║  ✓ Event-Driven Architecture (like HTML/JS version)                      ║
-║  ✓ BFS Price Graph Traversal for indirect price discovery                ║
-║  ✓ On-Chain Data Only (no external API calls)                           ║
-║  ✓ Token Metadata Loading from Contracts                                ║
-║  ✓ Swap Event Processing for real-time price updates                     ║
-║  ✓ Dynamic Pool Discovery from Factory Events                            ║
-║  ✓ Parallel Parameter Set Simulations                                    ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+    ╔══════════════════════════════════════════════════════════════════════════════╗
+    ║  Uniswap Quick Swap Trader v7.4.0 - BFS GRAPH APPROACH (Headless Mode)       ║
+    ╚══════════════════════════════════════════════════════════════════════════════╝
     """)
     logger.info("Uniswap Quick Swap Trader v7.4.0 (BFS Graph Approach - Headless Mode) started.")
 
@@ -2160,7 +2115,7 @@ def main():
     else:
         bot.state_manager.load_state()
 
-    bot.start()
+    await bot.start()  # <-- Await the async start method
 
     # Periodic status logging
     last_status = time.time()
@@ -2168,23 +2123,21 @@ def main():
 
     try:
         while bot.running:
-            time.sleep(1)
+            await asyncio.sleep(1)
             current_time = time.time()
             if current_time - last_status >= status_interval:
                 last_status = current_time
                 if not bot.live_mode:
-                    # Log simulator status
                     running_count = sum(1 for s in bot.simulators if s.running)
                     logger.info(f"Status: {running_count}/{len(bot.simulators)} simulators running")
                     with bot.shared_state._lock:
                         logger.info(f"Tracked tokens: {len(bot.shared_state.observed_tokens)}, Prices: {len(bot.shared_state.prices)}")
                 else:
-                    # Log live mode status
                     with bot.state._lock:
                         logger.info(f"Tracked tokens: {len(bot.state.observed_tokens)}, Prices: {len(bot.state.prices)}, Trades: {bot.state.portfolio['total_trades']}")
     except KeyboardInterrupt:
         logger.info("Shutting down...")
-        bot.stop()
+        await bot.stop()  # <-- Await the async stop method
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
