@@ -2014,9 +2014,26 @@ def main():
 
     bot.start()
 
+    # Periodic status logging
+    last_status = time.time()
+    status_interval = 10
+
     try:
         while bot.running:
             time.sleep(1)
+            current_time = time.time()
+            if current_time - last_status >= status_interval:
+                last_status = current_time
+                if not bot.live_mode:
+                    # Log simulator status
+                    running_count = sum(1 for s in bot.simulators if s.running)
+                    logger.info(f"Status: {running_count}/{len(bot.simulators)} simulators running")
+                    with bot.shared_state._lock:
+                        logger.info(f"Tracked tokens: {len(bot.shared_state.observed_tokens)}, Prices: {len(bot.shared_state.prices)}")
+                else:
+                    # Log live mode status
+                    with bot.state._lock:
+                        logger.info(f"Tracked tokens: {len(bot.state.observed_tokens)}, Prices: {len(bot.state.prices)}, Trades: {bot.state.portfolio['total_trades']}")
     except KeyboardInterrupt:
         logger.info("Shutting down...")
         bot.stop()
