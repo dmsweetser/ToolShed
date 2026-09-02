@@ -15,6 +15,7 @@ from collections import deque
 from dotenv import load_dotenv
 from web3 import Web3
 from web3.middleware import ExtraDataToPOAMiddleware
+from web3.providers.legacy_websocket import LegacyWebSocketProvider
 import sqlite3
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -101,12 +102,19 @@ class ParameterRange:
         return values
 
 # Adjusted to generate multiple parameter sets
+# DEFAULT_PARAMETER_RANGES = {
+#     "MIN_PRICE_CHANGE": ParameterRange(min=0.01, max=0.5, step=0.01),
+#     "MIN_TIME_WINDOW": ParameterRange(min=1, max=10, step=1),
+#     "MAX_TIME_WINDOW": ParameterRange(min=10, max=60, step=5),
+#     "MIN_OCCURRENCES": ParameterRange(min=1, max=3, step=1),
+#     "MIN_PROFIT_PERCENT": ParameterRange(min=0.1, max=2.0, step=0.1),
+# }
 DEFAULT_PARAMETER_RANGES = {
-    "MIN_PRICE_CHANGE": ParameterRange(min=0.01, max=0.5, step=0.01),
-    "MIN_TIME_WINDOW": ParameterRange(min=1, max=10, step=1),
-    "MAX_TIME_WINDOW": ParameterRange(min=10, max=60, step=5),
+    "MIN_PRICE_CHANGE": ParameterRange(min=0, max=0.5, step=999),
+    "MIN_TIME_WINDOW": ParameterRange(min=0, max=10, step=999),
+    "MAX_TIME_WINDOW": ParameterRange(min=0, max=60, step=999),
     "MIN_OCCURRENCES": ParameterRange(min=1, max=3, step=1),
-    "MIN_PROFIT_PERCENT": ParameterRange(min=0.1, max=2.0, step=0.1),
+    "MIN_PROFIT_PERCENT": ParameterRange(min=0.0, max=2.0, step=999),
 }
 
 class ParameterGenerator:
@@ -197,10 +205,10 @@ NETWORK_TOKENS = {
 }
 
 ARBITRUM_RPC_ENDPOINTS = [
+    "wss://arbitrum-one-rpc.publicnode.com",  # WebSocket first
     "https://arb1.arbitrum.io/rpc",
     "https://arbitrum-mainnet.public.blastapi.io",
     "https://arbitrum-mainnet.rpcfast.com",
-    "https://arbitrum-one-rpc.publicnode.com",
 ]
 
 CHAINS = {
@@ -231,6 +239,18 @@ UNISWAP_V3_FACTORY_ABI = json.loads('''
         "outputs": [{"internalType": "address", "name": "", "type": "address"}],
         "stateMutability": "view",
         "type": "function"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {"indexed": true, "internalType": "address", "name": "token0", "type": "address"},
+            {"indexed": true, "internalType": "address", "name": "token1", "type": "address"},
+            {"indexed": false, "internalType": "uint24", "name": "fee", "type": "uint24"},
+            {"indexed": false, "internalType": "int24", "name": "tickSpacing", "type": "int24"},
+            {"indexed": false, "internalType": "address", "name": "pool", "type": "address"}
+        ],
+        "name": "PoolCreated",
+        "type": "event"
     }
 ]
 ''')
@@ -365,7 +385,7 @@ class PriceGraph:
                 self.pair_prices[token1] = {}
             self.pair_prices[token0][token1] = price
             self.pair_prices[token1][token0] = 1.0 / price
-            logger.debug(f"Added pair price: {token0}/{token1} = {price}")
+            logger.debug(f"Added pair price: {token0}/{token1} = {price:.8f}")
 
     def get_price(self, token_address: str) -> Optional[float]:
         token_address = to_checksum_address(token_address)
@@ -650,6 +670,7 @@ class BlockchainHelper:
         self.state = state
         self.chains = CHAINS
         self.web3_providers: Dict[str, Web3] = {}
+        self.ws_providers: Dict[str, LegacyWebSocketProvider] = {}
         self.factory_contracts: Dict[str, Any] = {}
         self.pool_contracts: Dict[str, Any] = {}
         self.token_contracts: Dict[str, Any] = {}
@@ -657,7 +678,10 @@ class BlockchainHelper:
 
     def _test_rpc_endpoint(self, rpc_url: str) -> bool:
         try:
-            w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={'timeout': 5}))
+            if rpc_url.startswith("wss://"):
+                w3 = Web3(LegacyWebSocketProvider(rpc_url, websocket_timeout=10))
+            else:
+                w3 = Web3(Web3.HTTPProvider(rpc_url, request_kwargs={'timeout': 5}))
             block_number = w3.eth.block_number
             weth_addr = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"
             try:
@@ -683,8 +707,13 @@ class BlockchainHelper:
                 working_rpc = rpc_url
                 break
         if working_rpc:
-            provider = Web3.HTTPProvider(working_rpc, request_kwargs={'timeout': 10})
-            w3 = Web3(provider)
+            if working_rpc.startswith("wss://"):
+                provider = LegacyWebSocketProvider(working_rpc, websocket_timeout=10)
+                w3 = Web3(provider)
+                self.ws_providers[chain_key] = provider
+            else:
+                provider = Web3.HTTPProvider(working_rpc, request_kwargs={'timeout': 10})
+                w3 = Web3(provider)
             if chain_key in ["polygon", "arbitrum", "base", "optimism"]:
                 w3.middleware_onion.inject(ExtraDataToPOAMiddleware(), layer=0, name="extradata_to_poa")
             self.web3_providers[chain_key] = w3
@@ -807,96 +836,133 @@ class SwapEventListener:
         self.active = False
         self.current_block = 0
         self.last_block_check = 0
+        self.ws_provider = None
         self._lock = threading.Lock()
+        self.event_filters = []  # Track active event filters for cleanup
 
     async def start(self):
         if self.active:
             return True
         self.active = True
-        w3 = self.blockchain.get_web3(self.state.current_chain_key)
+        chain_key = self.state.current_chain_key
+        chain_config = CHAINS[chain_key]
+
+        # Try WebSocket first
+        ws_rpc = next((rpc for rpc in chain_config["rpcs"] if rpc.startswith("wss://")), None)
+        if ws_rpc:
+            try:
+                self.ws_provider = WebsocketProvider(ws_rpc, websocket_timeout=10)
+                w3 = Web3(self.ws_provider)
+                logger.info(f"Using WebSocket RPC: {ws_rpc}")
+            except Exception as e:
+                logger.warning(f"WebSocket connection failed: {e}. Falling back to HTTP.")
+                w3 = self.blockchain.get_web3(chain_key)
+                self.ws_provider = None
+        else:
+            w3 = self.blockchain.get_web3(chain_key)
+            self.ws_provider = None
+
         if not w3:
             self.active = False
             return False
+
         try:
             self.current_block = w3.eth.block_number
             self.last_block_check = self.current_block
             logger.info(f"SwapEventListener started at block {self.current_block}")
+
+            # Initialize known pools
             await self._initialize_known_pools()
-            await self._scan_for_new_pools()
-            asyncio.create_task(self._poll_blocks())
+
+            # Start WebSocket subscriptions if available
+            if self.ws_provider:
+                await self._start_websocket_subscriptions(w3)
+            else:
+                # Fallback to polling
+                asyncio.create_task(self._poll_blocks())
+
             return True
         except Exception as e:
             logger.error(f"Failed to start SwapEventListener: {e}")
             self.active = False
             return False
 
-    async def stop(self):
-        self.active = False
-        logger.info("SwapEventListener stopped")
-
-    async def _initialize_known_pools(self):
-        chain_key = self.state.current_chain_key
-        chain_config = CHAINS[chain_key]
-        wrapped_native = to_checksum_address(chain_config['wrappedNative'])
-        token_addresses = list(NETWORK_TOKENS.get(chain_key, {}).values())
-        token_addresses.append(wrapped_native)
-        token_addresses.extend(chain_config.get('stables', []))
-        pairs = set()
-        for i, addr1 in enumerate(token_addresses):
-            for addr2 in token_addresses[i+1:]:
-                pairs.add((addr1, addr2))
-        for token0, token1 in pairs:
-            for fee in [POOL_FEES["LOW"], POOL_FEES["MEDIUM"], POOL_FEES["HIGH"]]:
-                pool_address = await self.blockchain.get_pool_address(token0, token1, fee, chain_key)
-                if pool_address:
-                    price = await self.blockchain.get_pool_price_direct(pool_address, chain_key)
-                    if price is not None:
-                        self.price_graph.add_pair_price(token0, token1, price)
-                        logger.info(f"Initialized pair: {short(token0)}/{short(token1)} @ {price:.8f}")
-                    break
-        for addr in token_addresses:
-            await self._load_token_metadata(addr)
-
-    async def _scan_for_new_pools(self):
-        w3 = self.blockchain.get_web3(self.state.current_chain_key)
-        if not w3:
-            return
-
-        factory = await self.blockchain.get_factory_contract(self.state.current_chain_key)
-        if not factory:
-            return
-
+    async def _start_websocket_subscriptions(self, w3):
         try:
-            logs = w3.eth.get_logs({
-                'fromBlock': max(0, w3.eth.block_number - 1000),  # Last 1000 blocks
-                'toBlock': w3.eth.block_number,
-                'topics': [self.pool_created_topic]
-            })
+            # Subscribe to new blocks
+            new_heads_filter = w3.eth.filter("new_heads")
+            new_heads_filter.watch(self._on_new_block)
+            self.event_filters.append(new_heads_filter)
 
-            for log in logs:
-                token0 = to_checksum_address("0x" + log["topics"][1][26:])
-                token1 = to_checksum_address("0x" + log["topics"][2][26:])
-                pool_address = to_checksum_address("0x" + log["data"][26:66])
+            # Subscribe to PoolCreated events
+            factory = await self.blockchain.get_factory_contract(self.state.current_chain_key)
+            if factory:
+                pool_created_filter = factory.events.PoolCreated.create_filter(fromBlock="latest")
+                pool_created_filter.watch(self._on_pool_created)
+                self.event_filters.append(pool_created_filter)
 
-                price = await self.blockchain.get_pool_price_direct(pool_address, self.state.current_chain_key)
-                if price is not None:
-                    self.price_graph.add_pair_price(token0, token1, price)
-                    logger.info(f"Discovered new pool: {short(token0)}/{short(token1)} @ {price:.8f}")
+            # Subscribe to Swap events
+            swap_filter = w3.eth.filter({"topics": [self.swap_topic]})
+            swap_filter.watch(self._on_swap_log)
+            self.event_filters.append(swap_filter)
 
-                    with self.state._lock:
-                        old_count = len(self.state.observed_tokens)
-                        self.state.observed_tokens.add(token0)
-                        self.state.observed_tokens.add(token1)
-                        new_count = len(self.state.observed_tokens)
-                        if new_count > old_count:
-                            logger.info(f"observed_tokens updated: {old_count} -> {new_count} (added {short(token0)}, {short(token1)})")
-
-                    for token in [token0, token1]:
-                        if token not in self.price_graph.token_metadata:
-                            await self._load_token_metadata(token)
+            logger.info("WebSocket subscriptions started for new heads, PoolCreated, and Swap events")
 
         except Exception as e:
-            logger.error(f"Error scanning for new pools: {e}")
+            logger.error(f"Failed to start WebSocket subscriptions: {e}")
+            self.active = False
+
+    async def stop(self):
+        self.active = False
+        if self.ws_provider:
+            self.ws_provider.close()
+        # Clean up event filters
+        for event_filter in self.event_filters:
+            try:
+                event_filter.uninstall()
+            except:
+                pass
+        self.event_filters = []
+        logger.info("SwapEventListener stopped")
+
+    async def _on_new_block(self, block):
+        if not self.active:
+            return
+        self.current_block = block["number"]
+        logger.debug(f"New block: {self.current_block}")
+
+    async def _on_pool_created(self, event):
+        if not self.active:
+            return
+        try:
+            token0 = to_checksum_address(event["args"]["token0"])
+            token1 = to_checksum_address(event["args"]["token1"])
+            pool_address = to_checksum_address(event["args"]["pool"])
+
+            with self.state._lock:
+                old_count = len(self.state.observed_tokens)
+                self.state.observed_tokens.add(token0)
+                self.state.observed_tokens.add(token1)
+                new_count = len(self.state.observed_tokens)
+                if new_count > old_count:
+                    logger.info(f"Discovered new tokens: {short(token0)}, {short(token1)}")
+
+            for token in [token0, token1]:
+                if token not in self.price_graph.token_metadata:
+                    await self._load_token_metadata(token)
+
+            price = await self.blockchain.get_pool_price_direct(pool_address, self.state.current_chain_key)
+            if price is not None:
+                self.price_graph.add_pair_price(token0, token1, price)
+                logger.info(f"Added new pool: {short(token0)}/{short(token1)} @ {price:.8f}")
+
+        except Exception as e:
+            logger.error(f"Error processing PoolCreated event: {e}")
+
+    async def _on_swap_log(self, log):
+        if not self.active:
+            return
+        await self._process_swap_log(log)
 
     async def _poll_blocks(self):
         while self.active:
@@ -908,11 +974,11 @@ class SwapEventListener:
                 latest_block = w3.eth.block_number
                 if latest_block > self.last_block_check:
                     start_block = self.last_block_check + 1
-                    end_block = min(latest_block, start_block + 4)
+                    end_block = min(latest_block, start_block + 20)  # Process 20 blocks at a time
                     for block_num in range(start_block, end_block + 1):
                         await self._process_block(block_num)
                     self.last_block_check = end_block
-                await asyncio.sleep(2)
+                await asyncio.sleep(1)  # Poll every 1 second
             except Exception as e:
                 logger.error(f"Error in block polling: {e}")
                 await asyncio.sleep(5)
@@ -950,7 +1016,11 @@ class SwapEventListener:
                 self.state.observed_tokens.add(token1)
                 new_count = len(self.state.observed_tokens)
                 if new_count > old_count:
-                    logger.info(f"observed_tokens updated: {old_count} -> {new_count} (added {short(token0)}, {short(token1)})")
+                    logger.info(f"Added new tokens to observed_tokens: {short(token0)}, {short(token1)}")
+
+            for token in [token0, token1]:
+                if token not in self.price_graph.token_metadata:
+                    await self._load_token_metadata(token)
 
             slot0 = pool_contract.functions.slot0().call()
             sqrt_price_x96 = slot0[0]
@@ -958,10 +1028,6 @@ class SwapEventListener:
             if price is not None:
                 self.price_graph.add_pair_price(token0, token1, price)
                 logger.debug(f"Updated price for {short(token0)}/{short(token1)}: {price:.8f}")
-
-            for token in [token0, token1]:
-                if token not in self.price_graph.token_metadata:
-                    await self._load_token_metadata(token)
 
             self._update_token_prices()
 
@@ -1025,6 +1091,29 @@ class SwapEventListener:
             self.state.price_history[token].append({"price": price, "timestamp": time.time()})
             if len(self.state.price_history[token]) > self.state.config.MAX_PRICE_HISTORY:
                 self.state.price_history[token] = self.state.price_history[token][-self.state.config.MAX_PRICE_HISTORY:]
+
+    async def _initialize_known_pools(self):
+        chain_key = self.state.current_chain_key
+        chain_config = CHAINS[chain_key]
+        wrapped_native = to_checksum_address(chain_config['wrappedNative'])
+        token_addresses = list(NETWORK_TOKENS.get(chain_key, {}).values())
+        token_addresses.append(wrapped_native)
+        token_addresses.extend(chain_config.get('stables', []))
+        pairs = set()
+        for i, addr1 in enumerate(token_addresses):
+            for addr2 in token_addresses[i+1:]:
+                pairs.add((addr1, addr2))
+        for token0, token1 in pairs:
+            for fee in [POOL_FEES["LOW"], POOL_FEES["MEDIUM"], POOL_FEES["HIGH"]]:
+                pool_address = await self.blockchain.get_pool_address(token0, token1, fee, chain_key)
+                if pool_address:
+                    price = await self.blockchain.get_pool_price_direct(pool_address, chain_key)
+                    if price is not None:
+                        self.price_graph.add_pair_price(token0, token1, price)
+                        logger.info(f"Initialized pair: {short(token0)}/{short(token1)} @ {price:.8f}")
+                    break
+        for addr in token_addresses:
+            await self._load_token_metadata(addr)
 
     async def update_gas_price(self):
         try:
