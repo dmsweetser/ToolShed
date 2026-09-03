@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Quick Swap Trader v7.1.0</title>
+    <title>Uniswap Quick Swap Trader v7.2.0</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
     <style>
         body {
@@ -303,9 +303,8 @@
     <div class="toast-container" id="toastContainer"></div>
     <div class="container">
         <h1>Uniswap Quick Swap Trader</h1>
-        <p><strong>v7.1.0 - Profit-Only Mode</strong> - Buys dips and sells <strong>only at profit</strong>.</p>
+        <p><strong>v7.2.0 - Profit-Only Mode</strong> - Buys dips and sells <strong>only at profit</strong>.</p>
 
-        <!-- Controls -->
         <div class="card">
             <h2>Controls</h2>
             <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 15px;">
@@ -318,7 +317,6 @@
                 <button class="btn btn-danger" id="stopBotBtn" onclick="stopBot()" disabled>Stop Trading</button>
                 <button class="btn btn-secondary" onclick="resetApp()">Reset App</button>
             </div>
-
             <div style="display: flex; align-items: center; gap: 10px; margin-top: 15px;">
                 <span id="botStatusIndicator"></span>
                 <span id="botStatusText">Not Running</span>
@@ -328,7 +326,6 @@
                 <span id="priceFeedStatus"><span class="loading-spinner" style="display:none;"></span> Price
                     Updates</span>
             </div>
-
             <div class="grid-3" style="margin-top: 20px;">
                 <div class="metric-card">
                     <div class="metric-value"><span id="uptime">00:00:00</span></div>
@@ -343,7 +340,6 @@
                     <div class="metric-label">Network Fee</div>
                 </div>
             </div>
-
             <div class="grid-3" style="margin-top: 10px;">
                 <div class="metric-card">
                     <div class="metric-value"><span id="tradeAmountDisplay">0.000000 ETH</span></div>
@@ -360,7 +356,6 @@
             </div>
         </div>
 
-        <!-- Portfolio, Pattern Finder, Trading Costs -->
         <div class="grid-3">
             <div class="card">
                 <h3>Portfolio</h3>
@@ -434,7 +429,6 @@
             </div>
         </div>
 
-        <!-- Open Positions -->
         <div class="card">
             <h2>Open Positions</h2>
             <div id="activePositions">
@@ -442,7 +436,6 @@
             </div>
         </div>
 
-        <!-- Market Watch -->
         <div class="card">
             <h2>Market Watch</h2>
             <div style="display: flex; gap: 10px; margin-bottom: 15px;">
@@ -470,7 +463,6 @@
             </div>
         </div>
 
-        <!-- Recent Trades -->
         <div class="card">
             <h2>Recent Trades</h2>
             <div style="overflow-x: auto;">
@@ -495,7 +487,6 @@
             </div>
         </div>
 
-        <!-- Configuration -->
         <div class="card">
             <h2>Configuration</h2>
             <div class="grid-3">
@@ -527,7 +518,6 @@
             </div>
         </div>
 
-        <!-- Trade Statistics -->
         <div class="card">
             <h2>Trade Statistics</h2>
             <div class="grid-3">
@@ -563,7 +553,7 @@
 
     <script>
         // ========== APP VERSION & CONFIG ==========
-        const APP_VERSION = '7.1.0-PROFITONLY-FIXED';
+        const APP_VERSION = '7.2.0-PROFITONLY-CONNECTIVITY-FIXED';
         let CONFIG = {
             BLOCKCHAIN_NETWORK: 'arbitrum',
             UNISWAP_VERSION: 'v3',
@@ -582,23 +572,24 @@
             GAS_LIMIT: 200000,
             PREVENT_SEQUENTIAL_TRADES: true,
             PRICE_HISTORY_DURATION: 24,
-            MAX_PRICE_HISTORY: 1000,  // Reduced from 5000 to prevent storage issues
-            BLOCK_BATCH_SIZE: 100,      // Process blocks in batches
-            MAX_BLOCK_RANGE: 1000      // Max block range for getLogs
+            MAX_PRICE_HISTORY: 1000,
+            BLOCK_BATCH_SIZE: 50,
+            MAX_BLOCK_RANGE: 500,
+            PRICE_POLL_INTERVAL: 5000
         };
 
         const PATTERN_TYPES = { BUY: 'buy' };
         const POOL_FEES = { LOW: 500, MEDIUM: 3000, HIGH: 10000 };
 
-        // Arbitrum-only chain config with more reliable RPCs
         const CHAINS = {
             arbitrum: {
                 name: "Arbitrum One",
                 chainId: 42161,
                 rpcs: [
-                    "wss://arbitrum-one-rpc.publicnode.com",  // WebSocket FIRST
+                    "wss://arbitrum-one-rpc.publicnode.com",
                     "https://arb1.arbitrum.io/rpc",
-                    "https://arbitrum-mainnet.public.blastapi.io"
+                    "https://arbitrum-mainnet.public.blastapi.io",
+                    "https://arbitrum-mainnet.rpcfast.com"
                 ],
                 factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
                 wrappedNative: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
@@ -638,7 +629,6 @@
             'USDT': { address: null, decimals: 6, symbol: 'USDT', name: 'Tether' }
         };
 
-        // ========== STATE ==========
         let state = {
             isRunning: false,
             currentNetwork: 'arbitrum',
@@ -648,15 +638,15 @@
             trades: [],
             activePatterns: new Map(),
             portfolio: {
-                balances: {},
+                balances: { 'ETH': 0.0033 },
                 positions: [],
                 realizedPnL: 0,
                 unrealizedPnL: 0,
                 gasSpent: 0,
                 feesPaid: 0,
-                startingEth: CONFIG.STARTING_ETH,
-                currentEth: CONFIG.STARTING_ETH,
-                equityHistory: [{ timestamp: Date.now(), ethValue: CONFIG.STARTING_ETH }],
+                startingEth: 0.0033,
+                currentEth: 0.0033,
+                equityHistory: [{ timestamp: Date.now(), ethValue: 0.0033 }],
                 totalTrades: 0,
                 winningTrades: 0,
                 losingTrades: 0,
@@ -684,17 +674,15 @@
             activeSession: null,
             currentRpcIndex: 0,
             lastDetectionTime: null,
-            lastProcessedBlock: null,
-            blockProcessingQueue: []
+            blockProcessingQueue: [],
+            lastProcessedBlock: null
         };
 
-        // ========== UTILITY FUNCTIONS ==========
         function norm(a) { return a ? String(a).toLowerCase() : ''; }
         function short(a) { if (!a) return ''; return a.substring(0, 6) + '...' + a.substring(a.length - 4); }
         function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
         function safeSetText(elementId, text) { const el = document.getElementById(elementId); if (el) el.textContent = text; }
 
-        // ========== INITIALIZATION ==========
         document.addEventListener('DOMContentLoaded', function () {
             initializeKnownTokens();
             initializeApp();
@@ -784,7 +772,6 @@
             safeSetText('uptime', `${h}:${m}:${s}`);
         }
 
-        // ========== TRADE AMOUNT CALCULATION ==========
         function calculateTradeAmount() {
             try {
                 const gasPrice = state.currentGasPrice || CONFIG.MAX_GAS_PRICE;
@@ -813,7 +800,6 @@
             safeSetText('targetProfitPercent', CONFIG.MIN_PROFIT_PERCENT + '%');
         }
 
-        // ========== PATTERN DETECTION ==========
         function startPatternDetection() {
             if (state.patternDetectionActive) return;
             state.patternDetectionActive = true;
@@ -933,7 +919,6 @@
             safeSetText('activePatternsCount', state.patternStats.totalPatterns);
         }
 
-        // ========== TRADE EXECUTION & PORTFOLIO ==========
         function createTradeObject(token, action, price, tokenAmount, amountETH, pattern, status, reason = null, gasUsed = 0, gasPrice = 0, feeAmount = 0, priceImpact = 0, slippage = 0, patternObj = null) {
             return {
                 id: 'trade_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
@@ -1035,7 +1020,6 @@
                             status: 'open', tradeId: trade.id, pattern: trade.pattern, patternObj: trade.patternObj
                         };
                         state.portfolio.positions.push(position);
-                        backupData();
                     } else {
                         position.amount += tradeResult.tokenAmount;
                         position.usdValue += tradeResult.amountETH;
@@ -1177,7 +1161,6 @@
             }
         }
 
-        // ========== PATTERN MATCHING & PROFIT-TAKING ==========
         function checkPatternsForToken(token) {
             try {
                 if (!state.isRunning) return;
@@ -1239,7 +1222,6 @@
             } catch (e) { console.error('Error checking pattern match:', e); return false; }
         }
 
-        // ========== PORTFOLIO & UI ==========
         function updatePortfolioEquity() {
             try {
                 let totalEth = state.portfolio.balances['ETH'] || 0;
@@ -1477,7 +1459,6 @@
             } catch (e) { console.error('Error showing toast:', e); }
         }
 
-        // ========== BOT CONTROL ==========
         async function startBot() {
             try {
                 if (state.isRunning) { showToast('info', 'Trading is already running.'); return; }
@@ -1593,7 +1574,6 @@
         function showLoading(elementId) { const spinner = document.getElementById(elementId); if (spinner) spinner.style.display = 'inline-block'; }
         function hideLoading(elementId) { const spinner = document.getElementById(elementId); if (spinner) spinner.style.display = 'none'; }
 
-        // ========== UNISWAP SESSION ==========
         function createSession(key) {
             const chain = CHAINS[key];
             return {
@@ -1648,50 +1628,72 @@
             try {
                 const chain = CHAINS.arbitrum;
                 let provider;
-                // Try WebSocket first, fall back to HTTP
+                let providerType = 'http';
+
+                // Try WebSocket first
                 const wsRpc = chain.rpcs.find(rpc => rpc.startsWith('wss:'));
                 if (wsRpc) {
                     try {
                         provider = new ethers.WebSocketProvider(wsRpc, chain.chainId);
+                        // Test the connection
+                        const blockNumber = await provider.getBlockNumber();
+                        if (blockNumber) providerType = 'ws';
                     } catch (e) {
-                        console.warn('WebSocket connection failed, falling back to HTTP:', e);
-                        provider = new ethers.JsonRpcProvider(chain.rpcs[0]);
+                        console.warn('WebSocket connection failed, falling back to HTTP:', e.message);
+                        provider = new ethers.JsonRpcProvider(chain.rpcs[0], chain.chainId);
                     }
                 } else {
-                    provider = new ethers.JsonRpcProvider(chain.rpcs[0]);
+                    provider = new ethers.JsonRpcProvider(chain.rpcs[0], chain.chainId);
                 }
+
                 if (!current(s)) { try { provider.destroy(); } catch { } return; }
                 s.provider = provider;
                 s.ws = provider.websocket;
+
+                // Set up connection event handlers
                 if (s.ws) {
                     s.ws.addEventListener("open", () => {
                         if (!current(s)) return;
                         s.connected = true; s.reconnectAttempts = 0;
                         updateButton(); updateConnectionStatus();
-                        initializeSessionHandlers(s); showToast('success', `Connected to Arbitrum`);
+                        initializeSessionHandlers(s);
+                        showToast('success', `Connected to Arbitrum via WebSocket`);
                     });
                     s.ws.addEventListener("close", () => {
                         if (!current(s)) return;
                         s.connected = false; updateButton(); updateConnectionStatus();
-                        showToast('warning', `Disconnected from Arbitrum, reconnecting...`); scheduleReconnect(s);
+                        showToast('warning', `Disconnected from Arbitrum, reconnecting...`);
+                        scheduleReconnect(s);
                     });
                     s.ws.addEventListener("error", e => {
                         if (!current(s)) return;
                         s.connected = false; updateButton(); updateConnectionStatus();
-                        showToast('error', `WebSocket error for Arbitrum: ${e.message || String(e)}`); scheduleReconnect(s);
+                        showToast('error', `WebSocket error for Arbitrum: ${e.message || String(e)}`);
+                        scheduleReconnect(s);
                     });
+                } else {
+                    // For HTTP provider, we need to poll for connection status
+                    s.connected = true;
+                    updateButton(); updateConnectionStatus();
+                    initializeSessionHandlers(s);
+                    showToast('success', `Connected to Arbitrum via HTTP`);
                 }
+
                 const head = await provider.getBlockNumber();
                 if (!current(s)) return;
                 s.rpcHead = head; s.blockCount = head;
-                // Add this right after: s.rpcHead = head; s.blockCount = head;
                 if (s.chain.quoteMode === "native") await loadToken(s, s.chain.wrappedNative);
-                await updatePricesForSession(s);  // <-- ADD THIS LINE
+
+                // Start monitoring
                 startGasMonitoring(s);
                 startPriceMonitoring(s);
 
-                // Start block processing with batching
+                // Force initial price update
+                await updatePricesForSession(s);
+
+                // Start block processing
                 startBlockProcessing(s);
+
             } catch (e) {
                 if (!current(s)) return;
                 s.connected = false; updateButton(); updateConnectionStatus();
@@ -1720,13 +1722,15 @@
         function initializeSessionHandlers(s) {
             if (!current(s)) return;
 
-            // Enable polling for HTTP providers
-            if (s.provider && s.provider._isProvider) {
+            // Set up block listener for WebSocket providers
+            if (s.provider && s.provider.on && s.ws) {
                 s.provider.on("block", n => {
                     if (current(s)) {
-                        if (!state.blockProcessingQueue.includes(Number(n))) {
-                            state.blockProcessingQueue.push(Number(n));
+                        const blockNum = Number(n);
+                        if (!state.blockProcessingQueue.includes(blockNum)) {
+                            state.blockProcessingQueue.push(blockNum);
                         }
+                        // Process immediately if we have enough blocks or after a short delay
                         if (state.blockProcessingQueue.length >= CONFIG.BLOCK_BATCH_SIZE) {
                             processBlockBatch(s);
                         }
@@ -1734,6 +1738,32 @@
                 });
             }
 
+            // For HTTP providers, poll for new blocks
+            if (s.provider && !s.ws) {
+                s.blockPollInterval = setInterval(async () => {
+                    if (!current(s)) return;
+                    try {
+                        const latestBlock = await s.provider.getBlockNumber();
+                        if (latestBlock > (s.rpcHead || 0)) {
+                            s.rpcHead = latestBlock;
+                            // Add blocks we haven't processed yet
+                            for (let b = (s.lastProcessedBlock || latestBlock - CONFIG.BLOCK_BATCH_SIZE) + 1; b <= latestBlock; b++) {
+                                if (!state.blockProcessingQueue.includes(b)) {
+                                    state.blockProcessingQueue.push(b);
+                                }
+                            }
+                            // Process the queue
+                            if (state.blockProcessingQueue.length > 0) {
+                                await processBlockBatch(s);
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Block polling error:', e);
+                    }
+                }, 2000);
+            }
+
+            // Price update interval
             if (!s.priceUpdateInterval) {
                 s.priceUpdateInterval = setInterval(() => {
                     if (current(s)) {
@@ -1743,41 +1773,38 @@
                             processBlockBatch(s);
                         }
                     }
-                }, 10000);
+                }, CONFIG.PRICE_POLL_INTERVAL);
             }
         }
 
         async function startBlockProcessing(s) {
-            if (!current(s) || !s.connected) return;
-
-            // Process any queued blocks immediately
-            if (state.blockProcessingQueue.length > 0) {
-                await processBlockBatch(s);
-            }
-
-            // Set up interval for processing queued blocks
-            setInterval(async () => {
-                if (current(s) && state.blockProcessingQueue.length > 0) {
-                    await processBlockBatch(s);
-                }
-            }, 1000);
+            // This is now handled in initializeSessionHandlers
         }
 
         async function processBlockBatch(s) {
             if (!current(s) || state.blockProcessingQueue.length === 0) return;
 
+            // Process blocks in batches
             const batch = state.blockProcessingQueue.splice(0, CONFIG.BLOCK_BATCH_SIZE);
-            const latestBlock = await s.provider.getBlockNumber();
 
-            for (const blockNumber of batch) {
-                if (!current(s)) break;
-                if (blockNumber > latestBlock) continue;
+            try {
+                const latestBlock = await s.provider.getBlockNumber();
+                s.rpcHead = latestBlock;
 
-                try {
-                    await processBlock(s, blockNumber);
-                } catch (error) {
-                    console.error('Error processing block:', blockNumber, error);
+                // Process each block in the batch
+                for (const blockNumber of batch) {
+                    if (!current(s)) break;
+                    if (blockNumber > latestBlock) continue;
+
+                    try {
+                        await processBlock(s, blockNumber);
+                        s.lastProcessedBlock = blockNumber;
+                    } catch (error) {
+                        console.error('Error processing block:', blockNumber, error);
+                    }
                 }
+            } catch (error) {
+                console.error('Error processing block batch:', error);
             }
         }
 
@@ -1787,31 +1814,32 @@
                 const head = await s.provider.getBlockNumber();
                 s.rpcHead = head;
                 if (n > head) { await sleep(1000); return; }
-
                 if (s.lastProcessedBlock !== null && n <= s.lastProcessedBlock) return;
 
-                // Use a larger block range to reduce API calls
-                const fromBlock = Math.max(n, head - CONFIG.MAX_BLOCK_RANGE + 1);
-                const toBlock = Math.min(n + CONFIG.BLOCK_BATCH_SIZE - 1, head);
-
+                // Try to get logs for this block
                 let logs = [];
                 try {
                     logs = await s.provider.getLogs({
-                        fromBlock: fromBlock,
-                        toBlock: toBlock,
+                        fromBlock: n,
+                        toBlock: n,
                         topics: [SWAP_TOPIC]
                     });
                 } catch (e) {
-                    console.warn('Error getting logs for block range:', fromBlock, 'to', toBlock, e);
-                    // If the range is too large, try smaller chunks
+                    console.warn('Error getting logs for block', n, ':', e.message);
+                    // If single block fails, try a small range
                     if (e.message && e.message.includes('invalid block range')) {
-                        // Fall back to single block processing
-                        const singleLogs = await s.provider.getLogs({
-                            fromBlock: n,
-                            toBlock: n,
-                            topics: [SWAP_TOPIC]
-                        });
-                        logs = singleLogs;
+                        const fromBlock = Math.max(1, n - 5);
+                        const toBlock = Math.min(n + 5, head);
+                        try {
+                            logs = await s.provider.getLogs({
+                                fromBlock: fromBlock,
+                                toBlock: toBlock,
+                                topics: [SWAP_TOPIC]
+                            });
+                        } catch (e2) {
+                            console.warn('Error getting logs for range', fromBlock, 'to', toBlock, ':', e2.message);
+                            return;
+                        }
                     } else {
                         return;
                     }
@@ -1819,7 +1847,7 @@
 
                 if (!logs || !current(s) || !logs.length) return;
 
-                // Process logs in batches to avoid memory issues
+                // Process logs in batches
                 const logBatches = [];
                 for (let i = 0; i < logs.length; i += 5) {
                     logBatches.push(logs.slice(i, i + 5));
@@ -1832,13 +1860,12 @@
                 }
 
                 s.lastProcessedBlock = n;
-            } catch (error) { console.error('Error processing block:', error); }
+            } catch (error) { console.error('Error processing block:', n, error); }
         }
 
         async function startPriceMonitoring(s) {
             if (!current(s) || !s.connected) return;
-            await updatePricesForSession(s);
-            setInterval(async () => { if (current(s) && s.connected) await updatePricesForSession(s); }, 10000);
+            // Initial price update is now done in connectWithRetry
         }
 
         async function updatePricesForSession(s) {
@@ -1846,6 +1873,12 @@
             try {
                 await updateGasPriceForSession(s);
                 const tokensToUpdate = Array.from(state.observedTokens);
+
+                // If we have no tokens yet, use default tokens
+                if (tokensToUpdate.length === 0) {
+                    tokensToUpdate.push('WETH', 'ETH', 'WBTC', 'UNI', 'LINK', 'ARB', 'GMX', 'USDC', 'USDT');
+                }
+
                 for (const token of tokensToUpdate) {
                     try {
                         const tokenMeta = findTokenMeta(s, token);
@@ -1856,12 +1889,43 @@
                                 addPoint(tokenMeta, price);
                                 checkPatternsForToken(token);
                             }
+                        } else {
+                            // Try to get price for known tokens even if not in session
+                            const knownToken = KNOWN_TOKENS[token];
+                            if (knownToken && knownToken.address) {
+                                const price = await getTokenPriceFromPool(s, knownToken.address);
+                                if (price !== null) {
+                                    state.prices[token] = price;
+                                    if (!state.priceHistory[token]) state.priceHistory[token] = [];
+                                    state.priceHistory[token].push({ price, timestamp: Date.now() });
+                                    if (state.priceHistory[token].length > CONFIG.MAX_PRICE_HISTORY) {
+                                        state.priceHistory[token].shift();
+                                    }
+                                    state.observedTokens.add(token);
+                                    checkPatternsForToken(token);
+                                }
+                            }
                         }
-                    } catch (e) { console.warn(`Error updating price for ${token}:`, e); }
+                    } catch (e) {
+                        // Skip errors for individual tokens
+                    }
                 }
                 state.lastPriceUpdate = new Date();
                 safeSetText('lastPriceUpdate', new Date().toLocaleTimeString());
-            } catch (error) { console.error('Error updating prices for session:', error); }
+            } catch (error) {
+                console.error('Error updating prices for session:', error);
+            }
+        }
+
+        async function getTokenPriceFromPool(s, tokenAddress) {
+            try {
+                // This is a simplified version - in a real implementation you'd need to
+                // find pools that include this token and calculate the price
+                // For now, we'll return null and rely on the swap log processing
+                return null;
+            } catch (e) {
+                return null;
+            }
         }
 
         function findTokenMeta(s, symbol) {
@@ -1887,7 +1951,9 @@
                     s.gasPriceHistory.push({ timestamp: Date.now(), gasPrice: s.gasPrice });
                     if (s.gasPriceHistory.length > 100) s.gasPriceHistory.shift();
                 }
-            } catch (error) { console.error('Error updating gas price:', error); }
+            } catch (error) {
+                console.error('Error updating gas price:', error);
+            }
         }
 
         async function updateGasPrice() { if (state.activeSession) await updateGasPriceForSession(state.activeSession); }
@@ -1928,7 +1994,10 @@
                 state.lastPriceUpdate = new Date(); safeSetText('lastPriceUpdate', new Date().toLocaleTimeString());
                 if (t0.symbol && p0 !== null) updatePriceHistory(t0.symbol, p0, ts);
                 if (t1.symbol && p1 !== null) updatePriceHistory(t1.symbol, p1, ts);
-                if (state.isRunning) { if (t0.symbol) checkPatternsForToken(t0.symbol); if (t1.symbol) checkPatternsForToken(t1.symbol); }
+                if (state.isRunning) {
+                    if (t0.symbol) checkPatternsForToken(t0.symbol);
+                    if (t1.symbol) checkPatternsForToken(t1.symbol);
+                }
             } catch (error) { console.error('Error processing swap log:', error); }
         }
 
@@ -2085,23 +2154,28 @@
             }, 3000);
         }
 
-        function stopPricePolling() { if (state.priceUpdateTimer) { clearInterval(state.priceUpdateTimer); state.priceUpdateTimer = null; } }
+        function stopPricePolling() {
+            if (state.priceUpdateTimer) { clearInterval(state.priceUpdateTimer); state.priceUpdateTimer = null; }
+        }
 
         function refreshPrices() {
             try {
-                if (state.activeSession?.connected) { updateDashboard(); showToast('success', 'Prices refreshed!'); }
+                if (state.activeSession?.connected) {
+                    updateDashboard();
+                    showToast('success', 'Prices refreshed!');
+                }
                 else showToast('warning', 'Not connected. Start trading first.');
             } catch (error) { showToast('error', 'Failed to refresh prices: ' + error.message); console.error('Refresh prices error:', error); }
         }
 
-        function closeWebSockets() { if (state.activeSession) destroySession(state.activeSession); }
+        function closeWebSockets() {
+            if (state.activeSession) destroySession(state.activeSession);
+        }
 
-        // ========== BACKUP & RESTORE ==========
         function backupData() {
             try {
-                // Only backup essential data to prevent quota issues
                 const backup = {
-                    trades: state.trades.slice(-50), // Only keep last 50 trades
+                    trades: state.trades.slice(-50),
                     portfolio: {
                         balances: state.portfolio.balances,
                         positions: state.portfolio.positions,
@@ -2117,19 +2191,13 @@
                         failedTrades: state.portfolio.failedTrades,
                         totalFees: state.portfolio.totalFees
                     },
-                    activePatterns: Array.from(state.activePatterns.values()).slice(0, 20), // Limit patterns
-                    prices: {}, // Don't backup prices
-                    priceHistory: {}, // Don't backup price history
+                    activePatterns: Array.from(state.activePatterns.values()).slice(0, 20),
                     lastBackup: new Date().toISOString(),
                     config: CONFIG
                 };
-
-                // Try to store with error handling
                 try {
                     localStorage.setItem('uniswapTraderBackup', JSON.stringify(backup));
                 } catch (e) {
-                    console.warn('LocalStorage quota exceeded, trying to clear old data...');
-                    // Try to clear old backups
                     localStorage.removeItem('uniswapTraderBackup');
                     localStorage.setItem('uniswapTraderBackup', JSON.stringify(backup));
                 }
@@ -2144,8 +2212,6 @@
                     if (data.trades) state.trades = data.trades;
                     if (data.portfolio) state.portfolio = data.portfolio;
                     if (data.activePatterns) state.activePatterns = new Map(data.activePatterns?.map(p => [getPatternKey(p), p]) || []);
-                    if (data.prices) state.prices = data.prices;
-                    if (data.priceHistory) state.priceHistory = data.priceHistory;
                     if (data.config) CONFIG = { ...CONFIG, ...data.config };
                     for (const token in state.priceHistory) state.observedTokens.add(token);
                     updateUI();
@@ -2171,14 +2237,12 @@
             }
         });
 
-        // Reduced backup frequency to prevent quota issues
         setInterval(() => {
             if (state.isRunning || state.trades.length > 0 || state.portfolio.positions.length > 0) {
                 backupData();
             }
-        }, 60000); // Every 60 seconds instead of 30
+        }, 60000);
 
-        // Load backup on start
         loadBackup();
     </script>
 </body>
