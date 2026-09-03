@@ -628,6 +628,9 @@
             'USDT': { address: null, decimals: 6, symbol: 'USDT', name: 'Tether' }
         };
 
+        // Throttle variable for updatePositionDetails
+        let lastPositionUpdate = 0;
+
         let state = {
             isRunning: false,
             currentNetwork: 'arbitrum',
@@ -1244,25 +1247,25 @@
 
         function updatePortfolioUI() {
             try {
-                const format6 = (value) => (value || 0);
-                safeSetText('startingEthDisplay', format6(state.portfolio.startingEth) + ' ETH');
-                safeSetText('currentEth', format6(state.portfolio.currentEth) + ' ETH');
+                const format = (value) => (value || 0);
+                safeSetText('startingEthDisplay', format(state.portfolio.startingEth) + ' ETH');
+                safeSetText('currentEth', format(state.portfolio.currentEth) + ' ETH');
                 const realizedPnL = state.portfolio.realizedPnL;
                 const realizedPnLEl = document.getElementById('realizedPnL');
                 if (realizedPnLEl) {
-                    realizedPnLEl.textContent = format6(realizedPnL) + ' ETH';
+                    realizedPnLEl.textContent = format(realizedPnL) + ' ETH';
                     realizedPnLEl.className = realizedPnL >= 0 ? 'price-up' : 'price-down';
                 }
                 const unrealizedPnL = state.portfolio.unrealizedPnL;
                 const unrealizedPnLEl = document.getElementById('unrealizedPnL');
                 if (unrealizedPnLEl) {
-                    unrealizedPnLEl.textContent = format6(unrealizedPnL) + ' ETH';
+                    unrealizedPnLEl.textContent = format(unrealizedPnL) + ' ETH';
                     unrealizedPnLEl.className = unrealizedPnL >= 0 ? 'price-up' : 'price-down';
                 }
                 const netPnL = realizedPnL + unrealizedPnL;
                 const netPnLEl = document.getElementById('netPnL');
                 if (netPnLEl) {
-                    netPnLEl.textContent = format6(netPnL) + ' ETH';
+                    netPnLEl.textContent = format(netPnL) + ' ETH';
                     netPnLEl.className = netPnL >= 0 ? 'price-up' : 'price-down';
                 }
                 const returnPct = (netPnL / state.portfolio.startingEth) * 100;
@@ -1273,9 +1276,9 @@
                 }
                 const gasSpent = state.portfolio.gasSpent;
                 const feesPaid = state.portfolio.feesPaid;
-                safeSetText('gasSpent', format6(gasSpent) + ' ETH');
-                safeSetText('dexFees', format6(feesPaid) + ' ETH');
-                safeSetText('totalFees', format6(gasSpent + feesPaid) + ' ETH');
+                safeSetText('gasSpent', format(gasSpent) + ' ETH');
+                safeSetText('dexFees', format(feesPaid) + ' ETH');
+                safeSetText('totalFees', format(gasSpent + feesPaid) + ' ETH');
                 updatePositionDetails();
             } catch (e) { console.error('Error updating portfolio UI:', e); }
         }
@@ -1298,15 +1301,24 @@
             } catch (e) { console.error('Error updating trade statistics:', e); }
         }
 
+        // === FIXED: Throttled and improved updatePositionDetails === 
         function updatePositionDetails() {
             try {
+                const now = Date.now();
+                if (now - lastPositionUpdate < 500) return; // Throttle to max once every 500ms
+                lastPositionUpdate = now;
+
                 const positionsTable = document.getElementById('activePositions');
                 if (!positionsTable) return;
                 const openPositions = state.portfolio.positions.filter(p => p.status === 'open');
+
                 if (openPositions.length === 0) {
-                    positionsTable.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">No open investments</p>';
+                    if (!positionsTable.innerHTML.includes('No open investments')) {
+                        positionsTable.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">No open investments</p>';
+                    }
                     return;
                 }
+
                 let html = '<table><thead><tr><th>Token</th><th>Bought At</th><th>Amount</th><th>Current Value</th><th>Profit/Loss</th><th>Pattern</th><th>Age</th></tr></thead><tbody>';
                 openPositions.forEach(position => {
                     const currentPrice = state.prices[position.token] || position.entryPrice;
@@ -1330,7 +1342,11 @@
         }
 
         function updateDashboard() {
-            try { renderDashboard(); renderRecentTrades(); updateTradeAmountDisplay(); }
+            try {
+                renderDashboard();
+                renderRecentTrades();
+                updateTradeAmountDisplay();
+            }
             catch (e) { console.error('Error updating dashboard:', e); }
         }
 
@@ -1354,7 +1370,7 @@
                     }
                     const changeClass = changePct >= 0 ? 'price-up' : 'price-down';
                     const changeSymbol = changePct > 0 ? '\u25B2' : changePct < 0 ? '\u25BC' : '';
-                    const displayPrice = price != null ? price : 'N/A';
+                    const displayPrice = price != null ? price.toFixed(8) : 'N/A';
                     const tokenPatterns = Array.from(state.activePatterns.values()).filter(p => p.token === tokenSymbol);
                     const tokenTrades = state.trades.filter(t => t.token === tokenSymbol && (t.status === 'closed' || t.status === 'open'));
                     const lastTradeTime = tokenTrades.length > 0 ? new Date(Math.max(...tokenTrades.map(t => new Date(t.timestamp).getTime()))).toLocaleTimeString() : 'Never';
@@ -1693,6 +1709,7 @@
             setInterval(async () => { if (current(s) && s.connected) await updatePricesForSession(s); }, 10000);
         }
 
+        // === FIXED: Now calls updatePositionDetails after updating prices === 
         async function updatePricesForSession(s) {
             if (!current(s) || !s.connected) return;
             try {
@@ -1703,11 +1720,17 @@
                         const tokenMeta = findTokenMeta(s, token);
                         if (tokenMeta) {
                             const price = quotePrice(s, tokenMeta.address);
-                            if (price !== null) { state.prices[token] = price; addPoint(tokenMeta, price); checkPatternsForToken(token); }
+                            if (price !== null) {
+                                state.prices[token] = price;
+                                addPoint(tokenMeta, price);
+                                checkPatternsForToken(token);
+                            }
                         }
                     } catch (e) { console.warn(`Error updating price for ${token}:`, e); }
                 }
-                state.lastPriceUpdate = new Date(); safeSetText('lastPriceUpdate', new Date().toLocaleTimeString());
+                state.lastPriceUpdate = new Date();
+                safeSetText('lastPriceUpdate', new Date().toLocaleTimeString());
+                updatePositionDetails(); // <-- CRITICAL FIX: Update positions after price updates
             } catch (error) { console.error('Error updating prices for session:', error); }
         }
 
@@ -1740,6 +1763,7 @@
             } finally { s.processingBlocks = false; }
         }
 
+        // === FIXED: Now calls updatePositionDetails after processing swaps === 
         async function processBlock(s, n) {
             if (!current(s)) return;
             try {
@@ -1783,6 +1807,7 @@
 
         async function updateGasPrice() { if (state.activeSession) await updateGasPriceForSession(state.activeSession); }
 
+        // === FIXED: Now calls updatePositionDetails after processing swap logs === 
         async function processSwapLog(s, logEntry) {
             if (!current(s)) return;
             try {
@@ -1816,13 +1841,15 @@
                 if (volume != null && Number.isFinite(volume)) { t0.volumeQuote += volume; t1.volumeQuote += volume; }
                 if (t0.symbol) { state.prices[t0.symbol] = p0; state.observedTokens.add(t0.symbol); }
                 if (t1.symbol) { state.prices[t1.symbol] = p1; state.observedTokens.add(t1.symbol); }
-                state.lastPriceUpdate = new Date(); safeSetText('lastPriceUpdate', new Date().toLocaleTimeString());
+                state.lastPriceUpdate = new Date();
+                safeSetText('lastPriceUpdate', new Date().toLocaleTimeString());
                 if (t0.symbol && p0 !== null) updatePriceHistory(t0.symbol, p0, ts);
                 if (t1.symbol && p1 !== null) updatePriceHistory(t1.symbol, p1, ts);
                 if (state.isRunning) {
                     if (t0.symbol) checkPatternsForToken(t0.symbol);
                     if (t1.symbol) checkPatternsForToken(t1.symbol);
                 }
+                updatePositionDetails(); // <-- CRITICAL FIX: Update positions after swap logs
             } catch (error) { console.error('Error processing swap log:', error); }
         }
 
@@ -1968,13 +1995,16 @@
             }
         }
 
+        // === FIXED: Now calls updatePositionDetails in the interval === 
         function startPricePolling() {
             if (state.priceUpdateTimer) clearInterval(state.priceUpdateTimer);
             state.priceUpdateTimer = setInterval(async () => {
                 if (!state.isRunning || !state.activeSession?.connected) return;
                 try {
                     Object.keys(state.prices).forEach(tokenSymbol => checkPatternsForToken(tokenSymbol));
-                    state.lastPriceUpdate = new Date(); safeSetText('lastPriceUpdate', new Date().toLocaleTimeString());
+                    state.lastPriceUpdate = new Date();
+                    safeSetText('lastPriceUpdate', new Date().toLocaleTimeString());
+                    updatePositionDetails(); // <-- CRITICAL FIX: Update positions during polling
                 } catch (error) { console.error('Error in price polling:', error); }
             }, 3000);
         }
