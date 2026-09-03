@@ -787,13 +787,13 @@
         }
 
         function updateTradeAmountDisplay() {
-            try { safeSetText('tradeAmountDisplay', calculateTradeAmount().toFixed(12) + ' ETH'); }
+            try { safeSetText('tradeAmountDisplay', calculateTradeAmount() + ' ETH'); }
             catch (e) { console.error('Error updating trade amount display:', e); }
         }
 
         function updateStartingEthDisplay() {
-            safeSetText('startingEthDisplay', CONFIG.STARTING_ETH.toFixed(12) + ' ETH');
-            safeSetText('currentEth', state.portfolio.currentEth.toFixed(12) + ' ETH');
+            safeSetText('startingEthDisplay', CONFIG.STARTING_ETH + ' ETH');
+            safeSetText('currentEth', state.portfolio.currentEth + ' ETH');
             safeSetText('targetProfitPercent', CONFIG.MIN_PROFIT_PERCENT + '%');
         }
 
@@ -896,7 +896,7 @@
         }
 
         function getPatternDescription(pattern) {
-            return `Buy dip: ${pattern.dropPct.toFixed(2)}% over ${pattern.dropTime.toFixed(0)}s, target ${pattern.risePct.toFixed(2)}% rise`;
+            return `Buy dip: ${pattern.dropPct}% over ${pattern.dropTime}s, target ${pattern.risePct}% rise`;
         }
 
         function validatePatternsMinimal(patterns) {
@@ -943,7 +943,7 @@
                 result.slippage = baseSlippage + latencySlippage;
                 if (result.slippage > CONFIG.MAX_SLIPPAGE) {
                     result.success = false;
-                    result.reason = `Price moved too much (${result.slippage.toFixed(4)}% > ${CONFIG.MAX_SLIPPAGE}%)`;
+                    result.reason = `Price moved too much (${result.slippage}% > ${CONFIG.MAX_SLIPPAGE}%)`;
                     return result;
                 }
                 result.executionPrice = action === 'buy' ? currentPrice * (1 + result.slippage / 100) : currentPrice * (1 - result.slippage / 100);
@@ -1090,7 +1090,7 @@
                 if (!poolInfo) return null;
                 const currentGasPrice = state.currentGasPrice || CONFIG.MAX_GAS_PRICE;
                 if (currentGasPrice > CONFIG.MAX_GAS_PRICE) {
-                    showToast('warning', `Gas price too high: ${currentGasPrice.toFixed(2)} gwei > ${CONFIG.MAX_GAS_PRICE} gwei max`);
+                    showToast('warning', `Gas price too high: ${currentGasPrice} gwei > ${CONFIG.MAX_GAS_PRICE} gwei max`);
                     return null;
                 }
                 if (action === 'sell') {
@@ -1120,12 +1120,12 @@
                 state.lastTradeTimes[tokenSymbol] = Date.now();
                 if (action === 'buy') {
                     state.openBuyOrders.set(tokenSymbol, { tradeId: trade.id, pattern: pattern, entryPrice: tradeResult.executionPrice, entryTime: Date.now() });
-                    showToast('success', `Bought ${tradeResult.tokenAmount.toFixed(6)} ${tokenSymbol} at ${tradeResult.executionPrice.toFixed(8)} ETH`);
+                    showToast('success', `Bought ${tradeResult.tokenAmount} ${tokenSymbol} at ${tradeResult.executionPrice} ETH`);
                 }
                 if (action === 'sell') {
                     state.openBuyOrders.delete(tokenSymbol);
-                    const pnlText = trade.pnl >= 0 ? `+${trade.pnl.toFixed(8)}` : trade.pnl.toFixed(8);
-                    showToast('success', `Sold ${tradeResult.tokenAmount.toFixed(6)} ${tokenSymbol} at ${tradeResult.executionPrice.toFixed(8)} ETH (PnL: ${pnlText} ETH)`);
+                    const pnlText = trade.pnl >= 0 ? `+${trade.pnl}` : trade.pnl;
+                    showToast('success', `Sold ${tradeResult.tokenAmount} ${tokenSymbol} at ${tradeResult.executionPrice} ETH (PnL: ${pnlText} ETH)`);
                 }
                 updateDashboard();
                 updatePortfolioUI();
@@ -1174,7 +1174,7 @@
                     const profitETH = currentValue - costBasis;
                     const profitPercent = (profitETH / costBasis) * 100;
                     if (profitPercent >= CONFIG.MIN_PROFIT_PERCENT && profitETH > 0) {
-                        executeTrade(token, 'sell', `Profit target (${profitPercent.toFixed(2)}%) reached`, openPosition.amount * currentPrice, null);
+                        executeTrade(token, 'sell', `Profit target (${profitPercent}%) reached`, openPosition.amount * currentPrice, null);
                         return;
                     }
                 }
@@ -1244,7 +1244,7 @@
 
         function updatePortfolioUI() {
             try {
-                const format6 = (value) => (value || 0).toFixed(12);
+                const format6 = (value) => (value || 0);
                 safeSetText('startingEthDisplay', format6(state.portfolio.startingEth) + ' ETH');
                 safeSetText('currentEth', format6(state.portfolio.currentEth) + ' ETH');
                 const realizedPnL = state.portfolio.realizedPnL;
@@ -1268,7 +1268,7 @@
                 const returnPct = (netPnL / state.portfolio.startingEth) * 100;
                 const portfolioReturnEl = document.getElementById('portfolioReturn');
                 if (portfolioReturnEl) {
-                    portfolioReturnEl.textContent = returnPct.toFixed(2) + '%';
+                    portfolioReturnEl.textContent = returnPct + '%';
                     portfolioReturnEl.className = returnPct >= 0 ? 'price-up' : 'price-down';
                 }
                 const gasSpent = state.portfolio.gasSpent;
@@ -1291,9 +1291,9 @@
                 safeSetText('losingTradesCount', losingTrades);
                 safeSetText('failedTradesCount', failedTrades);
                 const successfulTrades = winningTrades + losingTrades;
-                const winRate = successfulTrades > 0 ? ((winningTrades / successfulTrades) * 100).toFixed(2) : '0';
+                const winRate = successfulTrades > 0 ? ((winningTrades / successfulTrades) * 100) : '0';
                 safeSetText('winRate', winRate + '%');
-                const avgProfit = successfulTrades > 0 ? (state.portfolio.realizedPnL / successfulTrades).toFixed(12) + ' ETH' : '0 ETH';
+                const avgProfit = successfulTrades > 0 ? (state.portfolio.realizedPnL / successfulTrades) + ' ETH' : '0 ETH';
                 safeSetText('avgProfit', avgProfit);
             } catch (e) { console.error('Error updating trade statistics:', e); }
         }
@@ -1313,13 +1313,13 @@
                     const currentValue = position.amount * currentPrice;
                     const unrealizedPnL = currentValue - (position.amount * position.entryPrice) - position.feesPaid - position.gasPaid;
                     const returnPct = (unrealizedPnL / (position.amount * position.entryPrice + position.feesPaid + position.gasPaid)) * 100;
-                    const ageSeconds = ((Date.now() - position.entryTime) / 1000).toFixed(0);
+                    const ageSeconds = ((Date.now() - position.entryTime) / 1000);
                     html += `<tr>
                         <td><strong>${position.token}</strong></td>
-                        <td>${position.entryPrice.toFixed(12)}</td>
-                        <td>${position.amount.toFixed(12)}</td>
-                        <td>${currentValue.toFixed(12)}</td>
-                        <td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">${unrealizedPnL.toFixed(12)} (${returnPct.toFixed(2)}%)</td>
+                        <td>${position.entryPrice}</td>
+                        <td>${position.amount}</td>
+                        <td>${currentValue}</td>
+                        <td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">${unrealizedPnL} (${returnPct}%)</td>
                         <td><small>${position.pattern || 'Manual'}</small></td>
                         <td>${ageSeconds}s</td>
                     </tr>`;
@@ -1354,7 +1354,7 @@
                     }
                     const changeClass = changePct >= 0 ? 'price-up' : 'price-down';
                     const changeSymbol = changePct > 0 ? '\u25B2' : changePct < 0 ? '\u25BC' : '';
-                    const displayPrice = price != null ? price.toFixed(12) : 'N/A';
+                    const displayPrice = price != null ? price : 'N/A';
                     const tokenPatterns = Array.from(state.activePatterns.values()).filter(p => p.token === tokenSymbol);
                     const tokenTrades = state.trades.filter(t => t.token === tokenSymbol && (t.status === 'closed' || t.status === 'open'));
                     const lastTradeTime = tokenTrades.length > 0 ? new Date(Math.max(...tokenTrades.map(t => new Date(t.timestamp).getTime()))).toLocaleTimeString() : 'Never';
@@ -1362,7 +1362,7 @@
                     html += `<tr>
                         <td><strong>${tokenSymbol}</strong></td>
                         <td>${displayPrice}</td>
-                        <td class="${changeClass}">${changeSymbol} ${Math.abs(changePct || 0).toFixed(2)}%</td>
+                        <td class="${changeClass}">${changeSymbol} ${Math.abs(changePct || 0)}%</td>
                         <td>${tokenPatterns.length}</td>
                         <td>${historyLength}</td>
                         <td>${lastTradeTime}</td>
@@ -1390,10 +1390,10 @@
                         <td>${new Date(trade.timestamp).toLocaleTimeString()}</td>
                         <td><strong>${trade.token}</strong></td>
                         <td><span class="btn ${typeClass} btn-sm">${trade.type === 'buy' ? 'BUY' : 'SELL'}</span></td>
-                        <td>${trade.price.toFixed(12)}</td>
-                        <td>${trade.tokenAmount.toFixed(12)}</td>
+                        <td>${trade.price}</td>
+                        <td>${trade.tokenAmount}</td>
                         <td><small>${trade.pattern || 'Manual'}</small></td>
-                        <td class="${pnlClass}">${trade.pnl.toFixed(12)}</td>
+                        <td class="${pnlClass}">${trade.pnl}</td>
                     </tr>`;
                 });
                 recentTradesEl.innerHTML = html;
@@ -1770,7 +1770,7 @@
                 const feeData = await s.provider.getFeeData();
                 s.gasPrice = feeData.gasPrice ? parseInt(feeData.gasPrice) / 1e9 : null;
                 state.currentGasPrice = s.gasPrice || state.currentGasPrice;
-                safeSetText('currentGasPrice', (state.currentGasPrice || 0).toFixed(2) + ' gwei');
+                safeSetText('currentGasPrice', (state.currentGasPrice || 0) + ' gwei');
                 updateTradeAmountDisplay();
                 if (s.gasPrice) {
                     s.gasPriceHistory.push({ timestamp: Date.now(), gasPrice: s.gasPrice });
