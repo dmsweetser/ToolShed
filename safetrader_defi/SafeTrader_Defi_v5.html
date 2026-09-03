@@ -1964,7 +1964,7 @@
             } else if (!state.activeSession?.connected) {
                 sb.disabled = true; stopb.disabled = true; sb.innerHTML = '<span class="loading-spinner"></span>Connecting...';
             } else {
-                sb.disabled = state.isRunning; stopb.disabled = !state.isRunning;
+                sb.disabled = state.isRunning; stopb.disabled = !state.isRunning; sb.innerHTML = 'Connected!';
             }
         }
 
@@ -2068,6 +2068,7 @@
             if (state.isRunning || state.trades.length > 0 || state.portfolio.positions.length > 0) {
                 backupData();
             }
+            renderDashboard();
         }, 60000);
 
         loadBackup();
