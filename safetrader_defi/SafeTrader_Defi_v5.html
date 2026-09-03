@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Quick Swap Trader v7.0.0</title>
+    <title>Uniswap Quick Swap Trader v7.1.0</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
     <style>
         body {
@@ -303,7 +303,7 @@
     <div class="toast-container" id="toastContainer"></div>
     <div class="container">
         <h1>Uniswap Quick Swap Trader</h1>
-        <p><strong>v7.0.0 - Profit-Only Mode</strong> - Buys dips and sells <strong>only at profit</strong>.</p>
+        <p><strong>v7.1.0 - Profit-Only Mode</strong> - Buys dips and sells <strong>only at profit</strong>.</p>
 
         <!-- Controls -->
         <div class="card">
@@ -563,7 +563,7 @@
 
     <script>
         // ========== APP VERSION & CONFIG ==========
-        const APP_VERSION = '7.0.0-PROFITONLY';
+        const APP_VERSION = '7.1.0-PROFITONLY-FIXED';
         let CONFIG = {
             BLOCKCHAIN_NETWORK: 'arbitrum',
             UNISWAP_VERSION: 'v3',
@@ -582,22 +582,23 @@
             GAS_LIMIT: 200000,
             PREVENT_SEQUENTIAL_TRADES: true,
             PRICE_HISTORY_DURATION: 24,
-            MAX_PRICE_HISTORY: 5000
+            MAX_PRICE_HISTORY: 1000,  // Reduced from 5000 to prevent storage issues
+            BLOCK_BATCH_SIZE: 100,      // Process blocks in batches
+            MAX_BLOCK_RANGE: 1000      // Max block range for getLogs
         };
 
         const PATTERN_TYPES = { BUY: 'buy' };
         const POOL_FEES = { LOW: 500, MEDIUM: 3000, HIGH: 10000 };
 
-        // Arbitrum-only chain config
+        // Arbitrum-only chain config with more reliable RPCs
         const CHAINS = {
             arbitrum: {
                 name: "Arbitrum One",
                 chainId: 42161,
                 rpcs: [
-                    "https://arbitrum-mainnet.public.blastapi.io",
+                    "wss://arbitrum-one-rpc.publicnode.com",  // WebSocket FIRST
                     "https://arb1.arbitrum.io/rpc",
-                    "https://arbitrum-mainnet.rpcfast.com",
-                    "wss://arbitrum-one-rpc.publicnode.com"
+                    "https://arbitrum-mainnet.public.blastapi.io"
                 ],
                 factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
                 wrappedNative: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
@@ -682,7 +683,9 @@
             sessionSerial: 0,
             activeSession: null,
             currentRpcIndex: 0,
-            lastDetectionTime: null
+            lastDetectionTime: null,
+            lastProcessedBlock: null,
+            blockProcessingQueue: []
         };
 
         // ========== UTILITY FUNCTIONS ==========
@@ -1356,7 +1359,7 @@
                 const observedTokens = Array.from(state.observedTokens);
                 safeSetText('trackedTokensCount', observedTokens.length);
                 if (!state.activeSession || observedTokens.length === 0) {
-                    safeSetText('priceRows', '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">Press Start to begin watching the market</td></tr>');
+                    document.getElementById('priceRows').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">Press Start to begin watching the market</td></tr>';
                     return;
                 }
                 let html = '';
@@ -1645,13 +1648,21 @@
             try {
                 const chain = CHAINS.arbitrum;
                 let provider;
+                // Try WebSocket first, fall back to HTTP
                 const wsRpc = chain.rpcs.find(rpc => rpc.startsWith('wss:'));
                 if (wsRpc) {
-                    try { provider = new ethers.WebSocketProvider(wsRpc, chain.chainId); }
-                    catch (e) { console.warn('WebSocket connection failed, falling back to HTTP:', e); provider = new ethers.JsonRpcProvider(chain.rpcs[0]); }
-                } else { provider = new ethers.JsonRpcProvider(chain.rpcs[0]); }
+                    try {
+                        provider = new ethers.WebSocketProvider(wsRpc, chain.chainId);
+                    } catch (e) {
+                        console.warn('WebSocket connection failed, falling back to HTTP:', e);
+                        provider = new ethers.JsonRpcProvider(chain.rpcs[0]);
+                    }
+                } else {
+                    provider = new ethers.JsonRpcProvider(chain.rpcs[0]);
+                }
                 if (!current(s)) { try { provider.destroy(); } catch { } return; }
-                s.provider = provider; s.ws = provider.websocket;
+                s.provider = provider;
+                s.ws = provider.websocket;
                 if (s.ws) {
                     s.ws.addEventListener("open", () => {
                         if (!current(s)) return;
@@ -1673,8 +1684,14 @@
                 const head = await provider.getBlockNumber();
                 if (!current(s)) return;
                 s.rpcHead = head; s.blockCount = head;
+                // Add this right after: s.rpcHead = head; s.blockCount = head;
                 if (s.chain.quoteMode === "native") await loadToken(s, s.chain.wrappedNative);
-                startGasMonitoring(s); startPriceMonitoring(s);
+                await updatePricesForSession(s);  // <-- ADD THIS LINE
+                startGasMonitoring(s);
+                startPriceMonitoring(s);
+
+                // Start block processing with batching
+                startBlockProcessing(s);
             } catch (e) {
                 if (!current(s)) return;
                 s.connected = false; updateButton(); updateConnectionStatus();
@@ -1702,8 +1719,120 @@
 
         function initializeSessionHandlers(s) {
             if (!current(s)) return;
-            if (s.provider && s.provider.on) s.provider.on("block", n => { if (current(s)) queueBlock(s, Number(n)); });
-            if (!s.priceUpdateInterval) s.priceUpdateInterval = setInterval(() => { if (current(s)) updatePricesForSession(s); }, 10000);
+
+            // Enable polling for HTTP providers
+            if (s.provider && s.provider._isProvider) {
+                s.provider.on("block", n => {
+                    if (current(s)) {
+                        if (!state.blockProcessingQueue.includes(Number(n))) {
+                            state.blockProcessingQueue.push(Number(n));
+                        }
+                        if (state.blockProcessingQueue.length >= CONFIG.BLOCK_BATCH_SIZE) {
+                            processBlockBatch(s);
+                        }
+                    }
+                });
+            }
+
+            if (!s.priceUpdateInterval) {
+                s.priceUpdateInterval = setInterval(() => {
+                    if (current(s)) {
+                        updatePricesForSession(s);
+                        // Also process any queued blocks
+                        if (state.blockProcessingQueue.length > 0) {
+                            processBlockBatch(s);
+                        }
+                    }
+                }, 10000);
+            }
+        }
+
+        async function startBlockProcessing(s) {
+            if (!current(s) || !s.connected) return;
+
+            // Process any queued blocks immediately
+            if (state.blockProcessingQueue.length > 0) {
+                await processBlockBatch(s);
+            }
+
+            // Set up interval for processing queued blocks
+            setInterval(async () => {
+                if (current(s) && state.blockProcessingQueue.length > 0) {
+                    await processBlockBatch(s);
+                }
+            }, 1000);
+        }
+
+        async function processBlockBatch(s) {
+            if (!current(s) || state.blockProcessingQueue.length === 0) return;
+
+            const batch = state.blockProcessingQueue.splice(0, CONFIG.BLOCK_BATCH_SIZE);
+            const latestBlock = await s.provider.getBlockNumber();
+
+            for (const blockNumber of batch) {
+                if (!current(s)) break;
+                if (blockNumber > latestBlock) continue;
+
+                try {
+                    await processBlock(s, blockNumber);
+                } catch (error) {
+                    console.error('Error processing block:', blockNumber, error);
+                }
+            }
+        }
+
+        async function processBlock(s, n) {
+            if (!current(s)) return;
+            try {
+                const head = await s.provider.getBlockNumber();
+                s.rpcHead = head;
+                if (n > head) { await sleep(1000); return; }
+
+                if (s.lastProcessedBlock !== null && n <= s.lastProcessedBlock) return;
+
+                // Use a larger block range to reduce API calls
+                const fromBlock = Math.max(n, head - CONFIG.MAX_BLOCK_RANGE + 1);
+                const toBlock = Math.min(n + CONFIG.BLOCK_BATCH_SIZE - 1, head);
+
+                let logs = [];
+                try {
+                    logs = await s.provider.getLogs({
+                        fromBlock: fromBlock,
+                        toBlock: toBlock,
+                        topics: [SWAP_TOPIC]
+                    });
+                } catch (e) {
+                    console.warn('Error getting logs for block range:', fromBlock, 'to', toBlock, e);
+                    // If the range is too large, try smaller chunks
+                    if (e.message && e.message.includes('invalid block range')) {
+                        // Fall back to single block processing
+                        const singleLogs = await s.provider.getLogs({
+                            fromBlock: n,
+                            toBlock: n,
+                            topics: [SWAP_TOPIC]
+                        });
+                        logs = singleLogs;
+                    } else {
+                        return;
+                    }
+                }
+
+                if (!logs || !current(s) || !logs.length) return;
+
+                // Process logs in batches to avoid memory issues
+                const logBatches = [];
+                for (let i = 0; i < logs.length; i += 5) {
+                    logBatches.push(logs.slice(i, i + 5));
+                }
+
+                for (const batch of logBatches) {
+                    await Promise.all(batch.map(async (logEntry) => {
+                        try { await processSwapLog(s, logEntry); } catch (e) { console.warn('Error processing swap log:', e); }
+                    }));
+                }
+
+                s.lastProcessedBlock = n;
+            } catch (error) { console.error('Error processing block:', error); }
         }
 
         async function startPriceMonitoring(s) {
@@ -1722,59 +1851,22 @@
                         const tokenMeta = findTokenMeta(s, token);
                         if (tokenMeta) {
                             const price = quotePrice(s, tokenMeta.address);
-                            if (price !== null) { state.prices[token] = price; addPoint(tokenMeta, price); checkPatternsForToken(token); }
+                            if (price !== null) {
+                                state.prices[token] = price;
+                                addPoint(tokenMeta, price);
+                                checkPatternsForToken(token);
+                            }
                         }
                     } catch (e) { console.warn(`Error updating price for ${token}:`, e); }
                 }
-                state.lastPriceUpdate = new Date(); safeSetText('lastPriceUpdate', new Date().toLocaleTimeString());
+                state.lastPriceUpdate = new Date();
+                safeSetText('lastPriceUpdate', new Date().toLocaleTimeString());
             } catch (error) { console.error('Error updating prices for session:', error); }
         }
 
         function findTokenMeta(s, symbol) {
             for (const [address, token] of s.tokens) if (token.symbol === symbol) return token;
             return null;
-        }
-
-        async function queueBlock(s, n) {
-            if (!current(s)) return;
-            if (s.lastProcessedBlock !== null && n <= s.lastProcessedBlock) return;
-            s.pendingBlock = Math.max(s.pendingBlock ?? 0, n); processPending(s);
-        }
-
-        async function processPending(s) {
-            if (s.processingBlocks || !current(s)) return;
-            s.processingBlocks = true;
-            try {
-                while (s.pendingBlock !== null && current(s)) {
-                    const target = s.pendingBlock; s.pendingBlock = null;
-                    let head;
-                    try { head = await s.provider.getBlockNumber(); } catch { s.pendingBlock = target; await sleep(1000); continue; }
-                    if (!current(s)) break;
-                    s.rpcHead = head; s.blockCount = Math.max(s.blockCount, head);
-                    if (target > head) { s.pendingBlock = target; await sleep(1000); continue; }
-                    if (s.lastProcessedBlock !== null && target <= s.lastProcessedBlock) continue;
-                    await processBlock(s, target);
-                    if (!current(s)) break; s.lastProcessedBlock = target;
-                }
-            } finally { s.processingBlocks = false; }
-        }
-
-        async function processBlock(s, n) {
-            if (!current(s)) return;
-            try {
-                const head = await s.provider.getBlockNumber(); s.rpcHead = head;
-                if (n > head) { await sleep(1000); return; }
-                let logs = [];
-                try { logs = await s.provider.getLogs({ fromBlock: n, toBlock: n, topics: [SWAP_TOPIC] }); } catch (e) { console.warn('Error getting logs:', e); return; }
-                if (!logs || !current(s) || !logs.length) return;
-                const logBatches = [];
-                for (let i = 0; i < logs.length; i += 5) logBatches.push(logs.slice(i, i + 5));
-                await Promise.all(logBatches.map(async (batch) => {
-                    await Promise.all(batch.map(async (logEntry) => {
-                        try { await processSwapLog(s, logEntry); } catch (e) { console.warn('Error processing swap log:', e); }
-                    }));
-                }));
-            } catch (error) { console.error('Error processing block:', error); }
         }
 
         async function startGasMonitoring(s) {
@@ -1791,7 +1883,10 @@
                 state.currentGasPrice = s.gasPrice || state.currentGasPrice;
                 safeSetText('currentGasPrice', (state.currentGasPrice || 0).toFixed(2) + ' gwei');
                 updateTradeAmountDisplay();
-                if (s.gasPrice) { s.gasPriceHistory.push({ timestamp: Date.now(), gasPrice: s.gasPrice }); if (s.gasPriceHistory.length > 100) s.gasPriceHistory.shift(); }
+                if (s.gasPrice) {
+                    s.gasPriceHistory.push({ timestamp: Date.now(), gasPrice: s.gasPrice });
+                    if (s.gasPriceHistory.length > 100) s.gasPriceHistory.shift();
+                }
             } catch (error) { console.error('Error updating gas price:', error); }
         }
 
@@ -2004,13 +2099,40 @@
         // ========== BACKUP & RESTORE ==========
         function backupData() {
             try {
+                // Only backup essential data to prevent quota issues
                 const backup = {
-                    trades: state.trades, portfolio: state.portfolio,
-                    activePatterns: Array.from(state.activePatterns.values()),
-                    prices: state.prices, priceHistory: state.priceHistory,
-                    lastBackup: new Date().toISOString(), config: CONFIG
+                    trades: state.trades.slice(-50), // Only keep last 50 trades
+                    portfolio: {
+                        balances: state.portfolio.balances,
+                        positions: state.portfolio.positions,
+                        realizedPnL: state.portfolio.realizedPnL,
+                        unrealizedPnL: state.portfolio.unrealizedPnL,
+                        gasSpent: state.portfolio.gasSpent,
+                        feesPaid: state.portfolio.feesPaid,
+                        startingEth: state.portfolio.startingEth,
+                        currentEth: state.portfolio.currentEth,
+                        totalTrades: state.portfolio.totalTrades,
+                        winningTrades: state.portfolio.winningTrades,
+                        losingTrades: state.portfolio.losingTrades,
+                        failedTrades: state.portfolio.failedTrades,
+                        totalFees: state.portfolio.totalFees
+                    },
+                    activePatterns: Array.from(state.activePatterns.values()).slice(0, 20), // Limit patterns
+                    prices: {}, // Don't backup prices
+                    priceHistory: {}, // Don't backup price history
+                    lastBackup: new Date().toISOString(),
+                    config: CONFIG
                 };
-                localStorage.setItem('uniswapTraderBackup', JSON.stringify(backup));
+
+                // Try to store with error handling
+                try {
+                    localStorage.setItem('uniswapTraderBackup', JSON.stringify(backup));
+                } catch (e) {
+                    console.warn('LocalStorage quota exceeded, trying to clear old data...');
+                    // Try to clear old backups
+                    localStorage.removeItem('uniswapTraderBackup');
+                    localStorage.setItem('uniswapTraderBackup', JSON.stringify(backup));
+                }
             } catch (e) { console.error('Error backing up data:', e); }
         }
 
@@ -2049,9 +2171,15 @@
             }
         });
 
+        // Reduced backup frequency to prevent quota issues
         setInterval(() => {
-            if (state.isRunning || state.trades.length > 0 || state.portfolio.positions.length > 0) backupData();
-        }, 30000);
+            if (state.isRunning || state.trades.length > 0 || state.portfolio.positions.length > 0) {
+                backupData();
+            }
+        }, 60000); // Every 60 seconds instead of 30
+
+        // Load backup on start
+        loadBackup();
     </script>
 </body>
 
