@@ -648,10 +648,40 @@
             lastDetectionTime: null
         };
 
-        function norm(a) { return a ? String(a).toLowerCase() : ''; }
-        function short(a) { if (!a) return ''; return a.substring(0, 6) + '...' + a.substring(a.length - 4); }
-        function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
-        function safeSetText(elementId, text) { const el = document.getElementById(elementId); if (el) el.textContent = text; }
+        // Fix: Ensure trade IDs are unique and prevent duplicates
+        function generateUniqueTradeId() {
+            return 'trade_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        // Fix: Format numbers for display
+        function formatNumber(num, decimals = 8) {
+            if (num === null || num === undefined) return '0';
+            return num.toFixed(decimals);
+        }
+
+        // Fix: Format ETH values
+        function formatETH(value, decimals = 8) {
+            if (value === null || value === undefined) return '0.00000000 ETH';
+            return formatNumber(value, decimals) + ' ETH';
+        }
+
+        // Fix: Format percentage
+        function formatPercent(value, decimals = 2) {
+            if (value === null || value === undefined) return '0.00%';
+            return value.toFixed(decimals) + '%';
+        }
+
+        // Fix: Safe DOM update
+        function safeSetText(elementId, text) {
+            const el = document.getElementById(elementId);
+            if (el) el.textContent = text;
+        }
+
+        // Fix: Safe HTML update
+        function safeSetHTML(elementId, html) {
+            const el = document.getElementById(elementId);
+            if (el) el.innerHTML = html;
+        }
 
         document.addEventListener('DOMContentLoaded', function () {
             initializeKnownTokens();
@@ -760,13 +790,13 @@
         }
 
         function updateTradeAmountDisplay() {
-            try { safeSetText('tradeAmountDisplay', calculateTradeAmount() + ' ETH'); }
+            try { safeSetText('tradeAmountDisplay', formatETH(calculateTradeAmount())); }
             catch (e) { console.error('Error updating trade amount display:', e); }
         }
 
         function updateStartingEthDisplay() {
-            safeSetText('startingEthDisplay', CONFIG.STARTING_ETH + ' ETH');
-            safeSetText('currentEth', state.portfolio.currentEth + ' ETH');
+            safeSetText('startingEthDisplay', formatETH(state.portfolio.startingEth));
+            safeSetText('currentEth', formatETH(state.portfolio.currentEth));
             safeSetText('targetProfitPercent', CONFIG.MIN_PROFIT_PERCENT + '%');
         }
 
@@ -816,6 +846,7 @@
         function isPatternValid(pattern) {
             return pattern.dropPct <= 100 && pattern.risePct <= 100 &&
                 pattern.dropPct >= 0 && pattern.risePct >= 0 &&
+                pattern.dropPct <= 100 && pattern.risePct <= 100 &&
                 pattern.dropTime <= 100 && pattern.riseTime <= 100 &&
                 pattern.dropTime >= 1 && pattern.riseTime >= 1 &&
                 pattern.risePct >= CONFIG.MIN_PROFIT_PERCENT;
@@ -869,7 +900,7 @@
         }
 
         function getPatternDescription(pattern) {
-            return `Buy dip: ${pattern.dropPct}% over ${pattern.dropTime}s, target ${pattern.risePct}% rise`;
+            return `Buy dip: ${pattern.dropPct.toFixed(2)}% over ${pattern.dropTime}s, target ${pattern.risePct.toFixed(2)}% rise`;
         }
 
         function validatePatternsMinimal(patterns) {
@@ -891,7 +922,7 @@
 
         function createTradeObject(token, action, price, tokenAmount, amountETH, pattern, status, reason = null, gasUsed = 0, gasPrice = 0, feeAmount = 0, priceImpact = 0, slippage = 0, patternObj = null) {
             return {
-                id: 'trade_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                id: generateUniqueTradeId(),
                 timestamp: new Date().toISOString(),
                 token, type: action, price, tokenAmount, amountETH, fee: feeAmount,
                 gasUsed, gasPrice, priceImpact, slippage, status, reason, pnl: 0, pattern, patternObj,
@@ -916,7 +947,7 @@
                 result.slippage = baseSlippage + latencySlippage;
                 if (result.slippage > CONFIG.MAX_SLIPPAGE) {
                     result.success = false;
-                    result.reason = `Price moved too much (${result.slippage}% > ${CONFIG.MAX_SLIPPAGE}%)`;
+                    result.reason = `Price moved too much (${result.slippage.toFixed(2)}% > ${CONFIG.MAX_SLIPPAGE}%)`;
                     return result;
                 }
                 result.executionPrice = action === 'buy' ? currentPrice * (1 + result.slippage / 100) : currentPrice * (1 - result.slippage / 100);
@@ -1040,6 +1071,7 @@
                     state.portfolio.feesPaid += feeCostETH;
                     state.portfolio.totalFees += totalCostETH;
                 }
+                state.portfolio.totalTrades++;
                 updatePortfolioEquity();
             } catch (e) { console.error('Error updating portfolio for trade:', e); }
         }
@@ -1058,6 +1090,15 @@
                         console.log(`Blocked buy for ${token}: Open buy order exists.`);
                         return null;
                     }
+                }
+
+                // Fetch the latest gas price before trade execution
+                await updateGasPrice();
+                const currentGasPrice = state.currentGasPrice || CONFIG.MAX_GAS_PRICE;
+
+                if (currentGasPrice > CONFIG.MAX_GAS_PRICE) {
+                    showToast('warning', `Gas price too high: ${currentGasPrice} gwei > ${CONFIG.MAX_GAS_PRICE} gwei max`);
+                    return null;
                 }
 
                 if (amountETH === null) amountETH = calculateTradeAmount();
@@ -1083,12 +1124,6 @@
                 const poolInfo = await getEnhancedPoolInfo(tokenSymbol);
                 if (!poolInfo) return null;
 
-                const currentGasPrice = state.currentGasPrice || CONFIG.MAX_GAS_PRICE;
-                if (currentGasPrice > CONFIG.MAX_GAS_PRICE) {
-                    showToast('warning', `Gas price too high: ${currentGasPrice} gwei > ${CONFIG.MAX_GAS_PRICE} gwei max`);
-                    return null;
-                }
-
                 if (action === 'sell') {
                     const tokenBalance = state.portfolio.balances[tokenSymbol] || 0;
                     if (tokenBalance <= 0) return null;
@@ -1109,7 +1144,6 @@
                     );
                     state.trades.push(failedTrade);
                     state.portfolio.failedTrades++;
-                    state.portfolio.totalTrades++;
                     updateDashboard();
                     showToast('error', `Trade failed: ${tradeResult.reason || 'Unknown error'}`);
                     return failedTrade;
@@ -1124,7 +1158,6 @@
 
                 updatePortfolioForTrade(trade, action, tradeResult);
                 state.trades.push(trade);
-                state.portfolio.totalTrades++;
 
                 if (action === 'buy') {
                     state.lastTradedToken = tokenSymbol;
@@ -1135,11 +1168,11 @@
                         entryPrice: tradeResult.executionPrice,
                         entryTime: Date.now()
                     });
-                    showToast('success', `Bought ${tradeResult.tokenAmount} ${tokenSymbol} at ${tradeResult.executionPrice} ETH`);
+                    showToast('success', `Bought ${formatNumber(tradeResult.tokenAmount, 4)} ${tokenSymbol} at ${formatNumber(tradeResult.executionPrice, 8)} ETH`);
                 } else if (action === 'sell') {
                     state.openBuyOrders.delete(tokenSymbol);
-                    const pnlText = trade.pnl >= 0 ? `+${trade.pnl}` : trade.pnl;
-                    showToast('success', `Sold ${tradeResult.tokenAmount} ${tokenSymbol} at ${tradeResult.executionPrice} ETH (PnL: ${pnlText} ETH)`);
+                    const pnlText = trade.pnl >= 0 ? `+${formatETH(trade.pnl, 8)}` : formatETH(trade.pnl, 8);
+                    showToast('success', `Sold ${formatNumber(tradeResult.tokenAmount, 4)} ${tokenSymbol} at ${formatNumber(tradeResult.executionPrice, 8)} ETH (PnL: ${pnlText})`);
                 }
 
                 updateDashboard();
@@ -1153,6 +1186,7 @@
                 return null;
             }
         }
+
         async function executeLiveTrade(tokenSymbol, action, tokenAmount, currentPrice, poolInfo, gasPriceGwei) {
             try {
                 const gasUsed = estimateSwapGas(action, tokenSymbol);
@@ -1192,7 +1226,7 @@
                     const profitETH = currentValue - costBasis;
                     const profitPercent = (profitETH / costBasis) * 100;
                     if (profitPercent >= CONFIG.MIN_PROFIT_PERCENT && profitETH > 0) {
-                        executeTrade(token, 'sell', `Profit target (${profitPercent}%) reached`, openPosition.amount * currentPrice, null);
+                        executeTrade(token, 'sell', `Profit target (${formatPercent(profitPercent)}) reached`, openPosition.amount * currentPrice, null);
                         return;
                     }
                 }
@@ -1263,37 +1297,37 @@
         function updatePortfolioUI() {
             try {
                 const format = (value) => (value || 0);
-                safeSetText('startingEthDisplay', format(state.portfolio.startingEth) + ' ETH');
-                safeSetText('currentEth', format(state.portfolio.currentEth) + ' ETH');
+                safeSetText('startingEthDisplay', formatETH(state.portfolio.startingEth));
+                safeSetText('currentEth', formatETH(state.portfolio.currentEth));
                 const realizedPnL = state.portfolio.realizedPnL;
                 const realizedPnLEl = document.getElementById('realizedPnL');
                 if (realizedPnLEl) {
-                    realizedPnLEl.textContent = format(realizedPnL) + ' ETH';
+                    realizedPnLEl.textContent = formatETH(realizedPnL);
                     realizedPnLEl.className = realizedPnL >= 0 ? 'price-up' : 'price-down';
                 }
                 const unrealizedPnL = state.portfolio.unrealizedPnL;
                 const unrealizedPnLEl = document.getElementById('unrealizedPnL');
                 if (unrealizedPnLEl) {
-                    unrealizedPnLEl.textContent = format(unrealizedPnL) + ' ETH';
+                    unrealizedPnLEl.textContent = formatETH(unrealizedPnL);
                     unrealizedPnLEl.className = unrealizedPnL >= 0 ? 'price-up' : 'price-down';
                 }
                 const netPnL = realizedPnL + unrealizedPnL;
                 const netPnLEl = document.getElementById('netPnL');
                 if (netPnLEl) {
-                    netPnLEl.textContent = format(netPnL) + ' ETH';
+                    netPnLEl.textContent = formatETH(netPnL);
                     netPnLEl.className = netPnL >= 0 ? 'price-up' : 'price-down';
                 }
                 const returnPct = (netPnL / state.portfolio.startingEth) * 100;
                 const portfolioReturnEl = document.getElementById('portfolioReturn');
                 if (portfolioReturnEl) {
-                    portfolioReturnEl.textContent = returnPct + '%';
+                    portfolioReturnEl.textContent = formatPercent(returnPct);
                     portfolioReturnEl.className = returnPct >= 0 ? 'price-up' : 'price-down';
                 }
                 const gasSpent = state.portfolio.gasSpent;
                 const feesPaid = state.portfolio.feesPaid;
-                safeSetText('gasSpent', format(gasSpent) + ' ETH');
-                safeSetText('dexFees', format(feesPaid) + ' ETH');
-                safeSetText('totalFees', format(gasSpent + feesPaid) + ' ETH');
+                safeSetText('gasSpent', formatETH(gasSpent));
+                safeSetText('dexFees', formatETH(feesPaid));
+                safeSetText('totalFees', formatETH(gasSpent + feesPaid));
                 updatePositionDetails();
             } catch (e) { console.error('Error updating portfolio UI:', e); }
         }
@@ -1309,9 +1343,9 @@
                 safeSetText('losingTradesCount', losingTrades);
                 safeSetText('failedTradesCount', failedTrades);
                 const successfulTrades = winningTrades + losingTrades;
-                const winRate = successfulTrades > 0 ? ((winningTrades / successfulTrades) * 100) : '0';
-                safeSetText('winRate', winRate + '%');
-                const avgProfit = successfulTrades > 0 ? (state.portfolio.realizedPnL / successfulTrades) + ' ETH' : '0 ETH';
+                const winRate = successfulTrades > 0 ? ((winningTrades / successfulTrades) * 100) : 0;
+                safeSetText('winRate', formatPercent(winRate));
+                const avgProfit = successfulTrades > 0 ? formatETH(state.portfolio.realizedPnL / successfulTrades) : '0 ETH';
                 safeSetText('avgProfit', avgProfit);
             } catch (e) { console.error('Error updating trade statistics:', e); }
         }
@@ -1342,12 +1376,12 @@
                     const ageSeconds = ((Date.now() - position.entryTime) / 1000);
                     html += `<tr>
                         <td><strong>${position.token}</strong></td>
-                        <td>${position.entryPrice}</td>
-                        <td>${position.amount}</td>
-                        <td>${currentValue}</td>
-                        <td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">${unrealizedPnL} (${returnPct}%)</td>
+                        <td>${formatNumber(position.entryPrice, 8)}</td>
+                        <td>${formatNumber(position.amount, 4)}</td>
+                        <td>${formatETH(currentValue, 8)}</td>
+                        <td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">${formatETH(unrealizedPnL, 8)} (${formatPercent(returnPct)})</td>
                         <td><small>${position.pattern || 'Manual'}</small></td>
-                        <td>${ageSeconds}s</td>
+                        <td>${Math.round(ageSeconds)}s</td>
                     </tr>`;
                 });
                 html += '</tbody></table>';
@@ -1368,56 +1402,37 @@
             try {
                 const observedTokens = Array.from(state.observedTokens);
                 safeSetText('trackedTokensCount', observedTokens.length);
-                let html = '';
-                observedTokens.forEach(tokenSymbol => {
-                    const price = state.prices[tokenSymbol];
-                    let changePct = 0;
-                    const history = state.priceHistory[tokenSymbol];
-                    if (history && history.length >= 2) {
-                        const oldest = history[0];
-                        const newest = history[history.length - 1];
-                        if (newest.timestamp > oldest.timestamp) changePct = ((newest.price - oldest.price) / oldest.price) * 100;
-                    }
-                    const changeClass = changePct >= 0 ? 'price-up' : 'price-down';
-                    const changeSymbol = changePct > 0 ? '\u25B2' : changePct < 0 ? '\u25BC' : '';
-                    const displayPrice = price != null ? price.toFixed(8) : 'N/A';
-                    const tokenPatterns = Array.from(state.activePatterns.values()).filter(p => p.token === tokenSymbol);
-                    const tokenTrades = state.trades.filter(t => t.token === tokenSymbol && (t.status === 'closed' || t.status === 'open'));
-                    const lastTradeTime = tokenTrades.length > 0 ? new Date(Math.max(...tokenTrades.map(t => new Date(t.timestamp).getTime()))).toLocaleTimeString() : 'Never';
-                    const historyLength = history ? history.length : 0;
-                    html += `<tr>
-                        <td><strong>${tokenSymbol}</strong></td>
-                        <td>${displayPrice}</td>
-                        <td class="${changeClass}">${changeSymbol} ${Math.abs(changePct || 0)}%</td>
-                        <td>${tokenPatterns.length}</td>
-                        <td>${historyLength}</td>
-                        <td>${lastTradeTime}</td>
-                    </tr>`;
-                });
             } catch (e) { console.error('Error rendering dashboard:', e); }
         }
 
+        // Fix: Properly render recent trades with formatting
         function renderRecentTrades() {
             try {
                 const recentTradesEl = document.getElementById('recentTrades');
                 if (!recentTradesEl) return;
-                const trades = state.trades.slice().reverse().slice(0, 20);
+
+                // Sort trades by timestamp (newest first) and limit to 20
+                const trades = [...state.trades].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 20);
+
                 if (trades.length === 0) {
                     recentTradesEl.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #94a3b8;">No trades yet</td></tr>';
                     return;
                 }
+
                 let html = '';
                 trades.forEach(trade => {
                     const pnlClass = trade.pnl >= 0 ? 'price-up' : trade.pnl < 0 ? 'price-down' : '';
                     const typeClass = trade.type === 'buy' ? 'btn-success' : 'btn-danger';
+                    const pnlText = trade.pnl !== 0 ? formatETH(trade.pnl, 8) : '0';
+
                     html += `<tr>
                         <td>${new Date(trade.timestamp).toLocaleTimeString()}</td>
                         <td><strong>${trade.token}</strong></td>
                         <td><span class="btn ${typeClass} btn-sm">${trade.type === 'buy' ? 'BUY' : 'SELL'}</span></td>
-                        <td>${trade.price}</td>
-                        <td>${trade.tokenAmount}</td>
+                        <td>${formatNumber(trade.price, 8)}</td>
+                        <td>${formatNumber(trade.tokenAmount, 4)}</td>
                         <td><small>${trade.pattern || 'Manual'}</small></td>
-                        <td class="${pnlClass}">${trade.pnl}</td>
+                        <td class="${pnlClass}">${pnlText}</td>
                     </tr>`;
                 });
                 recentTradesEl.innerHTML = html;
@@ -1791,7 +1806,9 @@
         async function startGasMonitoring(s) {
             if (!s || !s.provider) return;
             await updateGasPriceForSession(s);
-            setInterval(async () => { if (current(s)) await updateGasPriceForSession(s); }, 15000);
+            setInterval(async () => {
+                if (current(s)) await updateGasPriceForSession(s);
+            }, 120000);
         }
 
         async function updateGasPriceForSession(s) {
@@ -1800,18 +1817,28 @@
                 const feeData = await s.provider.getFeeData();
                 s.gasPrice = feeData.gasPrice ? parseInt(feeData.gasPrice) / 1e9 : null;
                 state.currentGasPrice = s.gasPrice || state.currentGasPrice;
-                safeSetText('currentGasPrice', (state.currentGasPrice || 0) + ' gwei');
+                safeSetText('currentGasPrice', (state.currentGasPrice || 0).toFixed(2) + ' gwei');
                 updateTradeAmountDisplay();
+
                 if (s.gasPrice) {
                     s.gasPriceHistory.push({ timestamp: Date.now(), gasPrice: s.gasPrice });
                     if (s.gasPriceHistory.length > 100) s.gasPriceHistory.shift();
                 }
             } catch (error) {
-                console.error('Error updating gas price:', error);
+                console.warn('Failed to update gas price, using cached value:', error);
+                state.currentGasPrice = state.currentGasPrice || CONFIG.MAX_GAS_PRICE;
             }
         }
 
-        async function updateGasPrice() { if (state.activeSession) await updateGasPriceForSession(state.activeSession); }
+        async function updateGasPrice() {
+            if (state.activeSession) {
+                await updateGasPriceForSession(state.activeSession);
+            } else {
+                // Fallback to default if no session is active
+                state.currentGasPrice = CONFIG.MAX_GAS_PRICE;
+                safeSetText('currentGasPrice', (state.currentGasPrice || 0).toFixed(2) + ' gwei');
+            }
+        }
 
         async function processSwapLog(s, logEntry) {
             if (!current(s)) return;
@@ -1867,6 +1894,10 @@
             s.pairPrices.get(a).set(b, { price: p, updatedAt: ts });
             s.pairPrices.get(b).set(a, { price: 1 / p, updatedAt: ts });
         }
+
+        function norm(a) { return a ? String(a).toLowerCase() : ''; }
+        function short(a) { if (!a) return ''; return a.substring(0, 6) + '...' + a.substring(a.length - 4); }
+        function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
         function isStable(s, address) { address = norm(address); return s.chain.stables.some(x => norm(x) === address); }
         function isQuoteToken(s, address) { return s.chain.quoteMode === "native" && norm(address) === norm(s.chain.wrappedNative); }
