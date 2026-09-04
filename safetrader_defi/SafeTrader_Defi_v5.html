@@ -303,7 +303,7 @@
     <div class="toast-container" id="toastContainer"></div>
     <div class="container">
         <h1>Uniswap Quick Swap Trader</h1>
-        <p><strong>v7.2.0 - Profit-Only Mode</strong> - Buys dips and sells <strong>only at profit</strong>.</p>
+        <p><strong>v7.2.0</strong></p>
 
         <!-- Controls -->
         <div class="card">
@@ -526,7 +526,7 @@
     </div>
 
     <script>
-        const APP_VERSION = '7.2.0-PROFITONLY';
+        const APP_VERSION = '7.2.0';
         let CONFIG = {
             BLOCKCHAIN_NETWORK: 'arbitrum',
             UNISWAP_VERSION: 'v3',
@@ -1454,7 +1454,7 @@
                 await updateGasPrice();
                 startPricePolling();
                 startPatternDetection();
-                showToast('success', 'Started! Watching Arbitrum for quick swap opportunities (profit-only mode).');
+                showToast('success', 'Started! Watching Arbitrum for quick swap opportunities.');
             } catch (error) {
                 const errorMsg = error && error.message ? error.message : String(error);
                 hideLoading('startSpinner');
