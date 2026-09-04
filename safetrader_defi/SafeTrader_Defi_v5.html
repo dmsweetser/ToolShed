@@ -526,7 +526,6 @@
     </div>
 
     <script>
-        // ========== APP VERSION & CONFIG ==========
         const APP_VERSION = '7.2.0-PROFITONLY';
         let CONFIG = {
             BLOCKCHAIN_NETWORK: 'arbitrum',
@@ -552,7 +551,6 @@
         const PATTERN_TYPES = { BUY: 'buy' };
         const POOL_FEES = { LOW: 500, MEDIUM: 3000, HIGH: 10000 };
 
-        // Arbitrum-only chain config
         const CHAINS = {
             arbitrum: {
                 name: "Arbitrum One",
@@ -601,7 +599,6 @@
             'USDT': { address: null, decimals: 6, symbol: 'USDT', name: 'Tether' }
         };
 
-        // Throttle variable for updatePositionDetails
         let lastPositionUpdate = 0;
 
         let state = {
@@ -1274,11 +1271,10 @@
             } catch (e) { console.error('Error updating trade statistics:', e); }
         }
 
-        // === FIXED: Throttled and improved updatePositionDetails === 
         function updatePositionDetails() {
             try {
                 const now = Date.now();
-                if (now - lastPositionUpdate < 500) return; // Throttle to max once every 500ms
+                if (now - lastPositionUpdate < 500) return;
                 lastPositionUpdate = now;
 
                 const positionsTable = document.getElementById('activePositions');
@@ -1676,7 +1672,6 @@
             setInterval(async () => { if (current(s) && s.connected) await updatePricesForSession(s); }, 10000);
         }
 
-        // === FIXED: Now calls updatePositionDetails after updating prices === 
         async function updatePricesForSession(s) {
             if (!current(s) || !s.connected) return;
             try {
@@ -1697,7 +1692,7 @@
                 }
                 state.lastPriceUpdate = new Date();
                 safeSetText('lastPriceUpdate', new Date().toLocaleTimeString());
-                updatePositionDetails(); // <-- CRITICAL FIX: Update positions after price updates
+                updatePositionDetails();
             } catch (error) { console.error('Error updating prices for session:', error); }
         }
 
@@ -1730,7 +1725,6 @@
             } finally { s.processingBlocks = false; }
         }
 
-        // === FIXED: Now calls updatePositionDetails after processing swaps === 
         async function processBlock(s, n) {
             if (!current(s)) return;
             try {
@@ -1774,7 +1768,6 @@
 
         async function updateGasPrice() { if (state.activeSession) await updateGasPriceForSession(state.activeSession); }
 
-        // === FIXED: Now calls updatePositionDetails after processing swap logs === 
         async function processSwapLog(s, logEntry) {
             if (!current(s)) return;
             try {
@@ -1816,7 +1809,7 @@
                     if (t0.symbol) checkPatternsForToken(t0.symbol);
                     if (t1.symbol) checkPatternsForToken(t1.symbol);
                 }
-                updatePositionDetails(); // <-- CRITICAL FIX: Update positions after swap logs
+                updatePositionDetails();
             } catch (error) { console.error('Error processing swap log:', error); }
         }
 
@@ -1960,7 +1953,6 @@
             }
         }
 
-        // === FIXED: Now calls updatePositionDetails in the interval === 
         function startPricePolling() {
             if (state.priceUpdateTimer) clearInterval(state.priceUpdateTimer);
             state.priceUpdateTimer = setInterval(async () => {
@@ -1969,7 +1961,7 @@
                     Object.keys(state.prices).forEach(tokenSymbol => checkPatternsForToken(tokenSymbol));
                     state.lastPriceUpdate = new Date();
                     safeSetText('lastPriceUpdate', new Date().toLocaleTimeString());
-                    updatePositionDetails(); // <-- CRITICAL FIX: Update positions during polling
+                    updatePositionDetails();
                 } catch (error) { console.error('Error in price polling:', error); }
             }, 3000);
         }
