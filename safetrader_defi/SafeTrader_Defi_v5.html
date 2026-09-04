@@ -826,7 +826,7 @@
 
         function detectBuyPatternsForToken(history, token) {
             if (!history || history.length < 5) return [];
-            const minChange = CONFIG.MIN_PRICE_CHANGE / 100;
+            const minChange = CONFIG.MIN_PRICE_CHANGE;
             const minTime = CONFIG.MIN_TIME_WINDOW * 1000;
             const maxTime = CONFIG.MAX_TIME_WINDOW * 1000;
             const patterns = [];
@@ -846,7 +846,7 @@
                                 const next = history[k];
                                 const risePct = (next.price - current.price) / current.price;
                                 const riseTime = next.timestamp - current.timestamp;
-                                if (risePct >= (CONFIG.MIN_PROFIT_PERCENT / 100) && riseTime >= minTime && riseTime <= maxTime) {
+                                if (risePct >= CONFIG.MIN_PROFIT_PERCENT && riseTime >= minTime && riseTime <= maxTime) {
                                     patterns.push({
                                         type: PATTERN_TYPES.BUY,
                                         dropPct: Math.abs(dropPct) * 100,
