@@ -1047,36 +1047,66 @@
         async function executeTrade(token, action, patternDescription = 'Manual', amountETH = null, pattern = null) {
             try {
                 if (!state.isRunning) return null;
+
+                // Only block buys if the token was recently traded or has an open buy order
+                if (action === 'buy') {
+                    if (CONFIG.PREVENT_SEQUENTIAL_TRADES && state.lastTradedToken === token) {
+                        console.log(`Blocked buy for ${token}: Sequential trades disabled.`);
+                        return null;
+                    }
+                    if (state.openBuyOrders.has(token)) {
+                        console.log(`Blocked buy for ${token}: Open buy order exists.`);
+                        return null;
+                    }
+                }
+
                 if (amountETH === null) amountETH = calculateTradeAmount();
                 const currentPrice = state.prices[token];
                 if (!currentPrice || amountETH <= 0) return null;
+
                 const totalOpenPositions = state.portfolio.positions.filter(p => p.status === 'open').length;
                 if (totalOpenPositions >= CONFIG.MAX_TRADES) {
                     showToast('warning', `Max trades (${CONFIG.MAX_TRADES}) reached`);
                     return null;
                 }
+
                 const lastTradeTime = state.lastTradeTimes[token];
-                if (lastTradeTime && (Date.now() - lastTradeTime) < (CONFIG.TRADE_COOLDOWN * 1000)) return null;
+                if (lastTradeTime && (Date.now() - lastTradeTime) < (CONFIG.TRADE_COOLDOWN * 1000)) {
+                    if (action === 'buy') {
+                        console.log(`Blocked buy for ${token}: Cooldown active.`);
+                        return null;
+                    }
+                }
+
                 const tokenSymbol = token;
                 const tokenAmount = amountETH / currentPrice;
                 const poolInfo = await getEnhancedPoolInfo(tokenSymbol);
                 if (!poolInfo) return null;
+
                 const currentGasPrice = state.currentGasPrice || CONFIG.MAX_GAS_PRICE;
                 if (currentGasPrice > CONFIG.MAX_GAS_PRICE) {
                     showToast('warning', `Gas price too high: ${currentGasPrice} gwei > ${CONFIG.MAX_GAS_PRICE} gwei max`);
                     return null;
                 }
+
                 if (action === 'sell') {
                     const tokenBalance = state.portfolio.balances[tokenSymbol] || 0;
                     if (tokenBalance <= 0) return null;
                     const sellableAmount = Math.min(tokenAmount, tokenBalance);
                     if (sellableAmount <= 0) return null;
                 }
+
                 let tradeResult = state.liveMode && state.walletConnected && state.signer
                     ? await executeLiveTrade(tokenSymbol, action, tokenAmount, currentPrice, poolInfo, currentGasPrice)
                     : await simulateRealisticTrade(tokenSymbol, action, tokenAmount, currentPrice, poolInfo, 0, currentGasPrice);
+
                 if (!tradeResult.success) {
-                    const failedTrade = createTradeObject(tokenSymbol, action, currentPrice, tokenAmount, amountETH, patternDescription, 'failed', tradeResult.reason, tradeResult.gasUsed, tradeResult.gasPrice, tradeResult.feeAmount, tradeResult.priceImpact, tradeResult.slippage, pattern);
+                    const failedTrade = createTradeObject(
+                        tokenSymbol, action, currentPrice, tokenAmount, amountETH,
+                        patternDescription, 'failed', tradeResult.reason,
+                        tradeResult.gasUsed, tradeResult.gasPrice, tradeResult.feeAmount,
+                        tradeResult.priceImpact, tradeResult.slippage, pattern
+                    );
                     state.trades.push(failedTrade);
                     state.portfolio.failedTrades++;
                     state.portfolio.totalTrades++;
@@ -1084,30 +1114,45 @@
                     showToast('error', `Trade failed: ${tradeResult.reason || 'Unknown error'}`);
                     return failedTrade;
                 }
-                if (CONFIG.PREVENT_SEQUENTIAL_TRADES && state.lastTradedToken === tokenSymbol) return null;
-                const trade = createTradeObject(tokenSymbol, action, tradeResult.executionPrice, tradeResult.tokenAmount, tradeResult.amountETH, patternDescription, 'open', null, tradeResult.gasUsed, tradeResult.gasPrice, tradeResult.feeAmount, tradeResult.priceImpact, tradeResult.slippage, pattern);
+
+                const trade = createTradeObject(
+                    tokenSymbol, action, tradeResult.executionPrice, tradeResult.tokenAmount,
+                    tradeResult.amountETH, patternDescription, 'open', null,
+                    tradeResult.gasUsed, tradeResult.gasPrice, tradeResult.feeAmount,
+                    tradeResult.priceImpact, tradeResult.slippage, pattern
+                );
+
                 updatePortfolioForTrade(trade, action, tradeResult);
                 state.trades.push(trade);
                 state.portfolio.totalTrades++;
-                state.lastTradedToken = tokenSymbol;
-                state.lastTradeTimes[tokenSymbol] = Date.now();
+
                 if (action === 'buy') {
-                    state.openBuyOrders.set(tokenSymbol, { tradeId: trade.id, pattern: pattern, entryPrice: tradeResult.executionPrice, entryTime: Date.now() });
+                    state.lastTradedToken = tokenSymbol;
+                    state.lastTradeTimes[tokenSymbol] = Date.now();
+                    state.openBuyOrders.set(tokenSymbol, {
+                        tradeId: trade.id,
+                        pattern: pattern,
+                        entryPrice: tradeResult.executionPrice,
+                        entryTime: Date.now()
+                    });
                     showToast('success', `Bought ${tradeResult.tokenAmount} ${tokenSymbol} at ${tradeResult.executionPrice} ETH`);
-                }
-                if (action === 'sell') {
+                } else if (action === 'sell') {
                     state.openBuyOrders.delete(tokenSymbol);
                     const pnlText = trade.pnl >= 0 ? `+${trade.pnl}` : trade.pnl;
                     showToast('success', `Sold ${tradeResult.tokenAmount} ${tokenSymbol} at ${tradeResult.executionPrice} ETH (PnL: ${pnlText} ETH)`);
                 }
+
                 updateDashboard();
                 updatePortfolioUI();
                 updateTradeAmountDisplay();
                 backupData();
                 return trade;
-            } catch (e) { console.error('Error executing trade:', e); showToast('error', `Trade execution error: ${e.message}`); return null; }
+            } catch (e) {
+                console.error('Error executing trade:', e);
+                showToast('error', `Trade execution error: ${e.message}`);
+                return null;
+            }
         }
-
         async function executeLiveTrade(tokenSymbol, action, tokenAmount, currentPrice, poolInfo, gasPriceGwei) {
             try {
                 const gasUsed = estimateSwapGas(action, tokenSymbol);
