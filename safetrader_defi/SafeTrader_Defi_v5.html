@@ -438,33 +438,6 @@
         </div>
 
         <div class="card">
-            <h2>Market Watch</h2>
-            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                <button class="btn btn-primary btn-sm" onclick="refreshPrices()">Refresh</button>
-            </div>
-            <div style="overflow-x: auto;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Token</th>
-                            <th>Price (ETH)</th>
-                            <th>24h Change</th>
-                            <th>Patterns</th>
-                            <th>History Length</th>
-                            <th>Last Trade</th>
-                        </tr>
-                    </thead>
-                    <tbody id="priceRows">
-                        <tr>
-                            <td colspan="6" style="text-align: center; color: #94a3b8;">Press Start to begin watching
-                                the market</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="card">
             <h2>Recent Trades</h2>
             <div style="overflow-x: auto;">
                 <table>
@@ -563,11 +536,11 @@
             MIN_TRADE_AMOUNT_ETH: 0.0003,
             MAX_TRADES: 5,
             TRADE_COOLDOWN: 60,
-            MIN_PRICE_CHANGE: 0.0001,
+            MIN_PRICE_CHANGE: 0.01,
             MIN_TIME_WINDOW: 1,
             MAX_TIME_WINDOW: 3600,
-            MIN_OCCURRENCES: 2,
-            MIN_PROFIT_PERCENT: 0.0001,
+            MIN_OCCURRENCES: 1,
+            MIN_PROFIT_PERCENT: 0.02,
             MAX_SLIPPAGE: 0.5,
             MAX_GAS_PRICE: 200,
             GAS_LIMIT: 200000,
@@ -1354,10 +1327,6 @@
             try {
                 const observedTokens = Array.from(state.observedTokens);
                 safeSetText('trackedTokensCount', observedTokens.length);
-                if (!state.activeSession || observedTokens.length === 0) {
-                    document.getElementById('priceRows').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">Press Start to begin watching the market</td></tr>';
-                    return;
-                }
                 let html = '';
                 observedTokens.forEach(tokenSymbol => {
                     const price = state.prices[tokenSymbol];
@@ -1384,8 +1353,6 @@
                         <td>${lastTradeTime}</td>
                     </tr>`;
                 });
-                const priceRows = document.getElementById('priceRows');
-                if (priceRows) priceRows.innerHTML = html || '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">No tokens with price data</td></tr>';
             } catch (e) { console.error('Error rendering dashboard:', e); }
         }
 
@@ -1977,8 +1944,6 @@
         }
 
         function resetView() {
-            const priceRows = document.getElementById('priceRows');
-            if (priceRows) priceRows.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">Press Start to begin watching the market</td></tr>';
             safeSetText('trackedTokensCount', '0');
         }
 
