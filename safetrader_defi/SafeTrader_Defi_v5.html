@@ -1808,7 +1808,18 @@
                 const head = await s.provider.getBlockNumber(); s.rpcHead = head;
                 if (n > head) { await sleep(1000); return; }
                 let logs = [];
-                try { logs = await s.provider.getLogs({ fromBlock: n, toBlock: n, topics: [SWAP_TOPIC] }); } catch (e) { console.warn('Error getting logs:', e); return; }
+                try { 
+                    // Fix: Handle invalid block range error gracefully
+                    const blockRange = { fromBlock: n, toBlock: n, topics: [SWAP_TOPIC] };
+                    logs = await s.provider.getLogs(blockRange);
+                } catch (e) { 
+                    if (e.message && e.message.includes("invalid block range params")) {
+                        console.warn(`Skipping block ${n} due to invalid block range params`);
+                        return;
+                    }
+                    console.warn('Error getting logs:', e); 
+                    return; 
+                }
                 if (!logs || !current(s) || !logs.length) return;
                 const logBatches = [];
                 for (let i = 0; i < logs.length; i += 5) logBatches.push(logs.slice(i, i + 5));
@@ -1863,7 +1874,10 @@
                 const pool = await loadPool(s, logEntry.address);
                 if (!current(s) || !pool?.initialized) return;
                 let parsed;
-                try { parsed = SWAP_INTERFACE.parseLog({ topics: logEntry.topics, data: logEntry.data }); } catch (e) { return; }
+                try { parsed = SWAP_INTERFACE.parseLog({ topics: logEntry.topics, data: logEntry.data }); } catch (e) { 
+                    console.warn('Failed to parse log entry:', e); 
+                    return; 
+                }
                 if (!parsed) return;
                 const amount0 = parsed.args.amount0;
                 const amount1 = parsed.args.amount1;
