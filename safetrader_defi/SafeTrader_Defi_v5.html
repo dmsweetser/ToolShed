@@ -1090,6 +1090,12 @@
                         console.log(`Blocked buy for ${token}: Open buy order exists.`);
                         return null;
                     }
+                    // Prevent multiple open positions for the same token
+                    const existingPosition = state.portfolio.positions.find(p => p.token === token && p.status === 'open');
+                    if (existingPosition) {
+                        console.log(`Blocked buy for ${token}: Already has an open position.`);
+                        return null;
+                    }
                 }
 
                 // Fetch the latest gas price before trade execution
@@ -1115,6 +1121,14 @@
                 if (lastTradeTime && (Date.now() - lastTradeTime) < (CONFIG.TRADE_COOLDOWN * 1000)) {
                     if (action === 'buy') {
                         console.log(`Blocked buy for ${token}: Cooldown active.`);
+                        return null;
+                    }
+                }
+                // Prevent multiple open positions for the same token
+                if (action === 'buy') {
+                    const existingPosition = state.portfolio.positions.find(p => p.token === token && p.status === 'open');
+                    if (existingPosition) {
+                        console.log(`Blocked buy for ${token}: Already has an open position.`);
                         return null;
                     }
                 }
@@ -1235,6 +1249,9 @@
                         if (checkPatternMatch(token, pattern, PATTERN_TYPES.BUY)) {
                             if (CONFIG.PREVENT_SEQUENTIAL_TRADES && state.lastTradedToken === token) return;
                             if (state.openBuyOrders.has(token)) return;
+                            // Prevent multiple open positions for the same token
+                            const existingPosition = state.portfolio.positions.find(p => p.token === token && p.status === 'open');
+                            if (existingPosition) return;
                             executeTrade(token, 'buy', getPatternDescription(pattern), calculateTradeAmount(), pattern)
                                 .then(trade => {
                                     if (trade && trade.status === 'open') {
