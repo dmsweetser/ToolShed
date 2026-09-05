@@ -819,67 +819,28 @@
             try {
                 const tokens = Array.from(state.observedTokens);
                 const newActivePatterns = new Map();
-
-                // Step 1: Detect all patterns for all tokens
                 tokens.forEach(token => {
                     const history = state.priceHistory[token];
                     if (!history || history.length < 5) return;
-
-                    const patternsForToken = detectBuyPatternsForToken(history, token);
-                    patternsForToken.forEach(pattern => {
+                    detectBuyPatternsForToken(history, token).forEach(pattern => {
                         if (!isPatternValid(pattern)) return;
                         const patternKey = getPatternKey(pattern);
-                        newActivePatterns.set(`${token}_${patternKey}`, {
-                            ...pattern,
-                            token,
-                            occurrences: 1,
-                            firstSeen: pattern.timestamp,
-                            lastSeen: pattern.timestamp
-                        });
+                        const existingPatternKey = `${token}_${patternKey}`;
+                        if (!newActivePatterns.has(existingPatternKey)) {
+                            newActivePatterns.set(existingPatternKey, { ...pattern, token, occurrences: 1, firstSeen: pattern.timestamp, lastSeen: pattern.timestamp });
+                        } else {
+                            const existing = newActivePatterns.get(existingPatternKey);
+                            existing.occurrences++;
+                            existing.lastSeen = Math.max(existing.lastSeen, pattern.timestamp);
+                        }
                     });
                 });
-
-                // Step 2: Group patterns by token and keep only the best one
-                const bestPatternsPerToken = new Map();
-                const patternsByToken = new Map();
-
-                // Group all patterns by token
-                newActivePatterns.forEach((pattern, key) => {
-                    if (!patternsByToken.has(pattern.token)) {
-                        patternsByToken.set(pattern.token, []);
-                    }
-                    patternsByToken.get(pattern.token).push(pattern);
-                });
-
-                // For each token, select the best pattern
-                patternsByToken.forEach((patterns, token) => {
-                    if (patterns.length === 0) return;
-
-                    // Define the best pattern (e.g., highest risePct)
-                    const bestPattern = patterns.reduce((best, current) => {
-                        // Customize this logic to define "best" (e.g., highest risePct, shortest riseTime, etc.)
-                        if (current.risePct > best.risePct) return current;
-                        if (current.risePct === best.risePct && current.riseTime < best.riseTime) return current;
-                        return best;
-                    }, patterns[0]);
-
-                    bestPatternsPerToken.set(token, bestPattern);
-                });
-
-                // Step 3: Update state.activePatterns with only the best patterns
-                state.activePatterns = new Map();
-                bestPatternsPerToken.forEach((pattern, token) => {
-                    const patternKey = getPatternKey(pattern);
-                    state.activePatterns.set(`${token}_${patternKey}`, pattern);
-                });
-
-                // Step 4: Update pattern stats
+                validatePatternsMinimal(newActivePatterns);
+                state.activePatterns = newActivePatterns;
                 updatePatternStats();
                 state.lastDetectionTime = new Date();
                 safeSetText('lastDetectionTime', state.lastDetectionTime.toLocaleTimeString());
-            } catch (e) {
-                console.error('Error in detectAllPatterns:', e);
-            }
+            } catch (e) { console.error('Error in detectAllPatterns:', e); }
         }
 
         function isPatternValid(pattern) {
