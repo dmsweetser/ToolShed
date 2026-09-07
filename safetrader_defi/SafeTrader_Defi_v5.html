@@ -1279,7 +1279,7 @@
                 }
             } catch (e) { console.error('Error checking patterns for token:', e); }
         }
-        
+
         function checkPatternMatch(token, pattern, patternType) {
             try {
                 const history = state.priceHistory[token];
@@ -1830,7 +1830,7 @@
                     logs = await s.provider.getLogs(blockRange);
                 } catch (e) {
                     if (e.message && e.message.includes("invalid block range params")) {
-                        console.warn(`Skipping block ${n} due to invalid block range params`);
+                        console.info(`Skipping block ${n} due to invalid block range params`);
                         return;
                     }
                     console.warn('Error getting logs:', e);
