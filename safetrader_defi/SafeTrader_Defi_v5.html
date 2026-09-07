@@ -1663,6 +1663,10 @@
             if (!s) return;
             s.active = false;
             clearTimer(s);
+            if (s.priceUpdateInterval) {
+                clearInterval(s.priceUpdateInterval);
+                s.priceUpdateInterval = null;
+            }
             try { s.provider?.removeAllListeners(); } catch { }
             try { s.ws?.close(); } catch { }
             try { s.provider?.destroy(); } catch { }
@@ -1744,6 +1748,8 @@
                 showToast('error', `Max reconnection attempts (${maxAttempts}) reached for Arbitrum.`);
                 updateConnectionStatus(); return;
             }
+            // Clean up the failed connection before retrying
+            destroySession(s);
             s.currentRpcIndex = (s.currentRpcIndex + 1) % CHAINS.arbitrum.rpcs.length;
             const delay = Math.min(state.reconnectDelay * Math.pow(2, s.reconnectAttempts - 1), 30000);
             showToast('info', `Reconnecting to Arbitrum in ${delay / 1000} seconds (attempt ${s.reconnectAttempts}/${maxAttempts})...`);
@@ -1762,7 +1768,8 @@
         async function startPriceMonitoring(s) {
             if (!current(s) || !s.connected) return;
             await updatePricesForSession(s);
-            setInterval(async () => { if (current(s) && s.connected) await updatePricesForSession(s); }, 10000);
+            if (s.priceUpdateInterval) clearInterval(s.priceUpdateInterval);
+            s.priceUpdateInterval = setInterval(async () => { if (current(s) && s.connected) await updatePricesForSession(s); }, 10000);
         }
 
         async function updatePricesForSession(s) {
