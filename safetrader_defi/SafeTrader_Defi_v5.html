@@ -1264,7 +1264,7 @@
                     return; // Already has position, skip buy checks
                 }
 
-                const tokenPatterns = Array.from(state.activePatterns.values()).filter(p => p.type === PATTERN_TYPES.BUY);
+                const tokenPatterns = Array.from(state.activePatterns.values()).filter(p => p.type === PATTERN_TYPES.BUY && p.token === token);
                 for (const pattern of tokenPatterns) {
                     if (CONFIG.PREVENT_SEQUENTIAL_TRADES && state.lastTradedToken === token) break;
                     if (state.openBuyOrders.has(token)) break;
