@@ -645,7 +645,8 @@
             sessionSerial: 0,
             activeSession: null,
             currentRpcIndex: 0,
-            lastDetectionTime: null
+            lastDetectionTime: null,
+            lastMaxTradeToast: null
         };
 
         // Fix: Ensure trade IDs are unique and prevent duplicates
@@ -782,7 +783,7 @@
                 const totalGasCost = gasCostPerTrade * maxTrades;
                 const percentBasedAmount = availableETH * (CONFIG.TRADE_AMOUNT_PERCENT / 100);
                 const minTradeAmountETH = CONFIG.MIN_TRADE_AMOUNT_ETH;
-                let tradeAmount = Math.min(percentBasedAmount, percentBasedAmount - (totalGasCost / maxTrades));
+                let tradeAmount = Math.max(0, percentBasedAmount - (totalGasCost / maxTrades));
                 tradeAmount = Math.max(tradeAmount, minTradeAmountETH);
                 tradeAmount = Math.min(tradeAmount, availableETH * 0.95);
                 return tradeAmount;
@@ -800,12 +801,14 @@
             safeSetText('targetProfitPercent', CONFIG.MIN_PROFIT_PERCENT + '%');
         }
 
+        let isDetectingPatterns = false;
+
         function startPatternDetection() {
             if (state.patternDetectionActive) return;
             state.patternDetectionActive = true;
             if (state.isRunning && state.activeSession?.connected) detectAllPatterns();
             state.patternDetectionTimer = setInterval(() => {
-                if (state.isRunning && state.activeSession?.connected) detectAllPatterns();
+                if (state.isRunning && state.activeSession?.connected && !isDetectingPatterns) detectAllPatterns();
             }, 3000);
         }
 
@@ -813,15 +816,18 @@
             if (state.patternDetectionTimer) clearInterval(state.patternDetectionTimer);
             state.patternDetectionTimer = null;
             state.patternDetectionActive = false;
+            isDetectingPatterns = false;
         }
 
-        function detectAllPatterns() {
+        async function detectAllPatterns() {
+            if (isDetectingPatterns) return;
+            isDetectingPatterns = true;
             try {
                 const tokens = Array.from(state.observedTokens);
                 const newActivePatterns = new Map();
-                tokens.forEach(token => {
+                for (const token of tokens) {
                     const history = state.priceHistory[token];
-                    if (!history || history.length < 5) return;
+                    if (!history || history.length < 5) continue;
                     detectBuyPatternsForToken(history, token).forEach(pattern => {
                         if (!isPatternValid(pattern)) return;
                         const patternKey = getPatternKey(pattern);
@@ -834,13 +840,20 @@
                             existing.lastSeen = Math.max(existing.lastSeen, pattern.timestamp);
                         }
                     });
-                });
+                }
                 validatePatternsMinimal(newActivePatterns);
                 state.activePatterns = newActivePatterns;
                 updatePatternStats();
                 state.lastDetectionTime = new Date();
                 safeSetText('lastDetectionTime', state.lastDetectionTime.toLocaleTimeString());
-            } catch (e) { console.error('Error in detectAllPatterns:', e); }
+
+                // Check patterns for trades sequentially to prevent race conditions
+                for (const token of tokens) {
+                    await checkPatternsForToken(token);
+                }
+            } catch (e) { console.error('Error in detectAllPatterns:', e); } finally {
+                isDetectingPatterns = false;
+            }
         }
 
         function isPatternValid(pattern) {
@@ -1113,7 +1126,10 @@
 
                 const totalOpenPositions = state.portfolio.positions.filter(p => p.status === 'open').length;
                 if (totalOpenPositions >= CONFIG.MAX_TRADES) {
-                    showToast('warning', `Max trades (${CONFIG.MAX_TRADES}) reached`);
+                    if (!state.lastMaxTradeToast || Date.now() - state.lastMaxTradeToast > 10000) {
+                        showToast('warning', `Max trades (${CONFIG.MAX_TRADES}) reached`);
+                        state.lastMaxTradeToast = Date.now();
+                    }
                     return null;
                 }
 
@@ -1225,45 +1241,45 @@
             }
         }
 
-        function checkPatternsForToken(token) {
+        async function checkPatternsForToken(token) {
             try {
                 if (!state.isRunning) return;
                 const history = state.priceHistory[token];
                 if (!history || history.length < 2) return;
                 const currentPrice = state.prices[token];
                 if (!currentPrice) return;
+
+                // Prevent concurrent checks or trades for the same token
+                if (state.openBuyOrders.has(token)) return;
                 const openPosition = state.portfolio.positions.find(p => p.token === token && p.status === 'open');
-                const tokenPatterns = Array.from(state.activePatterns.values()).filter(p => p.token === token);
                 if (openPosition) {
                     const currentValue = openPosition.amount * currentPrice;
                     const costBasis = (openPosition.amount * openPosition.entryPrice) + openPosition.feesPaid + openPosition.gasPaid;
                     const profitETH = currentValue - costBasis;
                     const profitPercent = (profitETH / costBasis) * 100;
                     if (profitPercent >= CONFIG.MIN_PROFIT_PERCENT && profitETH > 0) {
-                        executeTrade(token, 'sell', `Profit target (${formatPercent(profitPercent)}) reached`, openPosition.amount * currentPrice, null);
+                        await executeTrade(token, 'sell', `Profit target (${formatPercent(profitPercent)}) reached`, openPosition.amount * currentPrice, null);
                         return;
                     }
+                    return; // Already has position, skip buy checks
                 }
-                if (!openPosition) {
-                    tokenPatterns.filter(p => p.type === PATTERN_TYPES.BUY).forEach(pattern => {
-                        if (checkPatternMatch(token, pattern, PATTERN_TYPES.BUY)) {
-                            if (CONFIG.PREVENT_SEQUENTIAL_TRADES && state.lastTradedToken === token) return;
-                            if (state.openBuyOrders.has(token)) return;
-                            // Prevent multiple open positions for the same token
-                            const existingPosition = state.portfolio.positions.find(p => p.token === token && p.status === 'open');
-                            if (existingPosition) return;
-                            executeTrade(token, 'buy', getPatternDescription(pattern), calculateTradeAmount(), pattern)
-                                .then(trade => {
-                                    if (trade && trade.status === 'open') {
-                                        state.openBuyOrders.set(token, { tradeId: trade.id, pattern: pattern, entryPrice: trade.price, entryTime: Date.now() });
-                                    }
-                                });
-                        }
-                    });
+
+                const tokenPatterns = Array.from(state.activePatterns.values()).filter(p => p.type === PATTERN_TYPES.BUY);
+                for (const pattern of tokenPatterns) {
+                    if (CONFIG.PREVENT_SEQUENTIAL_TRADES && state.lastTradedToken === token) break;
+                    if (state.openBuyOrders.has(token)) break;
+                    const existingPosition = state.portfolio.positions.find(p => p.token === token && p.status === 'open');
+                    if (existingPosition) break;
+
+                    const trade = await executeTrade(token, 'buy', getPatternDescription(pattern), calculateTradeAmount(), pattern);
+                    if (trade && trade.status === 'open') {
+                        state.openBuyOrders.set(token, { tradeId: trade.id, pattern: pattern, entryPrice: trade.price, entryTime: Date.now() });
+                        break; // Only buy one pattern per token per cycle
+                    }
                 }
             } catch (e) { console.error('Error checking patterns for token:', e); }
         }
-
+        
         function checkPatternMatch(token, pattern, patternType) {
             try {
                 const history = state.priceHistory[token];
@@ -1808,17 +1824,17 @@
                 const head = await s.provider.getBlockNumber(); s.rpcHead = head;
                 if (n > head) { await sleep(1000); return; }
                 let logs = [];
-                try { 
+                try {
                     // Fix: Handle invalid block range error gracefully
                     const blockRange = { fromBlock: n, toBlock: n, topics: [SWAP_TOPIC] };
                     logs = await s.provider.getLogs(blockRange);
-                } catch (e) { 
+                } catch (e) {
                     if (e.message && e.message.includes("invalid block range params")) {
                         console.warn(`Skipping block ${n} due to invalid block range params`);
                         return;
                     }
-                    console.warn('Error getting logs:', e); 
-                    return; 
+                    console.warn('Error getting logs:', e);
+                    return;
                 }
                 if (!logs || !current(s) || !logs.length) return;
                 const logBatches = [];
@@ -1874,9 +1890,9 @@
                 const pool = await loadPool(s, logEntry.address);
                 if (!current(s) || !pool?.initialized) return;
                 let parsed;
-                try { parsed = SWAP_INTERFACE.parseLog({ topics: logEntry.topics, data: logEntry.data }); } catch (e) { 
-                    console.warn('Failed to parse log entry:', e); 
-                    return; 
+                try { parsed = SWAP_INTERFACE.parseLog({ topics: logEntry.topics, data: logEntry.data }); } catch (e) {
+                    console.warn('Failed to parse log entry:', e);
+                    return;
                 }
                 if (!parsed) return;
                 const amount0 = parsed.args.amount0;
