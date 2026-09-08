@@ -296,6 +296,15 @@
         .hidden {
             display: none !important;
         }
+
+        /* New style for dropdown */
+        select.form-control {
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #d1d5db;
+            background: white;
+            font-size: 14px;
+        }
     </style>
 </head>
 
@@ -519,6 +528,14 @@
                 </div>
                 <div class="config-section">
                     <h3>Pattern Detection</h3>
+                    <p>
+                        <strong>Pattern Mode:</strong>
+                        <select id="patternModeSelect" class="form-control" onchange="updatePatternMode(this.value)">
+                            <option value="both">Both (Dips + Swells)</option>
+                            <option value="dip">Dips Only</option>
+                            <option value="swell">Swells Only</option>
+                        </select>
+                    </p>
                     <p><strong>Min Price Change:</strong> <span id="displayMinPriceChange"></span></p>
                     <p><strong>Min Time Window:</strong> <span id="displayMinTimeWindow"></span></p>
                     <p><strong>Max Time Window:</strong> <span id="displayMaxTimeWindow"></span></p>
@@ -580,31 +597,32 @@
         var CONFIG = {
             BLOCKCHAIN_NETWORK: 'arbitrum',
             UNISWAP_VERSION: 'v3',
-            STARTING_ETH: 0.01, // Increased starting WETH for testing
-            TRADE_AMOUNT_PERCENT: 10, // 10% of portfolio per trade (was 0.5%)
-            MIN_TRADE_AMOUNT_ETH: 0.001, // 0.001 WETH minimum (was 0.0003)
+            STARTING_ETH: 0.01,
+            TRADE_AMOUNT_PERCENT: 10,
+            MIN_TRADE_AMOUNT_ETH: 0.001,
             MAX_TRADES: 5,
-            TRADE_COOLDOWN: 60, // 60 seconds cooldown between trades for the same token
-            MIN_PRICE_CHANGE: 1, // 1% (was 0.01%)
-            MIN_TIME_WINDOW: 5, // 5 seconds (was 1)
-            MAX_TIME_WINDOW: 60, // 60 seconds (was 3600)
-            MIN_OCCURRENCES: 2, // Require at least 2 occurrences (was 1)
-            MIN_PROFIT_PERCENT: 0.5, // 0.5% (was 0.02%)
-            MAX_SLIPPAGE: 0.5, // 0.5%
-            MAX_GAS_PRICE: 500, // 500 gwei (was 200)
-            GAS_LIMIT: 300000, // Increased gas limit (was 200000)
+            TRADE_COOLDOWN: 60,
+            MIN_PRICE_CHANGE: 1,
+            MIN_TIME_WINDOW: 5,
+            MAX_TIME_WINDOW: 60,
+            MIN_OCCURRENCES: 2,
+            MIN_PROFIT_PERCENT: 0.5,
+            MAX_SLIPPAGE: 0.5,
+            MAX_GAS_PRICE: 500,
+            GAS_LIMIT: 300000,
             PREVENT_SEQUENTIAL_TRADES: true,
-            PRICE_HISTORY_DURATION: 24, // 24 hours
+            PRICE_HISTORY_DURATION: 24,
             MAX_PRICE_HISTORY: 20000,
-            USDC_PROFIT_TARGET: 1.0, // Target in USDC
-            USDC_CONVERSION_INTERVAL: 300000, // 5 minutes in milliseconds
-            MIN_LIQUIDITY: 50000 // Skip tokens with liquidity < 50K
+            USDC_PROFIT_TARGET: 1.0,
+            USDC_CONVERSION_INTERVAL: 300000,
+            MIN_LIQUIDITY: 50000,
+            PATTERN_MODE: 'both' // NEW: 'both', 'dip', or 'swell'
         };
 
         // Pattern types
         const PATTERN_TYPES = {
             BUY: 'buy',
-            SWELL: 'swell' // New pattern type
+            SWELL: 'swell'
         };
 
         const POOL_FEES = { LOW: 500, MEDIUM: 3000, HIGH: 10000 };
@@ -621,7 +639,7 @@
                     "wss://arbitrum-one-rpc.publicnode.com"
                 ],
                 factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
-                wrappedNative: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", // WETH
+                wrappedNative: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
                 quoteMode: "native",
                 quoteLabel: "WETH",
                 stables: ["0xaf88d065e77c8cC2239327C5EDb3A432268e5831", "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"]
@@ -639,8 +657,8 @@
                 GMX: '0xfc5A1A6EB076a2C7aD06eD22C5C769A78b3Fa3A1',
                 USDC: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
                 USDT: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9',
-                LEVY: '0x709232b2084659408421a351439f8462d450416f', // Example token
-                APEX: '0x5063C83912b5A8d352226578e47F845B1a8d5a2F'  // Example token
+                LEVY: '0x709232b2084659408421a351439f8462d450416f',
+                APEX: '0x5063C83912b5A8d352226578e47F845B1a8d5a2F'
             }
         };
 
@@ -759,6 +777,15 @@
             if (el) el.innerHTML = html;
         }
 
+        // NEW: Update pattern mode from UI
+        function updatePatternMode(mode) {
+            CONFIG.PATTERN_MODE = mode;
+            showToast('success', `Pattern mode set to: ${mode}`);
+            if (state.isRunning) {
+                detectAllPatterns(); // Re-detect patterns with new mode
+            }
+        }
+
         // ======================
         // PATTERN DETECTION (UPDATED)
         // ======================
@@ -809,7 +836,7 @@
             return patterns;
         }
 
-        // NEW: Detect "Swell" patterns (price increases twice)
+        // Detect "Swell" patterns (price increases twice)
         function detectSwellPatternsForToken(history, token) {
             if (!history || history.length < 5) return [];
             const minChange = CONFIG.MIN_PRICE_CHANGE / 100;
@@ -1140,7 +1167,7 @@
                 if (action === 'buy') {
                     if (CONFIG.PREVENT_SEQUENTIAL_TRADES && state.lastTradedToken === token) {
                         const lastTradeTime = state.lastTradeTimes[token];
-                        if (lastTradeTime && (Date.now() - lastTradeTime) < 60000) { // 1-minute cooldown
+                        if (lastTradeTime && (Date.now() - lastTradeTime) < 60000) {
                             console.log(`Blocked buy for ${token}: Recent trade.`);
                             return null;
                         }
@@ -1156,6 +1183,18 @@
                     if (existingPosition) {
                         console.log(`Blocked buy for ${token}: Already has an open position.`);
                         return null;
+                    }
+
+                    // NEW: Only allow buy if pattern matches selected mode
+                    if (pattern) {
+                        if (CONFIG.PATTERN_MODE === 'dip' && pattern.type !== PATTERN_TYPES.BUY) {
+                            console.log(`Blocked buy for ${token}: Pattern mode is set to dips only.`);
+                            return null;
+                        }
+                        if (CONFIG.PATTERN_MODE === 'swell' && pattern.type !== PATTERN_TYPES.SWELL) {
+                            console.log(`Blocked buy for ${token}: Pattern mode is set to swells only.`);
+                            return null;
+                        }
                     }
                 }
 
@@ -1326,28 +1365,30 @@
                 // Check for buy patterns (dips or swells)
                 const tokenPatterns = Array.from(state.activePatterns.values()).filter(p => p.token === token);
                 for (const pattern of tokenPatterns) {
-                    if (pattern.type === PATTERN_TYPES.BUY || pattern.type === PATTERN_TYPES.SWELL) {
-                        if (state.openBuyOrders.has(token)) break;
-                        const existingPosition = state.portfolio.positions.find(p => p.token === token && p.status === 'open');
-                        if (existingPosition) break;
+                    // NEW: Only execute trades for the selected pattern mode
+                    if (CONFIG.PATTERN_MODE === 'dip' && pattern.type !== PATTERN_TYPES.BUY) continue;
+                    if (CONFIG.PATTERN_MODE === 'swell' && pattern.type !== PATTERN_TYPES.SWELL) continue;
 
-                        const trade = await executeTrade(
-                            token,
-                            'buy',
-                            getPatternDescription(pattern),
-                            calculateTradeAmount(),
-                            pattern
-                        );
+                    if (state.openBuyOrders.has(token)) break;
+                    const existingPosition = state.portfolio.positions.find(p => p.token === token && p.status === 'open');
+                    if (existingPosition) break;
 
-                        if (trade && trade.status === 'open') {
-                            state.openBuyOrders.set(token, {
-                                tradeId: trade.id,
-                                pattern: pattern,
-                                entryPrice: trade.price,
-                                entryTime: Date.now()
-                            });
-                            break;
-                        }
+                    const trade = await executeTrade(
+                        token,
+                        'buy',
+                        getPatternDescription(pattern),
+                        calculateTradeAmount(),
+                        pattern
+                    );
+
+                    if (trade && trade.status === 'open') {
+                        state.openBuyOrders.set(token, {
+                            tradeId: trade.id,
+                            pattern: pattern,
+                            entryPrice: trade.price,
+                            entryTime: Date.now()
+                        });
+                        break;
                     }
                 }
             } catch (e) {
@@ -1535,11 +1576,16 @@
                     const history = state.priceHistory[token];
                     if (!history || history.length < 5) continue;
 
-                    // Detect both dip and swell patterns
-                    const buyPatterns = detectBuyPatternsForToken(history, token);
-                    const swellPatterns = detectSwellPatternsForToken(history, token);
+                    // NEW: Only detect patterns based on selected mode
+                    let patterns = [];
+                    if (CONFIG.PATTERN_MODE === 'both' || CONFIG.PATTERN_MODE === 'dip') {
+                        patterns.push(...detectBuyPatternsForToken(history, token));
+                    }
+                    if (CONFIG.PATTERN_MODE === 'both' || CONFIG.PATTERN_MODE === 'swell') {
+                        patterns.push(...detectSwellPatternsForToken(history, token));
+                    }
 
-                    [...buyPatterns, ...swellPatterns].forEach(pattern => {
+                    patterns.forEach(pattern => {
                         if (!isPatternValid(pattern)) return;
 
                         const patternKey = getPatternKey(pattern);
@@ -1917,6 +1963,12 @@
             safeSetText('displayMaxPriceHistory', CONFIG.MAX_PRICE_HISTORY);
             safeSetText('displayUsdcTarget', CONFIG.USDC_PROFIT_TARGET + ' USDC');
             safeSetText('usdcTarget', formatUSDC(CONFIG.USDC_PROFIT_TARGET));
+
+            // Set the dropdown to the current pattern mode
+            const patternModeSelect = document.getElementById('patternModeSelect');
+            if (patternModeSelect) {
+                patternModeSelect.value = CONFIG.PATTERN_MODE;
+            }
         }
 
         function showToast(type, message, duration = 5000) {
