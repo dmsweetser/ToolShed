@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Quick Swap Trader v7.2.0</title>
+    <title>Uniswap Quick Swap Trader v7.2.0 (WETH-Centric)</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
     <style>
         body {
@@ -303,7 +303,7 @@
     <div class="toast-container" id="toastContainer"></div>
     <div class="container">
         <h1>Uniswap Quick Swap Trader</h1>
-        <p><strong>v7.2.0</strong></p>
+        <p><strong>v7.2.0 (WETH-Centric)</strong></p>
 
         <!-- Controls -->
         <div class="card">
@@ -343,7 +343,7 @@
             </div>
             <div class="grid-3" style="margin-top: 10px;">
                 <div class="metric-card">
-                    <div class="metric-value"><span id="tradeAmountDisplay">0.000000 ETH</span></div>
+                    <div class="metric-value"><span id="tradeAmountDisplay">0.000000 WETH</span></div>
                     <div class="metric-label">Trade Size</div>
                 </div>
                 <div class="metric-card">
@@ -363,26 +363,26 @@
                 <div style="display: grid; gap: 10px;">
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Starting Budget</div>
-                        <div style="font-size: 18px; font-weight: 600;"><span id="startingEthDisplay">0.0033 ETH</span>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="startingEthDisplay">0.0033 WETH</span>
                         </div>
                     </div>
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Current Value</div>
-                        <div style="font-size: 18px; font-weight: 600;"><span id="currentEth">0.0033 ETH</span></div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="currentEth">0.0033 WETH</span></div>
                     </div>
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Profit from Closed Trades</div>
                         <div style="font-size: 18px; font-weight: 600;"><span class="price-up" id="realizedPnL">0.000000
-                                ETH</span></div>
+                                WETH</span></div>
                     </div>
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Profit from Open Trades</div>
-                        <div style="font-size: 18px; font-weight: 600;"><span id="unrealizedPnL">0.000000 ETH</span>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="unrealizedPnL">0.000000 WETH</span>
                         </div>
                     </div>
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Total Profit</div>
-                        <div style="font-size: 18px; font-weight: 600;"><span id="netPnL">0.000000 ETH</span></div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="netPnL">0.000000 WETH</span></div>
                     </div>
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Return</div>
@@ -416,15 +416,15 @@
                 <div style="display: grid; gap: 10px;">
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Network Fees Paid</div>
-                        <div style="font-size: 18px; font-weight: 600;"><span id="gasSpent">0.000000 ETH</span></div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="gasSpent">0.000000 WETH</span></div>
                     </div>
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Exchange Fees Paid</div>
-                        <div style="font-size: 18px; font-weight: 600;"><span id="dexFees">0.000000 ETH</span></div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="dexFees">0.000000 WETH</span></div>
                     </div>
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Total Fees</div>
-                        <div style="font-size: 18px; font-weight: 600;"><span id="totalFees">0.000000 ETH</span></div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="totalFees">0.000000 WETH</span></div>
                     </div>
                 </div>
             </div>
@@ -446,10 +446,10 @@
                             <th>Time</th>
                             <th>Token</th>
                             <th>Action</th>
-                            <th>Price (ETH)</th>
+                            <th>Price (WETH)</th>
                             <th>Amount</th>
                             <th>Pattern</th>
-                            <th>Profit (ETH)</th>
+                            <th>Profit (WETH)</th>
                         </tr>
                     </thead>
                     <tbody id="recentTrades">
@@ -461,7 +461,7 @@
             </div>
         </div>
 
-        <!-- NEW: Last 10 Swaps Observed -->
+        <!-- Last 10 Swaps Observed -->
         <div class="card">
             <h2>Last 10 Swaps Observed</h2>
             <div style="overflow-x: auto;">
@@ -490,7 +490,7 @@
             <div class="grid-3">
                 <div class="config-section">
                     <h3>Trading Budget</h3>
-                    <p><strong>Starting ETH:</strong> <span id="displayStartingEth"></span></p>
+                    <p><strong>Starting WETH:</strong> <span id="displayStartingEth"></span></p>
                     <p><strong>Trade %:</strong> <span id="displayTradePercent"></span></p>
                     <p><strong>Min Trade:</strong> <span id="displayMinTrade"></span></p>
                     <p><strong>Max Trades:</strong> <span id="displayMaxTrades"></span></p>
@@ -542,7 +542,7 @@
                     <div class="metric-label">Win Rate</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-value"><span id="avgProfit">0 ETH</span></div>
+                    <div class="metric-value"><span id="avgProfit">0 WETH</span></div>
                     <div class="metric-label">Avg Profit per Trade</div>
                 </div>
             </div>
@@ -550,13 +550,13 @@
     </div>
 
     <script>
-        const APP_VERSION = '7.2.0';
+        const APP_VERSION = '7.2.0 (WETH-Centric)';
         let CONFIG = {
             BLOCKCHAIN_NETWORK: 'arbitrum',
             UNISWAP_VERSION: 'v3',
-            STARTING_ETH: 0.0033,
+            STARTING_ETH: 0.0033, // Now represents WETH
             TRADE_AMOUNT_PERCENT: 0.5,
-            MIN_TRADE_AMOUNT_ETH: 0.0003,
+            MIN_TRADE_AMOUNT_ETH: 0.0003, // Now represents WETH
             MAX_TRADES: 5,
             TRADE_COOLDOWN: 60,
             MIN_PRICE_CHANGE: 0.01,
@@ -586,9 +586,9 @@
                     "wss://arbitrum-one-rpc.publicnode.com"
                 ],
                 factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
-                wrappedNative: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+                wrappedNative: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", // WETH
                 quoteMode: "native",
-                quoteLabel: "ETH",
+                quoteLabel: "WETH", // Updated to WETH
                 stables: ["0xaf88d065e77c8cC2239327C5EDb3A432268e5831", "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"]
             }
         };
@@ -612,8 +612,8 @@
         const SWAP_TOPIC = SWAP_INTERFACE.getEvent("Swap").topicHash;
 
         const KNOWN_TOKENS = {
-            'ETH': { address: null, decimals: 18, symbol: 'ETH', name: 'Ethereum' },
             'WETH': { address: null, decimals: 18, symbol: 'WETH', name: 'Wrapped ETH' },
+            'ETH': { address: null, decimals: 18, symbol: 'ETH', name: 'Ethereum' },
             'WBTC': { address: null, decimals: 8, symbol: 'WBTC', name: 'Wrapped BTC' },
             'UNI': { address: null, decimals: 18, symbol: 'UNI', name: 'Uniswap' },
             'LINK': { address: null, decimals: 18, symbol: 'LINK', name: 'Chainlink' },
@@ -633,7 +633,7 @@
             priceHistory: {},
             trades: [],
             activePatterns: new Map(),
-            lastSwaps: [], // NEW: Track the last 10 swaps
+            lastSwaps: [], // Store the last 10 swaps
             portfolio: {
                 balances: {},
                 positions: [],
@@ -641,8 +641,8 @@
                 unrealizedPnL: 0,
                 gasSpent: 0,
                 feesPaid: 0,
-                startingEth: CONFIG.STARTING_ETH,
-                currentEth: CONFIG.STARTING_ETH,
+                startingEth: CONFIG.STARTING_ETH, // Now represents WETH
+                currentEth: CONFIG.STARTING_ETH, // Now represents WETH
                 equityHistory: [{ timestamp: Date.now(), ethValue: CONFIG.STARTING_ETH }],
                 totalTrades: 0,
                 winningTrades: 0,
@@ -685,10 +685,10 @@
             return num.toFixed(decimals);
         }
 
-        // Fix: Format ETH values
+        // Fix: Format WETH values
         function formatETH(value, decimals = 8) {
-            if (value === null || value === undefined) return '0.00000000 ETH';
-            return formatNumber(value, decimals) + ' ETH';
+            if (value === null || value === undefined) return '0.00000000 WETH';
+            return formatNumber(value, decimals) + ' WETH';
         }
 
         // Fix: Format percentage
@@ -764,7 +764,7 @@
 
         function initializePortfolio() {
             state.portfolio = {
-                balances: { 'ETH': CONFIG.STARTING_ETH },
+                balances: { 'WETH': CONFIG.STARTING_ETH }, // Now uses WETH
                 positions: [],
                 realizedPnL: 0,
                 unrealizedPnL: 0,
@@ -801,9 +801,9 @@
         }
 
         function updateConstantsDisplay() {
-            safeSetText('displayStartingEth', CONFIG.STARTING_ETH + ' ETH');
+            safeSetText('displayStartingEth', CONFIG.STARTING_ETH + ' WETH');
             safeSetText('displayTradePercent', CONFIG.TRADE_AMOUNT_PERCENT + '%');
-            safeSetText('displayMinTrade', CONFIG.MIN_TRADE_AMOUNT_ETH + ' ETH');
+            safeSetText('displayMinTrade', CONFIG.MIN_TRADE_AMOUNT_ETH + ' WETH');
             safeSetText('displayMaxTrades', CONFIG.MAX_TRADES);
             safeSetText('displayMinPriceChange', CONFIG.MIN_PRICE_CHANGE + '%');
             safeSetText('displayMinTimeWindow', CONFIG.MIN_TIME_WINDOW + 's');
@@ -831,15 +831,15 @@
             try {
                 const gasPrice = state.currentGasPrice || CONFIG.MAX_GAS_PRICE;
                 const gasLimit = CONFIG.GAS_LIMIT;
-                const availableETH = state.portfolio.currentEth || CONFIG.STARTING_ETH;
+                const availableWETH = state.portfolio.currentEth || CONFIG.STARTING_ETH; // Now uses WETH
                 const gasCostPerTrade = (gasPrice * gasLimit * 2) / 1e18;
                 const maxTrades = CONFIG.MAX_TRADES;
                 const totalGasCost = gasCostPerTrade * maxTrades;
-                const percentBasedAmount = availableETH * (CONFIG.TRADE_AMOUNT_PERCENT / 100);
-                const minTradeAmountETH = CONFIG.MIN_TRADE_AMOUNT_ETH;
+                const percentBasedAmount = availableWETH * (CONFIG.TRADE_AMOUNT_PERCENT / 100);
+                const minTradeAmountWETH = CONFIG.MIN_TRADE_AMOUNT_ETH; // Now represents WETH
                 let tradeAmount = Math.max(0, percentBasedAmount - (totalGasCost / maxTrades));
-                tradeAmount = Math.max(tradeAmount, minTradeAmountETH);
-                tradeAmount = Math.min(tradeAmount, availableETH * 0.95);
+                tradeAmount = Math.max(tradeAmount, minTradeAmountWETH);
+                tradeAmount = Math.min(tradeAmount, availableWETH * 0.95);
                 return tradeAmount;
             } catch (e) { console.error('Error calculating trade amount:', e); return CONFIG.MIN_TRADE_AMOUNT_ETH; }
         }
@@ -987,11 +987,11 @@
             safeSetText('activePatternsCount', state.patternStats.totalPatterns);
         }
 
-        function createTradeObject(token, action, price, tokenAmount, amountETH, pattern, status, reason = null, gasUsed = 0, gasPrice = 0, feeAmount = 0, priceImpact = 0, slippage = 0, patternObj = null) {
+        function createTradeObject(token, action, price, tokenAmount, amountWETH, pattern, status, reason = null, gasUsed = 0, gasPrice = 0, feeAmount = 0, priceImpact = 0, slippage = 0, patternObj = null) {
             return {
                 id: generateUniqueTradeId(),
                 timestamp: new Date().toISOString(),
-                token, type: action, price, tokenAmount, amountETH, fee: feeAmount,
+                token, type: action, price, tokenAmount, amountETH: amountWETH, fee: feeAmount,
                 gasUsed, gasPrice, priceImpact, slippage, status, reason, pnl: 0, pattern, patternObj,
                 txHash: status === 'closed' || status === 'failed' ? null : '0x' + Math.random().toString(16).substring(2, 66) + Date.now().toString(16).substring(4),
                 network: state.currentNetwork, entryTime: Date.now()
@@ -1026,7 +1026,7 @@
 
         function estimateSwapGas(action, token) {
             let baseGas = 120000;
-            if (token === 'WBTC' || token === 'ETH') baseGas += 20000;
+            if (token === 'WBTC' || token === 'WETH') baseGas += 20000;
             else if (token === 'UNI' || token === 'LINK') baseGas += 8000;
             else baseGas += 5000;
             if (action === 'buy') baseGas += 10000;
@@ -1036,16 +1036,16 @@
 
         function calculatePriceImpact(token, tokenAmount, poolInfo) {
             const tokenPrice = state.prices[token] || 0;
-            const tokenValueETH = tokenAmount * tokenPrice;
-            const liquidityETH = poolInfo.liquidity || 100000;
-            if (liquidityETH <= 0) return 0;
-            return Math.min((tokenValueETH / liquidityETH) * 100, 2);
+            const tokenValueWETH = tokenAmount * tokenPrice; // Now uses WETH
+            const liquidityWETH = poolInfo.liquidity || 100000;
+            if (liquidityWETH <= 0) return 0;
+            return Math.min((tokenValueWETH / liquidityWETH) * 100, 2);
         }
 
         async function getEnhancedPoolInfo(token) {
             const defaults = {
-                ETH: { liquidity: 1000000, feeTier: POOL_FEES.LOW, token0: 'ETH', token1: 'WETH' },
-                WETH: { liquidity: 1000000, feeTier: POOL_FEES.LOW, token0: 'ETH', token1: 'WETH' },
+                WETH: { liquidity: 1000000, feeTier: POOL_FEES.LOW, token0: 'WETH', token1: 'WETH' },
+                ETH: { liquidity: 1000000, feeTier: POOL_FEES.LOW, token0: 'WETH', token1: 'WETH' },
                 WBTC: { liquidity: 50000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'WBTC' },
                 UNI: { liquidity: 100000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'UNI' },
                 LINK: { liquidity: 80000, feeTier: POOL_FEES.MEDIUM, token0: 'WETH', token1: 'LINK' },
@@ -1061,22 +1061,22 @@
             try {
                 const token = trade.token;
                 const tokenSymbol = token;
-                const gasCostETH = tradeResult.gasUsed * tradeResult.gasPrice / 1e9 / 1e9;
-                const feeCostETH = tradeResult.feeAmount;
-                const totalCostETH = gasCostETH + feeCostETH;
+                const gasCostWETH = tradeResult.gasUsed * tradeResult.gasPrice / 1e9 / 1e9; // Now uses WETH
+                const feeCostWETH = tradeResult.feeAmount;
+                const totalCostWETH = gasCostWETH + feeCostWETH;
 
                 if (action === 'buy') {
-                    const ethBalance = state.portfolio.balances['ETH'] || 0;
-                    const totalTradeCost = tradeResult.amountETH + totalCostETH;
-                    if (ethBalance < totalTradeCost) {
+                    const wethBalance = state.portfolio.balances['WETH'] || 0; // Now uses WETH
+                    const totalTradeCost = tradeResult.amountETH + totalCostWETH;
+                    if (wethBalance < totalTradeCost) {
                         trade.status = 'failed';
-                        trade.reason = 'Not enough ETH (including fees)';
+                        trade.reason = 'Not enough WETH (including fees)';
                         state.portfolio.failedTrades++;
                         state.trades.push(trade);
                         updateDashboard();
                         return;
                     }
-                    state.portfolio.balances['ETH'] = ethBalance - totalTradeCost;
+                    state.portfolio.balances['WETH'] = wethBalance - totalTradeCost;
                     if (!state.portfolio.balances[tokenSymbol]) state.portfolio.balances[tokenSymbol] = 0;
                     state.portfolio.balances[tokenSymbol] += tradeResult.tokenAmount;
                     let position = state.portfolio.positions.find(p => p.token === tokenSymbol && p.status === 'open');
@@ -1084,7 +1084,7 @@
                         position = {
                             id: trade.id, token: tokenSymbol, entryPrice: tradeResult.executionPrice,
                             amount: tradeResult.tokenAmount, usdValue: tradeResult.amountETH,
-                            entryTime: Date.now(), gasPaid: gasCostETH, feesPaid: feeCostETH,
+                            entryTime: Date.now(), gasPaid: gasCostWETH, feesPaid: feeCostWETH,
                             status: 'open', tradeId: trade.id, pattern: trade.pattern, patternObj: trade.patternObj
                         };
                         state.portfolio.positions.push(position);
@@ -1092,12 +1092,12 @@
                     } else {
                         position.amount += tradeResult.tokenAmount;
                         position.usdValue += tradeResult.amountETH;
-                        position.gasPaid += gasCostETH;
-                        position.feesPaid += feeCostETH;
+                        position.gasPaid += gasCostWETH;
+                        position.feesPaid += feeCostWETH;
                     }
-                    state.portfolio.gasSpent += gasCostETH;
-                    state.portfolio.feesPaid += feeCostETH;
-                    state.portfolio.totalFees += totalCostETH;
+                    state.portfolio.gasSpent += gasCostWETH;
+                    state.portfolio.feesPaid += feeCostWETH;
+                    state.portfolio.totalFees += totalCostWETH;
                 } else if (action === 'sell') {
                     const openPositions = state.portfolio.positions.filter(p => p.token === tokenSymbol && p.status === 'open').sort((a, b) => a.entryTime - b.entryTime);
                     if (openPositions.length === 0) {
@@ -1110,12 +1110,12 @@
                     }
                     const position = openPositions[0];
                     const amountToSell = Math.min(tradeResult.tokenAmount, position.amount);
-                    const sellValueETH = amountToSell * tradeResult.executionPrice;
+                    const sellValueWETH = amountToSell * tradeResult.executionPrice; // Now uses WETH
                     const costBasis = (amountToSell * position.entryPrice) + (amountToSell / position.amount) * (position.feesPaid + position.gasPaid);
-                    const pnl = sellValueETH - costBasis - totalCostETH;
+                    const pnl = sellValueWETH - costBasis - totalCostWETH;
                     position.amount -= amountToSell;
-                    position.feesPaid += feeCostETH;
-                    position.gasPaid += gasCostETH;
+                    position.feesPaid += feeCostWETH;
+                    position.gasPaid += gasCostWETH;
                     if (position.amount <= 0.000001) {
                         position.status = 'closed';
                         position.exitPrice = tradeResult.executionPrice;
@@ -1126,7 +1126,7 @@
                         if (pnl > 0) state.portfolio.winningTrades++;
                         else if (pnl < 0) state.portfolio.losingTrades++;
                     }
-                    state.portfolio.balances['ETH'] = (state.portfolio.balances['ETH'] || 0) + sellValueETH - totalCostETH;
+                    state.portfolio.balances['WETH'] = (state.portfolio.balances['WETH'] || 0) + sellValueWETH - totalCostWETH;
                     trade.pnl = pnl;
                     trade.status = 'closed';
                     trade.closedAt = new Date().toISOString();
@@ -1134,16 +1134,16 @@
                         state.portfolio.balances[tokenSymbol] -= amountToSell;
                         if (state.portfolio.balances[tokenSymbol] < 0.000001) delete state.portfolio.balances[tokenSymbol];
                     }
-                    state.portfolio.gasSpent += gasCostETH;
-                    state.portfolio.feesPaid += feeCostETH;
-                    state.portfolio.totalFees += totalCostETH;
+                    state.portfolio.gasSpent += gasCostWETH;
+                    state.portfolio.feesPaid += feeCostWETH;
+                    state.portfolio.totalFees += totalCostWETH;
                 }
                 state.portfolio.totalTrades++;
                 updatePortfolioEquity();
             } catch (e) { console.error('Error updating portfolio for trade:', e); }
         }
 
-        async function executeTrade(token, action, patternDescription = 'Manual', amountETH = null, pattern = null) {
+        async function executeTrade(token, action, patternDescription = 'Manual', amountWETH = null, pattern = null) {
             try {
                 if (!state.isRunning) return null;
 
@@ -1174,9 +1174,9 @@
                     return null;
                 }
 
-                if (amountETH === null) amountETH = calculateTradeAmount();
+                if (amountWETH === null) amountWETH = calculateTradeAmount();
                 const currentPrice = state.prices[token];
-                if (!currentPrice || amountETH <= 0) return null;
+                if (!currentPrice || amountWETH <= 0) return null;
 
                 const totalOpenPositions = state.portfolio.positions.filter(p => p.status === 'open').length;
                 if (totalOpenPositions >= CONFIG.MAX_TRADES) {
@@ -1204,7 +1204,7 @@
                 }
 
                 const tokenSymbol = token;
-                const tokenAmount = amountETH / currentPrice;
+                const tokenAmount = amountWETH / currentPrice;
                 const poolInfo = await getEnhancedPoolInfo(tokenSymbol);
                 if (!poolInfo) return null;
 
@@ -1221,7 +1221,7 @@
 
                 if (!tradeResult.success) {
                     const failedTrade = createTradeObject(
-                        tokenSymbol, action, currentPrice, tokenAmount, amountETH,
+                        tokenSymbol, action, currentPrice, tokenAmount, amountWETH,
                         patternDescription, 'failed', tradeResult.reason,
                         tradeResult.gasUsed, tradeResult.gasPrice, tradeResult.feeAmount,
                         tradeResult.priceImpact, tradeResult.slippage, pattern
@@ -1252,11 +1252,11 @@
                         entryPrice: tradeResult.executionPrice,
                         entryTime: Date.now()
                     });
-                    showToast('success', `Bought ${formatNumber(tradeResult.tokenAmount, 4)} ${tokenSymbol} at ${formatNumber(tradeResult.executionPrice, 8)} ETH`);
+                    showToast('success', `Bought ${formatNumber(tradeResult.tokenAmount, 4)} ${tokenSymbol} at ${formatNumber(tradeResult.executionPrice, 8)} WETH`);
                 } else if (action === 'sell') {
                     state.openBuyOrders.delete(tokenSymbol);
                     const pnlText = trade.pnl >= 0 ? `+${formatETH(trade.pnl, 8)}` : formatETH(trade.pnl, 8);
-                    showToast('success', `Sold ${formatNumber(tradeResult.tokenAmount, 4)} ${tokenSymbol} at ${formatNumber(tradeResult.executionPrice, 8)} ETH (PnL: ${pnlText})`);
+                    showToast('success', `Sold ${formatNumber(tradeResult.tokenAmount, 4)} ${tokenSymbol} at ${formatNumber(tradeResult.executionPrice, 8)} WETH (PnL: ${pnlText})`);
                 }
 
                 updateDashboard();
@@ -1280,11 +1280,11 @@
                 const priceImpact = calculatePriceImpact(tokenSymbol, tokenAmount, poolInfo);
                 const slippage = Math.random() * CONFIG.MAX_SLIPPAGE * 0.5;
                 const executionPrice = action === 'buy' ? currentPrice * (1 + slippage / 100) : currentPrice * (1 - slippage / 100);
-                const amountETH = tokenAmount * executionPrice;
+                const amountWETH = tokenAmount * executionPrice; // Now uses WETH
                 return {
                     success: true,
-                    tokenAmount: action === 'buy' ? (amountETH / executionPrice) : tokenAmount,
-                    amountETH, executionPrice, gasUsed, gasPrice: gasPriceGwei, feeAmount, priceImpact, slippage, reason: null
+                    tokenAmount: action === 'buy' ? (amountWETH / executionPrice) : tokenAmount,
+                    amountETH: amountWETH, executionPrice, gasUsed, gasPrice: gasPriceGwei, feeAmount, priceImpact, slippage, reason: null
                 };
             } catch (error) {
                 return {
@@ -1307,9 +1307,9 @@
                 if (openPosition) {
                     const currentValue = openPosition.amount * currentPrice;
                     const costBasis = (openPosition.amount * openPosition.entryPrice) + openPosition.feesPaid + openPosition.gasPaid;
-                    const profitETH = currentValue - costBasis;
-                    const profitPercent = (profitETH / costBasis) * 100;
-                    if (profitPercent >= CONFIG.MIN_PROFIT_PERCENT && profitETH > 0) {
+                    const profitWETH = currentValue - costBasis; // Now uses WETH
+                    const profitPercent = (profitWETH / costBasis) * 100;
+                    if (profitPercent >= CONFIG.MIN_PROFIT_PERCENT && profitWETH > 0) {
                         await executeTrade(token, 'sell', `Profit target (${formatPercent(profitPercent)}) reached`, openPosition.amount * currentPrice, null);
                         return;
                     }
@@ -1361,19 +1361,19 @@
 
         function updatePortfolioEquity() {
             try {
-                let totalEth = state.portfolio.balances['ETH'] || 0;
+                let totalWETH = state.portfolio.balances['WETH'] || 0; // Now uses WETH
                 for (const [tokenSymbol, amount] of Object.entries(state.portfolio.balances)) {
-                    if (tokenSymbol === 'ETH') continue;
-                    totalEth += amount * (state.prices[tokenSymbol] || 0);
+                    if (tokenSymbol === 'WETH') continue; // Now uses WETH
+                    totalWETH += amount * (state.prices[tokenSymbol] || 0);
                 }
                 state.portfolio.positions.forEach(position => {
                     if (position.status === 'open') {
                         const currentPrice = state.prices[position.token] || position.entryPrice;
-                        totalEth += (position.amount * currentPrice) - (position.amount * position.entryPrice) - position.feesPaid - position.gasPaid;
+                        totalWETH += (position.amount * currentPrice) - (position.amount * position.entryPrice) - position.feesPaid - position.gasPaid;
                     }
                 });
-                state.portfolio.currentEth = totalEth;
-                state.portfolio.unrealizedPnL = totalEth - state.portfolio.startingEth - state.portfolio.realizedPnL;
+                state.portfolio.currentEth = totalWETH; // Now represents WETH
+                state.portfolio.unrealizedPnL = totalWETH - state.portfolio.startingEth - state.portfolio.realizedPnL;
                 state.portfolio.equityHistory.push({ timestamp: Date.now(), ethValue: state.portfolio.currentEth });
                 if (state.portfolio.equityHistory.length > 1000) state.portfolio.equityHistory.shift();
                 updatePortfolioUI();
@@ -1432,7 +1432,7 @@
                 const successfulTrades = winningTrades + losingTrades;
                 const winRate = successfulTrades > 0 ? ((winningTrades / successfulTrades) * 100) : 0;
                 safeSetText('winRate', formatPercent(winRate));
-                const avgProfit = successfulTrades > 0 ? formatETH(state.portfolio.realizedPnL / successfulTrades) : '0 ETH';
+                const avgProfit = successfulTrades > 0 ? formatETH(state.portfolio.realizedPnL / successfulTrades) : '0 WETH';
                 safeSetText('avgProfit', avgProfit);
             } catch (e) { console.error('Error updating trade statistics:', e); }
         }
@@ -1480,7 +1480,7 @@
             try {
                 renderDashboard();
                 renderRecentTrades();
-                renderLastSwaps(); // NEW: Update last swaps
+                renderLastSwaps();
                 updateTradeAmountDisplay();
             }
             catch (e) { console.error('Error updating dashboard:', e); }
