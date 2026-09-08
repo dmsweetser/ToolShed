@@ -461,6 +461,30 @@
             </div>
         </div>
 
+        <!-- NEW: Last 10 Swaps Observed -->
+        <div class="card">
+            <h2>Last 10 Swaps Observed</h2>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Token In</th>
+                            <th>Token Out</th>
+                            <th>Amount In</th>
+                            <th>Amount Out</th>
+                            <th>Pool</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lastSwaps">
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: #94a3b8;">No swaps observed yet</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="card">
             <h2>Configuration</h2>
             <div class="grid-3">
@@ -609,6 +633,7 @@
             priceHistory: {},
             trades: [],
             activePatterns: new Map(),
+            lastSwaps: [], // NEW: Track the last 10 swaps
             portfolio: {
                 balances: {},
                 positions: [],
@@ -684,6 +709,34 @@
             if (el) el.innerHTML = html;
         }
 
+        // NEW: Render the last 10 swaps
+        function renderLastSwaps() {
+            try {
+                const lastSwapsEl = document.getElementById('lastSwaps');
+                if (!lastSwapsEl) return;
+
+                if (state.lastSwaps.length === 0) {
+                    lastSwapsEl.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">No swaps observed yet</td></tr>';
+                    return;
+                }
+
+                let html = '';
+                state.lastSwaps.forEach(swap => {
+                    html += `<tr>
+                        <td>${new Date(swap.timestamp).toLocaleTimeString()}</td>
+                        <td><strong>${swap.tokenIn}</strong></td>
+                        <td><strong>${swap.tokenOut}</strong></td>
+                        <td>${formatNumber(swap.amountIn, 6)}</td>
+                        <td>${formatNumber(swap.amountOut, 6)}</td>
+                        <td><small>${swap.pool}</small></td>
+                    </tr>`;
+                });
+                lastSwapsEl.innerHTML = html;
+            } catch (e) {
+                console.error('Error rendering last swaps:', e);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
             initializeKnownTokens();
             initializeApp();
@@ -735,6 +788,7 @@
             state.prices = {};
             state.priceHistory = {};
             state.trades = [];
+            state.lastSwaps = []; // Reset last swaps
             updatePortfolioUI();
             updateStartingEthDisplay();
             updateTradeAmountDisplay();
@@ -1426,6 +1480,7 @@
             try {
                 renderDashboard();
                 renderRecentTrades();
+                renderLastSwaps(); // NEW: Update last swaps
                 updateTradeAmountDisplay();
             }
             catch (e) { console.error('Error updating dashboard:', e); }
@@ -1603,6 +1658,7 @@
                 state.lastTradeTimes = {};
                 state.openBuyOrders.clear();
                 state.lastDetectionTime = null;
+                state.lastSwaps = []; // Reset last swaps
                 localStorage.removeItem('uniswapTraderBackup');
                 updateUI();
                 showToast('success', 'App has been reset!');
@@ -1773,7 +1829,10 @@
         }
 
         async function updatePricesForSession(s) {
-            if (!current(s) || !s.connected) return;
+            if (!current(s) || !s.connected) {
+                console.warn('Skipping price update: Session not active or connected.');
+                return;
+            }
             try {
                 await updateGasPriceForSession(s);
                 const tokensToUpdate = Array.from(state.observedTokens);
@@ -1788,12 +1847,16 @@
                                 checkPatternsForToken(token);
                             }
                         }
-                    } catch (e) { console.warn(`Error updating price for ${token}:`, e); }
+                    } catch (e) {
+                        console.warn(`Error updating price for ${token}:`, e);
+                    }
                 }
                 state.lastPriceUpdate = new Date();
                 safeSetText('lastPriceUpdate', new Date().toLocaleTimeString());
                 updatePositionDetails();
-            } catch (error) { console.error('Error updating prices for session:', error); }
+            } catch (error) {
+                console.error('Error updating prices for session:', error);
+            }
         }
 
         function findTokenMeta(s, symbol) {
@@ -1854,6 +1917,114 @@
             } catch (error) { console.error('Error processing block:', error); }
         }
 
+        // UPDATED: Track swaps in processSwapLog
+        async function processSwapLog(s, logEntry) {
+            if (!current(s)) return;
+            try {
+                const pool = await loadPool(s, logEntry.address);
+                if (!current(s) || !pool?.initialized) return;
+
+                let parsed;
+                try {
+                    parsed = SWAP_INTERFACE.parseLog({ topics: logEntry.topics, data: logEntry.data });
+                } catch (e) {
+                    console.warn('Failed to parse log entry:', e);
+                    return;
+                }
+                if (!parsed) return;
+
+                const amount0 = parsed.args.amount0;
+                const amount1 = parsed.args.amount1;
+                const sqrt = parsed.args.sqrtPriceX96;
+                const pair = poolPrice(sqrt, pool.token0Meta.decimals, pool.token1Meta.decimals);
+                if (pair == null) return;
+
+                setPair(s, pool.token0, pool.token1, pair);
+                const ts = Date.now();
+                const t0 = pool.token0Meta;
+                const t1 = pool.token1Meta;
+
+                // NEW: Track the swap
+                const swapRecord = {
+                    timestamp: ts,
+                    tokenIn: t0.symbol || short(t0.address),
+                    tokenOut: t1.symbol || short(t1.address),
+                    amountIn: Math.abs(Number(ethers.formatUnits(amount0, t0.decimals))),
+                    amountOut: Math.abs(Number(ethers.formatUnits(amount1, t1.decimals))),
+                    pool: short(logEntry.address)
+                };
+
+                // Add to the lastSwaps array (keep only the last 10)
+                state.lastSwaps.unshift(swapRecord);
+                if (state.lastSwaps.length > 10) state.lastSwaps.pop();
+
+                // Render the last swaps
+                renderLastSwaps();
+
+                s.swaps.push(ts);
+                while (s.swaps.length && s.swaps[0] < ts - 15 * 60 * 1000) s.swaps.shift();
+
+                t0.swaps.push(ts);
+                t1.swaps.push(ts);
+                t0.lastSeen = ts;
+                t1.lastSeen = ts;
+
+                while (t0.swaps.length && t0.swaps[0] < ts - 15 * 60 * 1000) t0.swaps.shift();
+                while (t1.swaps.length && t1.swaps[0] < ts - 15 * 60 * 1000) t1.swaps.shift();
+
+                let n0 = 0, n1 = 0;
+                try {
+                    n0 = Math.abs(Number(ethers.formatUnits(amount0, t0.decimals)));
+                    n1 = Math.abs(Number(ethers.formatUnits(amount1, t1.decimals)));
+                } catch (e) { }
+
+                const p0 = quotePrice(s, t0.address);
+                const p1 = quotePrice(s, t1.address);
+
+                if (p0 != null) {
+                    t0.priceQuote = p0;
+                    addPoint(t0, p0, ts);
+                }
+                if (p1 != null) {
+                    t1.priceQuote = p1;
+                    addPoint(t1, p1, ts);
+                }
+
+                let volume = null;
+                if (p0 != null && p1 != null) volume = (n0 * p0 + n1 * p1) / 2;
+                else if (p0 != null) volume = n0 * p0;
+                else if (p1 != null) volume = n1 * p1;
+
+                if (volume != null && Number.isFinite(volume)) {
+                    t0.volumeQuote += volume;
+                    t1.volumeQuote += volume;
+                }
+
+                if (t0.symbol) {
+                    state.prices[t0.symbol] = p0;
+                    state.observedTokens.add(t0.symbol);
+                }
+                if (t1.symbol) {
+                    state.prices[t1.symbol] = p1;
+                    state.observedTokens.add(t1.symbol);
+                }
+
+                state.lastPriceUpdate = new Date();
+                safeSetText('lastPriceUpdate', new Date().toLocaleTimeString());
+
+                if (t0.symbol && p0 !== null) updatePriceHistory(t0.symbol, p0, ts);
+                if (t1.symbol && p1 !== null) updatePriceHistory(t1.symbol, p1, ts);
+
+                if (state.isRunning) {
+                    if (t0.symbol) checkPatternsForToken(t0.symbol);
+                    if (t1.symbol) checkPatternsForToken(t1.symbol);
+                }
+                updatePositionDetails();
+            } catch (error) {
+                console.error('Error processing swap log:', error);
+            }
+        }
+
         async function startGasMonitoring(s) {
             if (!s || !s.provider) return;
             await updateGasPriceForSession(s);
@@ -1889,54 +2060,6 @@
                 state.currentGasPrice = CONFIG.MAX_GAS_PRICE;
                 safeSetText('currentGasPrice', (state.currentGasPrice || 0).toFixed(2) + ' gwei');
             }
-        }
-
-        async function processSwapLog(s, logEntry) {
-            if (!current(s)) return;
-            try {
-                const pool = await loadPool(s, logEntry.address);
-                if (!current(s) || !pool?.initialized) return;
-                let parsed;
-                try { parsed = SWAP_INTERFACE.parseLog({ topics: logEntry.topics, data: logEntry.data }); } catch (e) {
-                    console.warn('Failed to parse log entry:', e);
-                    return;
-                }
-                if (!parsed) return;
-                const amount0 = parsed.args.amount0;
-                const amount1 = parsed.args.amount1;
-                const sqrt = parsed.args.sqrtPriceX96;
-                const pair = poolPrice(sqrt, pool.token0Meta.decimals, pool.token1Meta.decimals);
-                if (pair == null) return;
-                setPair(s, pool.token0, pool.token1, pair);
-                const ts = Date.now();
-                const t0 = pool.token0Meta; const t1 = pool.token1Meta;
-                s.swaps.push(ts);
-                while (s.swaps.length && s.swaps[0] < ts - 15 * 60 * 1000) s.swaps.shift();
-                t0.swaps.push(ts); t1.swaps.push(ts); t0.lastSeen = ts; t1.lastSeen = ts;
-                while (t0.swaps.length && t0.swaps[0] < ts - 15 * 60 * 1000) t0.swaps.shift();
-                while (t1.swaps.length && t1.swaps[0] < ts - 15 * 60 * 1000) t1.swaps.shift();
-                let n0 = 0, n1 = 0;
-                try { n0 = Math.abs(Number(ethers.formatUnits(amount0, t0.decimals))); n1 = Math.abs(Number(ethers.formatUnits(amount1, t1.decimals))); } catch (e) { }
-                const p0 = quotePrice(s, t0.address); const p1 = quotePrice(s, t1.address);
-                if (p0 != null) { t0.priceQuote = p0; addPoint(t0, p0, ts); }
-                if (p1 != null) { t1.priceQuote = p1; addPoint(t1, p1, ts); }
-                let volume = null;
-                if (p0 != null && p1 != null) volume = (n0 * p0 + n1 * p1) / 2;
-                else if (p0 != null) volume = n0 * p0;
-                else if (p1 != null) volume = n1 * p1;
-                if (volume != null && Number.isFinite(volume)) { t0.volumeQuote += volume; t1.volumeQuote += volume; }
-                if (t0.symbol) { state.prices[t0.symbol] = p0; state.observedTokens.add(t0.symbol); }
-                if (t1.symbol) { state.prices[t1.symbol] = p1; state.observedTokens.add(t1.symbol); }
-                state.lastPriceUpdate = new Date();
-                safeSetText('lastPriceUpdate', new Date().toLocaleTimeString());
-                if (t0.symbol && p0 !== null) updatePriceHistory(t0.symbol, p0, ts);
-                if (t1.symbol && p1 !== null) updatePriceHistory(t1.symbol, p1, ts);
-                if (state.isRunning) {
-                    if (t0.symbol) checkPatternsForToken(t0.symbol);
-                    if (t1.symbol) checkPatternsForToken(t1.symbol);
-                }
-                updatePositionDetails();
-            } catch (error) { console.error('Error processing swap log:', error); }
         }
 
         function setPair(s, a, b, p) {
