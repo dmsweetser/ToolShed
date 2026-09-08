@@ -1249,8 +1249,6 @@
                 const currentPrice = state.prices[token];
                 if (!currentPrice) return;
 
-                // Prevent concurrent checks or trades for the same token
-                if (state.openBuyOrders.has(token)) return;
                 const openPosition = state.portfolio.positions.find(p => p.token === token && p.status === 'open');
                 if (openPosition) {
                     const currentValue = openPosition.amount * currentPrice;
@@ -1263,6 +1261,8 @@
                     }
                     return; // Already has position, skip buy checks
                 }
+                // Prevent concurrent checks or trades for the same token
+                if (state.openBuyOrders.has(token)) return;
 
                 const tokenPatterns = Array.from(state.activePatterns.values()).filter(p => p.type === PATTERN_TYPES.BUY && p.token === token);
                 for (const pattern of tokenPatterns) {
