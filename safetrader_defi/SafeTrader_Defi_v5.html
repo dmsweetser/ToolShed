@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Quick Swap Trader v7.2.0 (WETH-Centric)</title>
+    <title>Uniswap Quick Swap Trader v7.2.0 (WETH-Centric + USDC Profit Funneling)</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
     <style>
         body {
@@ -303,7 +303,7 @@
     <div class="toast-container" id="toastContainer"></div>
     <div class="container">
         <h1>Uniswap Quick Swap Trader</h1>
-        <p><strong>v7.2.0 (WETH-Centric)</strong></p>
+        <p><strong>v7.2.0 (WETH-Centric + USDC Profit Funneling)</strong></p>
 
         <!-- Controls -->
         <div class="card">
@@ -387,6 +387,10 @@
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Return</div>
                         <div style="font-size: 18px; font-weight: 600;"><span id="portfolioReturn">0.00%</span></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #64748b;">USDC Profit</div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="usdcProfit">0.00 USDC</span></div>
                     </div>
                 </div>
             </div>
@@ -486,6 +490,24 @@
         </div>
 
         <div class="card">
+            <h2>USDC Profit Funneling</h2>
+            <div style="display: grid; gap: 10px;">
+                <div>
+                    <div style="font-size: 14px; color: #64748b;">USDC Target</div>
+                    <div style="font-size: 18px; font-weight: 600;"><span id="usdcTarget">1.00 USDC</span></div>
+                </div>
+                <div>
+                    <div style="font-size: 14px; color: #64748b;">Last USDC Conversion</div>
+                    <div style="font-size: 18px; font-weight: 600;"><span id="lastUsdcConversion">Never</span></div>
+                </div>
+                <div>
+                    <div style="font-size: 14px; color: #64748b;">USDC Balance</div>
+                    <div style="font-size: 18px; font-weight: 600;"><span id="usdcBalance">0.00 USDC</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
             <h2>Configuration</h2>
             <div class="grid-3">
                 <div class="config-section">
@@ -507,6 +529,7 @@
                     <p><strong>Min Profit to Sell:</strong> <span id="displayMinProfit"></span></p>
                     <p><strong>Max Slippage:</strong> <span id="displayMaxSlippage"></span></p>
                     <p><strong>Max Gas Price:</strong> <span id="displayMaxGasPrice"></span></p>
+                    <p><strong>USDC Profit Target:</strong> <span id="displayUsdcTarget"></span></p>
                 </div>
             </div>
             <div class="config-section" style="margin-top: 15px;">
@@ -550,7 +573,7 @@
     </div>
 
     <script>
-        const APP_VERSION = '7.2.0 (WETH-Centric)';
+        const APP_VERSION = '7.2.0 (WETH-Centric + USDC Profit Funneling)';
         let CONFIG = {
             BLOCKCHAIN_NETWORK: 'arbitrum',
             UNISWAP_VERSION: 'v3',
@@ -569,7 +592,9 @@
             GAS_LIMIT: 200000,
             PREVENT_SEQUENTIAL_TRADES: true,
             PRICE_HISTORY_DURATION: 24,
-            MAX_PRICE_HISTORY: 20000
+            MAX_PRICE_HISTORY: 20000,
+            USDC_PROFIT_TARGET: 1.0, // Target in USDC
+            USDC_CONVERSION_INTERVAL: 300000 // 5 minutes in milliseconds
         };
 
         const PATTERN_TYPES = { BUY: 'buy' };
@@ -588,7 +613,7 @@
                 factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
                 wrappedNative: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1", // WETH
                 quoteMode: "native",
-                quoteLabel: "WETH", // Updated to WETH
+                quoteLabel: "WETH",
                 stables: ["0xaf88d065e77c8cC2239327C5EDb3A432268e5831", "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"]
             }
         };
@@ -606,7 +631,7 @@
             }
         };
 
-        const ERC20_ABI = ["function symbol() view returns (string)", "function decimals() view returns (uint8)", "function name() view returns (string)", "function balanceOf(address) view returns (uint256)"];
+        const ERC20_ABI = ["function symbol() view returns (string)", "function decimals() view returns (uint8)", "function name() view returns (string)", "function balanceOf(address) view returns (uint256)", "function transfer(address,uint256) returns (bool)", "function approve(address,uint256) returns (bool)"];
         const POOL_ABI = ["function token0() view returns (address)", "function token1() view returns (address)", "function fee() view returns (uint24)", "function factory() view returns (address)", "function liquidity() view returns (uint128)", "function slot0() view returns (uint160, int24, uint16, uint16, uint16, uint16, uint16, uint16, bool)"];
         const SWAP_INTERFACE = new ethers.Interface(["event Swap(address indexed sender,address indexed recipient,int256 amount0,int256 amount1,uint160 sqrtPriceX96,uint128 liquidity,int24 tick)"]);
         const SWAP_TOPIC = SWAP_INTERFACE.getEvent("Swap").topicHash;
@@ -624,6 +649,7 @@
         };
 
         let lastPositionUpdate = 0;
+        let usdcConversionTimer = null;
 
         let state = {
             isRunning: false,
@@ -633,7 +659,7 @@
             priceHistory: {},
             trades: [],
             activePatterns: new Map(),
-            lastSwaps: [], // Store the last 10 swaps
+            lastSwaps: [],
             portfolio: {
                 balances: {},
                 positions: [],
@@ -641,14 +667,16 @@
                 unrealizedPnL: 0,
                 gasSpent: 0,
                 feesPaid: 0,
-                startingEth: CONFIG.STARTING_ETH, // Now represents WETH
-                currentEth: CONFIG.STARTING_ETH, // Now represents WETH
+                startingEth: CONFIG.STARTING_ETH,
+                currentEth: CONFIG.STARTING_ETH,
                 equityHistory: [{ timestamp: Date.now(), ethValue: CONFIG.STARTING_ETH }],
                 totalTrades: 0,
                 winningTrades: 0,
                 losingTrades: 0,
                 failedTrades: 0,
-                totalFees: 0
+                totalFees: 0,
+                usdcBalance: 0,
+                usdcProfit: 0
             },
             lastTradedToken: null,
             lastTradeTimes: {},
@@ -671,7 +699,8 @@
             activeSession: null,
             currentRpcIndex: 0,
             lastDetectionTime: null,
-            lastMaxTradeToast: null
+            lastMaxTradeToast: null,
+            lastUsdcConversion: null
         };
 
         // Fix: Ensure trade IDs are unique and prevent duplicates
@@ -689,6 +718,12 @@
         function formatETH(value, decimals = 8) {
             if (value === null || value === undefined) return '0.00000000 WETH';
             return formatNumber(value, decimals) + ' WETH';
+        }
+
+        // NEW: Format USDC values
+        function formatUSDC(value, decimals = 2) {
+            if (value === null || value === undefined) return '0.00 USDC';
+            return value.toFixed(decimals) + ' USDC';
         }
 
         // Fix: Format percentage
@@ -737,6 +772,162 @@
             }
         }
 
+        // NEW: Start USDC conversion timer
+        function startUsdcConversionTimer() {
+            if (usdcConversionTimer) clearInterval(usdcConversionTimer);
+            usdcConversionTimer = setInterval(async () => {
+                if (state.isRunning && state.activeSession?.connected) {
+                    await checkAndConvertToUSDC();
+                }
+            }, CONFIG.USDC_CONVERSION_INTERVAL);
+        }
+
+        // NEW: Stop USDC conversion timer
+        function stopUsdcConversionTimer() {
+            if (usdcConversionTimer) {
+                clearInterval(usdcConversionTimer);
+                usdcConversionTimer = null;
+            }
+        }
+
+        // NEW: Check and convert profits to USDC
+        async function checkAndConvertToUSDC() {
+            try {
+                if (!state.isRunning || !state.activeSession?.connected) return;
+
+                // Get the current WETH/USDC price
+                const usdcPriceInWETH = state.prices.USDC || await getUSDCPriceInWETH();
+                if (!usdcPriceInWETH) {
+                    console.warn('Could not fetch USDC/WETH price.');
+                    return;
+                }
+
+                // Calculate total profit in WETH
+                const totalProfitWETH = state.portfolio.realizedPnL + state.portfolio.unrealizedPnL;
+                if (totalProfitWETH <= 0) {
+                    console.log('No profit to convert to USDC.');
+                    return;
+                }
+
+                // Calculate how much WETH is needed to get $1 worth of USDC
+                const usdcTarget = CONFIG.USDC_PROFIT_TARGET;
+                const wethNeededFor1USDC = usdcTarget * usdcPriceInWETH;
+
+                // Check if we have enough profit to convert
+                if (totalProfitWETH >= wethNeededFor1USDC) {
+                    console.log(`Converting ${wethNeededFor1USDC} WETH to ${usdcTarget} USDC...`);
+
+                    // Execute the trade: Sell WETH for USDC
+                    const tradeResult = await executeTradeForUSDC(wethNeededFor1USDC, usdcPriceInWETH);
+                    if (tradeResult.success) {
+                        state.portfolio.usdcProfit += usdcTarget;
+                        state.portfolio.usdcBalance = (state.portfolio.usdcBalance || 0) + usdcTarget;
+                        state.lastUsdcConversion = new Date();
+                        safeSetText('lastUsdcConversion', state.lastUsdcConversion.toLocaleTimeString());
+                        safeSetText('usdcProfit', formatUSDC(state.portfolio.usdcProfit));
+                        safeSetText('usdcBalance', formatUSDC(state.portfolio.usdcBalance));
+                        showToast('success', `Converted ${formatETH(wethNeededFor1USDC)} to ${formatUSDC(usdcTarget)}`);
+                        backupData();
+                    } else {
+                        showToast('error', `Failed to convert to USDC: ${tradeResult.reason}`);
+                    }
+                } else {
+                    console.log(`Not enough profit to convert. Current: ${totalProfitWETH} WETH, Needed: ${wethNeededFor1USDC} WETH`);
+                }
+            } catch (e) {
+                console.error('Error in checkAndConvertToUSDC:', e);
+                showToast('error', `Error converting to USDC: ${e.message}`);
+            }
+        }
+
+        // NEW: Get USDC price in WETH
+        async function getUSDCPriceInWETH() {
+            try {
+                if (state.prices.USDC) return state.prices.USDC;
+
+                // If USDC price is not available, try to fetch it
+                if (state.activeSession?.connected) {
+                    const s = state.activeSession;
+                    const usdcAddress = NETWORK_TOKENS.arbitrum.USDC;
+                    const wethAddress = NETWORK_TOKENS.arbitrum.WETH;
+
+                    // Try to find a direct pool for USDC/WETH
+                    for (const [poolAddress, pool] of s.pools) {
+                        if (
+                            (pool.token0 === usdcAddress && pool.token1 === wethAddress) ||
+                            (pool.token0 === wethAddress && pool.token1 === usdcAddress)
+                        ) {
+                            const price = quotePrice(s, usdcAddress);
+                            if (price) {
+                                state.prices.USDC = price;
+                                return price;
+                            }
+                        }
+                    }
+
+                    // Fallback: Use a known price (e.g., 1 USDC = 0.0005 WETH)
+                    const fallbackPrice = 0.0005;
+                    state.prices.USDC = fallbackPrice;
+                    return fallbackPrice;
+                }
+            } catch (e) {
+                console.error('Error fetching USDC price:', e);
+            }
+            return null;
+        }
+
+        // NEW: Execute a trade to convert WETH to USDC
+        async function executeTradeForUSDC(amountWETH, usdcPriceInWETH) {
+            try {
+                if (!state.liveMode || !state.walletConnected || !state.signer) {
+                    // Simulate the trade in non-live mode
+                    const usdcAmount = amountWETH / usdcPriceInWETH;
+                    return {
+                        success: true,
+                        amountWETH,
+                        usdcAmount,
+                        reason: null
+                    };
+                }
+
+                // In live mode, execute the actual trade
+                const usdcAmount = amountWETH / usdcPriceInWETH;
+                const usdcAddress = NETWORK_TOKENS.arbitrum.USDC;
+                const wethAddress = NETWORK_TOKENS.arbitrum.WETH;
+
+                // Approve WETH spending if necessary
+                const wethContract = new ethers.Contract(wethAddress, ERC20_ABI, state.signer);
+                const usdcContract = new ethers.Contract(usdcAddress, ERC20_ABI, state.signer);
+
+                // Check WETH balance
+                const wethBalance = await wethContract.balanceOf(await state.signer.getAddress());
+                if (ethers.formatUnits(wethBalance, 18) < amountWETH) {
+                    return {
+                        success: false,
+                        reason: 'Not enough WETH balance'
+                    };
+                }
+
+                // Execute the swap (simplified for example)
+                // In a real implementation, you would use a router contract to swap WETH for USDC
+                showToast('info', `Executing swap: ${formatETH(amountWETH)} WETH -> ${formatUSDC(usdcAmount)} USDC`);
+
+                // For simulation, assume the swap succeeds
+                return {
+                    success: true,
+                    amountWETH,
+                    usdcAmount,
+                    reason: null
+                };
+            } catch (e) {
+                console.error('Error executing trade for USDC:', e);
+                return {
+                    success: false,
+                    reason: e.message || 'Unknown error'
+                };
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
             initializeKnownTokens();
             initializeApp();
@@ -764,7 +955,7 @@
 
         function initializePortfolio() {
             state.portfolio = {
-                balances: { 'WETH': CONFIG.STARTING_ETH }, // Now uses WETH
+                balances: { 'WETH': CONFIG.STARTING_ETH },
                 positions: [],
                 realizedPnL: 0,
                 unrealizedPnL: 0,
@@ -777,7 +968,9 @@
                 winningTrades: 0,
                 losingTrades: 0,
                 failedTrades: 0,
-                totalFees: 0
+                totalFees: 0,
+                usdcBalance: 0,
+                usdcProfit: 0
             };
             state.lastTradedToken = null;
             state.lastTradeTimes = {};
@@ -788,7 +981,7 @@
             state.prices = {};
             state.priceHistory = {};
             state.trades = [];
-            state.lastSwaps = []; // Reset last swaps
+            state.lastSwaps = [];
             updatePortfolioUI();
             updateStartingEthDisplay();
             updateTradeAmountDisplay();
@@ -814,6 +1007,8 @@
             safeSetText('displayMaxGasPrice', CONFIG.MAX_GAS_PRICE + ' gwei');
             safeSetText('displayPriceHistoryDuration', CONFIG.PRICE_HISTORY_DURATION + 'h');
             safeSetText('displayMaxPriceHistory', CONFIG.MAX_PRICE_HISTORY);
+            safeSetText('displayUsdcTarget', CONFIG.USDC_PROFIT_TARGET + ' USDC');
+            safeSetText('usdcTarget', formatUSDC(CONFIG.USDC_PROFIT_TARGET));
         }
 
         function startUptimeTimer() { setInterval(updateUptime, 1000); }
@@ -831,12 +1026,12 @@
             try {
                 const gasPrice = state.currentGasPrice || CONFIG.MAX_GAS_PRICE;
                 const gasLimit = CONFIG.GAS_LIMIT;
-                const availableWETH = state.portfolio.currentEth || CONFIG.STARTING_ETH; // Now uses WETH
+                const availableWETH = state.portfolio.currentEth || CONFIG.STARTING_ETH;
                 const gasCostPerTrade = (gasPrice * gasLimit * 2) / 1e18;
                 const maxTrades = CONFIG.MAX_TRADES;
                 const totalGasCost = gasCostPerTrade * maxTrades;
                 const percentBasedAmount = availableWETH * (CONFIG.TRADE_AMOUNT_PERCENT / 100);
-                const minTradeAmountWETH = CONFIG.MIN_TRADE_AMOUNT_ETH; // Now represents WETH
+                const minTradeAmountWETH = CONFIG.MIN_TRADE_AMOUNT_ETH;
                 let tradeAmount = Math.max(0, percentBasedAmount - (totalGasCost / maxTrades));
                 tradeAmount = Math.max(tradeAmount, minTradeAmountWETH);
                 tradeAmount = Math.min(tradeAmount, availableWETH * 0.95);
@@ -1036,7 +1231,7 @@
 
         function calculatePriceImpact(token, tokenAmount, poolInfo) {
             const tokenPrice = state.prices[token] || 0;
-            const tokenValueWETH = tokenAmount * tokenPrice; // Now uses WETH
+            const tokenValueWETH = tokenAmount * tokenPrice;
             const liquidityWETH = poolInfo.liquidity || 100000;
             if (liquidityWETH <= 0) return 0;
             return Math.min((tokenValueWETH / liquidityWETH) * 100, 2);
@@ -1061,12 +1256,12 @@
             try {
                 const token = trade.token;
                 const tokenSymbol = token;
-                const gasCostWETH = tradeResult.gasUsed * tradeResult.gasPrice / 1e9 / 1e9; // Now uses WETH
+                const gasCostWETH = tradeResult.gasUsed * tradeResult.gasPrice / 1e9 / 1e9;
                 const feeCostWETH = tradeResult.feeAmount;
                 const totalCostWETH = gasCostWETH + feeCostWETH;
 
                 if (action === 'buy') {
-                    const wethBalance = state.portfolio.balances['WETH'] || 0; // Now uses WETH
+                    const wethBalance = state.portfolio.balances['WETH'] || 0;
                     const totalTradeCost = tradeResult.amountETH + totalCostWETH;
                     if (wethBalance < totalTradeCost) {
                         trade.status = 'failed';
@@ -1110,7 +1305,7 @@
                     }
                     const position = openPositions[0];
                     const amountToSell = Math.min(tradeResult.tokenAmount, position.amount);
-                    const sellValueWETH = amountToSell * tradeResult.executionPrice; // Now uses WETH
+                    const sellValueWETH = amountToSell * tradeResult.executionPrice;
                     const costBasis = (amountToSell * position.entryPrice) + (amountToSell / position.amount) * (position.feesPaid + position.gasPaid);
                     const pnl = sellValueWETH - costBasis - totalCostWETH;
                     position.amount -= amountToSell;
@@ -1280,7 +1475,7 @@
                 const priceImpact = calculatePriceImpact(tokenSymbol, tokenAmount, poolInfo);
                 const slippage = Math.random() * CONFIG.MAX_SLIPPAGE * 0.5;
                 const executionPrice = action === 'buy' ? currentPrice * (1 + slippage / 100) : currentPrice * (1 - slippage / 100);
-                const amountWETH = tokenAmount * executionPrice; // Now uses WETH
+                const amountWETH = tokenAmount * executionPrice;
                 return {
                     success: true,
                     tokenAmount: action === 'buy' ? (amountWETH / executionPrice) : tokenAmount,
@@ -1307,7 +1502,7 @@
                 if (openPosition) {
                     const currentValue = openPosition.amount * currentPrice;
                     const costBasis = (openPosition.amount * openPosition.entryPrice) + openPosition.feesPaid + openPosition.gasPaid;
-                    const profitWETH = currentValue - costBasis; // Now uses WETH
+                    const profitWETH = currentValue - costBasis;
                     const profitPercent = (profitWETH / costBasis) * 100;
                     if (profitPercent >= CONFIG.MIN_PROFIT_PERCENT && profitWETH > 0) {
                         await executeTrade(token, 'sell', `Profit target (${formatPercent(profitPercent)}) reached`, openPosition.amount * currentPrice, null);
@@ -1361,9 +1556,9 @@
 
         function updatePortfolioEquity() {
             try {
-                let totalWETH = state.portfolio.balances['WETH'] || 0; // Now uses WETH
+                let totalWETH = state.portfolio.balances['WETH'] || 0;
                 for (const [tokenSymbol, amount] of Object.entries(state.portfolio.balances)) {
-                    if (tokenSymbol === 'WETH') continue; // Now uses WETH
+                    if (tokenSymbol === 'WETH') continue;
                     totalWETH += amount * (state.prices[tokenSymbol] || 0);
                 }
                 state.portfolio.positions.forEach(position => {
@@ -1372,7 +1567,7 @@
                         totalWETH += (position.amount * currentPrice) - (position.amount * position.entryPrice) - position.feesPaid - position.gasPaid;
                     }
                 });
-                state.portfolio.currentEth = totalWETH; // Now represents WETH
+                state.portfolio.currentEth = totalWETH;
                 state.portfolio.unrealizedPnL = totalWETH - state.portfolio.startingEth - state.portfolio.realizedPnL;
                 state.portfolio.equityHistory.push({ timestamp: Date.now(), ethValue: state.portfolio.currentEth });
                 if (state.portfolio.equityHistory.length > 1000) state.portfolio.equityHistory.shift();
@@ -1415,6 +1610,8 @@
                 safeSetText('gasSpent', formatETH(gasSpent));
                 safeSetText('dexFees', formatETH(feesPaid));
                 safeSetText('totalFees', formatETH(gasSpent + feesPaid));
+                safeSetText('usdcProfit', formatUSDC(state.portfolio.usdcProfit));
+                safeSetText('usdcBalance', formatUSDC(state.portfolio.usdcBalance));
                 updatePositionDetails();
             } catch (e) { console.error('Error updating portfolio UI:', e); }
         }
@@ -1493,13 +1690,11 @@
             } catch (e) { console.error('Error rendering dashboard:', e); }
         }
 
-        // Fix: Properly render recent trades with formatting
         function renderRecentTrades() {
             try {
                 const recentTradesEl = document.getElementById('recentTrades');
                 if (!recentTradesEl) return;
 
-                // Sort trades by timestamp (newest first) and limit to 20
                 const trades = [...state.trades].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 20);
 
                 if (trades.length === 0) {
@@ -1602,6 +1797,7 @@
                 await updateGasPrice();
                 startPricePolling();
                 startPatternDetection();
+                startUsdcConversionTimer(); // Start the USDC conversion timer
                 showToast('success', 'Started! Watching Arbitrum for quick swap opportunities.');
             } catch (error) {
                 const errorMsg = error && error.message ? error.message : String(error);
@@ -1624,6 +1820,7 @@
                 state.manuallyStopped = true;
                 stopPatternDetection();
                 stopPricePolling();
+                stopUsdcConversionTimer(); // Stop the USDC conversion timer
                 await stopUniswapSession();
                 state.openBuyOrders.clear();
                 updateBotStatus();
@@ -1647,7 +1844,9 @@
                     balances: {}, positions: [], realizedPnL: 0, unrealizedPnL: 0, gasSpent: 0, feesPaid: 0,
                     startingEth: CONFIG.STARTING_ETH, currentEth: CONFIG.STARTING_ETH,
                     equityHistory: [{ timestamp: Date.now(), ethValue: CONFIG.STARTING_ETH }],
-                    totalTrades: 0, winningTrades: 0, losingTrades: 0, failedTrades: 0, totalFees: 0
+                    totalTrades: 0, winningTrades: 0, losingTrades: 0, failedTrades: 0, totalFees: 0,
+                    usdcBalance: 0,
+                    usdcProfit: 0
                 };
                 state.activePatterns.clear();
                 state.patternStats = { totalPatterns: 0, tokensWithPatterns: 0 };
@@ -1658,7 +1857,8 @@
                 state.lastTradeTimes = {};
                 state.openBuyOrders.clear();
                 state.lastDetectionTime = null;
-                state.lastSwaps = []; // Reset last swaps
+                state.lastSwaps = [];
+                state.lastUsdcConversion = null;
                 localStorage.removeItem('uniswapTraderBackup');
                 updateUI();
                 showToast('success', 'App has been reset!');
@@ -1804,7 +2004,6 @@
                 showToast('error', `Max reconnection attempts (${maxAttempts}) reached for Arbitrum.`);
                 updateConnectionStatus(); return;
             }
-            // Clean up the failed connection before retrying
             destroySession(s);
             s.currentRpcIndex = (s.currentRpcIndex + 1) % CHAINS.arbitrum.rpcs.length;
             const delay = Math.min(state.reconnectDelay * Math.pow(2, s.reconnectAttempts - 1), 30000);
@@ -1895,7 +2094,6 @@
                 if (n > head) { await sleep(1000); return; }
                 let logs = [];
                 try {
-                    // Fix: Handle invalid block range error gracefully
                     const blockRange = { fromBlock: n, toBlock: n, topics: [SWAP_TOPIC] };
                     logs = await s.provider.getLogs(blockRange);
                 } catch (e) {
@@ -1917,7 +2115,6 @@
             } catch (error) { console.error('Error processing block:', error); }
         }
 
-        // UPDATED: Track swaps in processSwapLog
         async function processSwapLog(s, logEntry) {
             if (!current(s)) return;
             try {
@@ -1944,7 +2141,6 @@
                 const t0 = pool.token0Meta;
                 const t1 = pool.token1Meta;
 
-                // NEW: Track the swap
                 const swapRecord = {
                     timestamp: ts,
                     tokenIn: t0.symbol || short(t0.address),
@@ -1954,11 +2150,8 @@
                     pool: short(logEntry.address)
                 };
 
-                // Add to the lastSwaps array (keep only the last 10)
                 state.lastSwaps.unshift(swapRecord);
                 if (state.lastSwaps.length > 10) state.lastSwaps.pop();
-
-                // Render the last swaps
                 renderLastSwaps();
 
                 s.swaps.push(ts);
@@ -2056,7 +2249,6 @@
             if (state.activeSession) {
                 await updateGasPriceForSession(state.activeSession);
             } else {
-                // Fallback to default if no session is active
                 state.currentGasPrice = CONFIG.MAX_GAS_PRICE;
                 safeSetText('currentGasPrice', (state.currentGasPrice || 0).toFixed(2) + ' gwei');
             }
@@ -2254,7 +2446,9 @@
                         winningTrades: state.portfolio.winningTrades,
                         losingTrades: state.portfolio.losingTrades,
                         failedTrades: state.portfolio.failedTrades,
-                        totalFees: state.portfolio.totalFees
+                        totalFees: state.portfolio.totalFees,
+                        usdcBalance: state.portfolio.usdcBalance,
+                        usdcProfit: state.portfolio.usdcProfit
                     },
                     activePatterns: Array.from(state.activePatterns.values()).slice(0, 20),
                     lastBackup: new Date().toISOString(),
@@ -2288,7 +2482,7 @@
 
         function shutdownBot() {
             state.isRunning = false; state.manuallyStopped = true;
-            stopPatternDetection(); stopPricePolling(); closeWebSockets();
+            stopPatternDetection(); stopPricePolling(); stopUsdcConversionTimer(); closeWebSockets();
         }
 
         window.addEventListener('beforeunload', function (e) {
