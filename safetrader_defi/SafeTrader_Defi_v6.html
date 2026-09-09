@@ -1902,14 +1902,16 @@
                 const sb = document.getElementById('startBotBtn');
                 const stopb = document.getElementById('stopBotBtn');
 
-                if (state.isRunning) {
+                const isConnected = state.activeSession?.connected || false;
+
+                if (state.isRunning && isConnected) {
                     if (si) si.className = 'status status-connected';
                     if (st) st.textContent = 'Running';
                     if (sb) sb.disabled = true;
                     if (stopb) stopb.disabled = false;
                 } else {
                     if (si) si.className = 'status status-disconnected';
-                    if (st) st.textContent = 'Not Running';
+                    if (st) st.textContent = isConnected ? 'Paused' : 'Disconnected';
                     if (sb) sb.disabled = false;
                     if (stopb) stopb.disabled = true;
                 }
@@ -2240,6 +2242,7 @@
             state.sessionSerial++;
             const old = state.activeSession;
             state.activeSession = null;
+            state.isRunning = false;
 
             if (old) await destroySession(old);
             updateButton();
@@ -2262,11 +2265,21 @@
 
             try {
                 await connectWithRetry(s);
+                // If still not connected after retry, stop running state
+                if (!s.connected) {
+                    state.isRunning = false;
+                    state.manuallyStopped = true;
+                    updateBotStatus();
+                    updateButton();
+                }
             } catch (e) {
                 s.connected = false;
                 updateButton();
                 updateConnectionStatus();
                 console.error('Session start error:', e);
+                state.isRunning = false;
+                state.manuallyStopped = true;
+                updateBotStatus();
             }
         }
 
@@ -2359,6 +2372,14 @@
             if (s.reconnectAttempts > maxAttempts) {
                 showToast('error', `Max reconnection attempts (${maxAttempts}) reached for Arbitrum.`);
                 updateConnectionStatus();
+                // Stop the bot when reconnection fails
+                state.isRunning = false;
+                state.manuallyStopped = true;
+                stopPatternDetection();
+                stopPricePolling();
+                stopUsdcConversionTimer();
+                updateBotStatus();
+                updateButton();
                 return;
             }
 
