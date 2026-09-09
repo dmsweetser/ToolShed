@@ -1,20 +1,20 @@
-# app.py
 import os
 import time
 import math
 import random
 import string
 import asyncio
+import json
 from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from enum import Enum
 from flask import Flask, render_template, jsonify, request
 from web3 import Web3, Account
 from dotenv import load_dotenv
+import websockets
 
 # Load environment variables
 load_dotenv()
-
 
 # ====================
 # ENUMS AND MODELS
@@ -24,17 +24,14 @@ class TradeType(Enum):
     BUY = "buy"
     SELL = "sell"
 
-
 class TradeStatus(Enum):
     OPEN = "open"
     CLOSED = "closed"
     FAILED = "failed"
 
-
 class PatternType(Enum):
     BUY = "buy"
     SWELL = "swell"
-
 
 @dataclass
 class Trade:
@@ -59,7 +56,6 @@ class Trade:
     network: str = "arbitrum"
     entry_time: float = field(default_factory=time.time)
 
-
 @dataclass
 class Position:
     id: str
@@ -78,7 +74,6 @@ class Position:
     exit_time: Optional[float] = None
     pnl: float = 0.0
     sell_trade_id: Optional[str] = None
-
 
 @dataclass
 class Portfolio:
@@ -99,7 +94,6 @@ class Portfolio:
     usdc_balance: float = 0.0
     usdc_profit: float = 0.0
 
-
 @dataclass
 class Pattern:
     type: PatternType
@@ -117,7 +111,6 @@ class Pattern:
     first_seen: float = field(default_factory=time.time)
     last_seen: float = field(default_factory=time.time)
 
-
 @dataclass
 class SwapRecord:
     timestamp: float
@@ -126,7 +119,6 @@ class SwapRecord:
     amount_in: float
     amount_out: float
     pool: str
-
 
 @dataclass
 class AppState:
@@ -143,7 +135,7 @@ class AppState:
     last_trade_times: Dict[str, float] = field(default_factory=dict)
     start_time: Optional[float] = None
     last_price_update: Optional[float] = None
-    current_gas_price: float = 0.02
+    current_gas_price: float = 20.0  # Default fallback
     manually_stopped: bool = True
     observed_tokens: set = field(default_factory=set)
     pattern_stats: Dict[str, int] = field(default_factory=dict)
@@ -162,7 +154,8 @@ class AppState:
     last_detection_time: Optional[float] = None
     last_max_trade_toast: Optional[float] = None
     last_usdc_conversion: Optional[float] = None
-
+    wallet_address: str = ""
+    ws_connection: Optional[websockets.WebSocketClientProtocol] = None
 
 # ====================
 # CONFIGURATION
@@ -175,12 +168,20 @@ class Config:
 
     # Blockchain Configuration
     BLOCKCHAIN_NETWORK = os.getenv("BLOCKCHAIN_NETWORK", "arbitrum")
-    RPC_URL = os.getenv("RPC_URL", "https://arbitrum-mainnet.public.blastapi.io")
+    RPC_URLS = [
+        "wss://arbitrum-one-rpc.publicnode.com",
+        "wss://arb1.arbitrum.io/ws",
+    ]
     CHAIN_ID = int(os.getenv("CHAIN_ID", 42161))
 
     # Uniswap Configuration
     UNISWAP_VERSION = os.getenv("UNISWAP_VERSION", "v3")
-    UNISWAP_ROUTER_ADDRESS = os.getenv("UNISWAP_ROUTER_ADDRESS", "0xE592427A0AEce92De3Edee1F18E0157C05861564")
+    UNISWAP_FACTORY_ADDRESS = os.getenv(
+        "UNISWAP_FACTORY_ADDRESS", "0x1F98431c8aD98523631AE4a59f267346ea31F984"
+    )
+    UNISWAP_ROUTER_ADDRESS = os.getenv(
+        "UNISWAP_ROUTER_ADDRESS", "0xE592427A0AEce92De3Edee1F18E0157C05861564"
+    )
 
     # Trading Configuration
     STARTING_ETH = float(os.getenv("STARTING_ETH", 0.01))
@@ -205,8 +206,12 @@ class Config:
 
     # USDC Configuration
     USDC_PROFIT_TARGET = float(os.getenv("USDC_PROFIT_TARGET", 1.0))
-    USDC_ADDRESS = os.getenv("USDC_ADDRESS", "0xaf88d065e77c8cC2239327C5EDb3A432268e5831")
-    WETH_ADDRESS = os.getenv("WETH_ADDRESS", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1")
+    USDC_ADDRESS = os.getenv(
+        "USDC_ADDRESS", "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"
+    )
+    WETH_ADDRESS = os.getenv(
+        "WETH_ADDRESS", "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"
+    )
     USDC_CONVERSION_INTERVAL = 300000  # 5 minutes in milliseconds
     MIN_LIQUIDITY = 50000
 
@@ -229,7 +234,6 @@ class Config:
     # Pool Fees
     POOL_FEES = {"LOW": 500, "MEDIUM": 3000, "HIGH": 10000}
 
-
 # ====================
 # UTILITY FUNCTIONS
 # ====================
@@ -237,30 +241,25 @@ class Config:
 def generate_unique_trade_id() -> str:
     return f"trade_{int(time.time())}_{''.join(random.choices(string.ascii_lowercase + string.digits, k=9))}"
 
-
 def format_number(num: float, decimals: int = 8) -> str:
     if num is None:
         return "0"
     return f"{num:.{decimals}f}"
-
 
 def format_eth(value: float, decimals: int = 8) -> str:
     if value is None:
         return "0.00000000 WETH"
     return f"{value:.{decimals}f} WETH"
 
-
 def format_usdc(value: float, decimals: int = 2) -> str:
     if value is None:
         return "0.00 USDC"
     return f"{value:.{decimals}f} USDC"
 
-
 def format_percent(value: float, decimals: int = 2) -> str:
     if value is None:
         return "0.00%"
     return f"{value:.{decimals}f}%"
-
 
 def format_uptime(start_time: float) -> str:
     if not start_time:
@@ -272,7 +271,6 @@ def format_uptime(start_time: float) -> str:
     seconds = int(diff % 60)
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
-
 # ====================
 # WALLET MANAGEMENT
 # ====================
@@ -283,7 +281,7 @@ def connect_wallet(app_state: AppState) -> bool:
         if not private_key:
             raise ValueError("PRIVATE_KEY not set in .env file")
 
-        w3 = Web3(Web3.HTTPProvider(Config.RPC_URL))
+        w3 = Web3(Web3.HTTPProvider(Config.RPC_URLS[0].replace("wss://", "https://")))
         if not w3.is_connected():
             raise ConnectionError("Failed to connect to the blockchain network")
 
@@ -292,19 +290,11 @@ def connect_wallet(app_state: AppState) -> bool:
         app_state.provider = w3
         app_state.wallet_connected = True
         app_state.wallet_address = account.address
-
         return True
     except Exception as e:
         print(f"Error connecting wallet: {e}")
         app_state.wallet_connected = False
         return False
-
-
-def get_wallet_address(app_state: AppState) -> str:
-    if app_state.signer:
-        return app_state.signer.address
-    return ""
-
 
 def sign_transaction(app_state: AppState, tx: dict) -> str:
     if not app_state.signer:
@@ -321,6 +311,107 @@ def sign_transaction(app_state: AppState, tx: dict) -> str:
         print(f"Error signing transaction: {e}")
         raise
 
+# ====================
+# WEBSOCKET HANDLING
+# ====================
+
+async def connect_websocket(app_state: AppState):
+    """Connect to a WebSocket RPC endpoint and subscribe to new heads."""
+    while app_state.is_running:
+        try:
+            # Try each RPC URL until one works
+            for rpc_url in Config.RPC_URLS:
+                try:
+                    async with websockets.connect(rpc_url) as ws:
+                        app_state.ws_connection = ws
+                        print(f"Connected to WebSocket RPC: {rpc_url}")
+
+                        # Subscribe to new heads
+                        subscription_request = {
+                            "id": 1,
+                            "method": "eth_subscribe",
+                            "params": ["newHeads"]
+                        }
+                        await ws.send(json.dumps(subscription_request))
+
+                        # Listen for messages
+                        async for message in ws:
+                            data = json.loads(message)
+                            if "params" in data and "result" in data:
+                                # Handle subscription response
+                                pass
+                            elif "params" in data:
+                                # Handle new block
+                                block_hash = data["params"]["result"]["hash"]
+                                await process_block(app_state, block_hash)
+                                break  # Reconnect to avoid stale connections
+                except Exception as e:
+                    print(f"WebSocket error with {rpc_url}: {e}")
+                    await asyncio.sleep(5)  # Retry delay
+        except Exception as e:
+            print(f"WebSocket connection failed: {e}")
+            await asyncio.sleep(5)
+
+async def process_block(app_state: AppState, block_hash: str):
+    """Process a new block to find swap events."""
+    try:
+        w3 = Web3(Web3.HTTPProvider(Config.RPC_URLS[0].replace("wss://", "https://")))
+        block = w3.eth.get_block(block_hash, full_transactions=True)
+
+        # Uniswap V3 Swap event topic
+        SWAP_TOPIC = "0xc42079f94a6e0b696870f008805128590677f3d98e93b73048785494762256c1"
+
+        for tx in block.transactions:
+            if tx.input and tx.input.startswith(SWAP_TOPIC):
+                # Decode the swap event (simplified for demo)
+                # In a real app, you'd use the full ABI to decode
+                await process_swap(app_state, tx)
+    except Exception as e:
+        print(f"Error processing block: {e}")
+
+async def process_swap(app_state: AppState, tx: Any):
+    """Process a swap transaction to update prices."""
+    try:
+        w3 = Web3(Web3.HTTPProvider(Config.RPC_URLS[0].replace("wss://", "https://")))
+        tx_receipt = w3.eth.get_transaction_receipt(tx.hash)
+
+        # Simplified: Assume the first two tokens in the pool are the pair
+        # In a real app, you'd decode the swap event properly
+        for log in tx_receipt.logs:
+            if log.topics[0].hex() == "0xc42079f94a6e0b696870f008805128590677f3d98e93b73048785494762256c1":
+                token0 = log.address  # Simplified; in reality, you'd need the pool ABI
+                token1 = log.address  # This is a placeholder
+
+                # Get token symbols (simplified)
+                token0_symbol = "WETH"  # Placeholder
+                token1_symbol = "USDC"  # Placeholder
+
+                # Update prices (simplified)
+                # In a real app, you'd calculate the price from the swap amounts
+                app_state.prices[token0_symbol] = app_state.prices.get(token0_symbol, 0.0005)
+                app_state.prices[token1_symbol] = app_state.prices.get(token1_symbol, 0.0005)
+
+                # Add to observed tokens
+                app_state.observed_tokens.add(token0_symbol)
+                app_state.observed_tokens.add(token1_symbol)
+
+                # Record the swap
+                swap_record = SwapRecord(
+                    timestamp=time.time(),
+                    token_in=token0_symbol,
+                    token_out=token1_symbol,
+                    amount_in=1.0,  # Placeholder
+                    amount_out=1.0,  # Placeholder
+                    pool=log.address
+                )
+                app_state.last_swaps.append(swap_record)
+                if len(app_state.last_swaps) > 10:
+                    app_state.last_swaps.pop(0)
+
+                app_state.last_price_update = time.time()
+                break
+    except Exception as e:
+        print(f"Error processing swap: {e}")
 
 # ====================
 # PATTERN DETECTION
@@ -338,10 +429,10 @@ def detect_buy_patterns_for_token(history: List[Dict[str, float]], token: str) -
     for i in range(2, len(history) - 2):
         current = history[i]
         is_minima = (
-            current["price"] <= history[i - 1]["price"] and
-            current["price"] <= history[i - 2]["price"] and
-            current["price"] <= history[i + 1]["price"] and
-            current["price"] <= history[i + 2]["price"]
+            current["price"] <= history[i - 1]["price"]
+            and current["price"] <= history[i - 2]["price"]
+            and current["price"] <= history[i + 1]["price"]
+            and current["price"] <= history[i + 2]["price"]
         )
 
         if is_minima:
@@ -356,20 +447,24 @@ def detect_buy_patterns_for_token(history: List[Dict[str, float]], token: str) -
                         rise_pct = (next_point["price"] - current["price"]) / current["price"]
                         rise_time = next_point["timestamp"] - current["timestamp"]
 
-                        if rise_pct >= Config.MIN_PROFIT_PERCENT / 100 and min_time <= rise_time <= max_time:
-                            patterns.append(Pattern(
-                                type=PatternType.BUY,
-                                token=token,
-                                timestamp=current["timestamp"],
-                                drop_pct=abs(drop_pct) * 100,
-                                drop_time=time_diff / 1000,
-                                rise_pct=rise_pct * 100,
-                                rise_time=rise_time / 1000
-                            ))
+                        if (
+                            rise_pct >= Config.MIN_PROFIT_PERCENT / 100
+                            and min_time <= rise_time <= max_time
+                        ):
+                            patterns.append(
+                                Pattern(
+                                    type=PatternType.BUY,
+                                    token=token,
+                                    timestamp=current["timestamp"],
+                                    drop_pct=abs(drop_pct) * 100,
+                                    drop_time=time_diff / 1000,
+                                    rise_pct=rise_pct * 100,
+                                    rise_time=rise_time / 1000,
+                                )
+                            )
                             break
                     break
     return patterns
-
 
 def detect_swell_patterns_for_token(history: List[Dict[str, float]], token: str) -> List[Pattern]:
     if not history or len(history) < 5:
@@ -394,20 +489,24 @@ def detect_swell_patterns_for_token(history: List[Dict[str, float]], token: str)
                     second_rise_pct = (next_point["price"] - current["price"]) / current["price"]
                     second_rise_time = next_point["timestamp"] - current["timestamp"]
 
-                    if second_rise_pct >= min_change and min_time <= second_rise_time <= max_time:
-                        patterns.append(Pattern(
-                            type=PatternType.SWELL,
-                            token=token,
-                            timestamp=current["timestamp"],
-                            first_rise_pct=first_rise_pct * 100,
-                            first_rise_time=first_rise_time / 1000,
-                            second_rise_pct=second_rise_pct * 100,
-                            second_rise_time=second_rise_time / 1000
-                        ))
+                    if (
+                        second_rise_pct >= min_change
+                        and min_time <= second_rise_time <= max_time
+                    ):
+                        patterns.append(
+                            Pattern(
+                                type=PatternType.SWELL,
+                                token=token,
+                                timestamp=current["timestamp"],
+                                first_rise_pct=first_rise_pct * 100,
+                                first_rise_time=first_rise_time / 1000,
+                                second_rise_pct=second_rise_pct * 100,
+                                second_rise_time=second_rise_time / 1000,
+                            )
+                        )
                         break
                 break
     return patterns
-
 
 def get_pattern_key(pattern: Pattern) -> str:
     if pattern.type == PatternType.BUY:
@@ -426,7 +525,6 @@ def get_pattern_key(pattern: Pattern) -> str:
         )
     return "UNKNOWN"
 
-
 def get_pattern_description(pattern: Pattern) -> str:
     if pattern.type == PatternType.BUY:
         return (
@@ -440,14 +538,15 @@ def get_pattern_description(pattern: Pattern) -> str:
         )
     return "Manual"
 
-
 def is_pattern_valid(pattern: Pattern) -> bool:
     if pattern.type == PatternType.BUY:
         return pattern.drop_pct > 0 and pattern.rise_pct >= Config.MIN_PROFIT_PERCENT
     elif pattern.type == PatternType.SWELL:
-        return pattern.first_rise_pct > 0 and pattern.second_rise_pct >= Config.MIN_PROFIT_PERCENT
+        return (
+            pattern.first_rise_pct > 0
+            and pattern.second_rise_pct >= Config.MIN_PROFIT_PERCENT
+        )
     return False
-
 
 # ====================
 # TRADE EXECUTION
@@ -467,15 +566,13 @@ def calculate_trade_amount(app_state: AppState) -> float:
 
         trade_amount = max(
             percent_based_amount - (total_gas_cost / max_trades),
-            min_trade_amount_weth
+            min_trade_amount_weth,
         )
         trade_amount = min(trade_amount, available_weth * 0.95)
-
         return trade_amount
     except Exception as e:
         print(f"Error calculating trade amount: {e}")
         return Config.MIN_TRADE_AMOUNT_ETH
-
 
 def create_trade_object(
     token: str,
@@ -491,7 +588,7 @@ def create_trade_object(
     fee_amount: float = 0,
     price_impact: float = 0,
     slippage: float = 0,
-    pattern_obj: Optional[Dict] = None
+    pattern_obj: Optional[Dict] = None,
 ) -> Trade:
     return Trade(
         id=generate_unique_trade_id(),
@@ -513,9 +610,8 @@ def create_trade_object(
         pattern_obj=pattern_obj,
         tx_hash=None,
         network=app_state.current_network,
-        entry_time=time.time()
+        entry_time=time.time(),
     )
-
 
 def simulate_realistic_trade(
     app_state: AppState,
@@ -524,7 +620,8 @@ def simulate_realistic_trade(
     token_amount: float,
     current_price: float,
     pool_info: Dict,
-    latency: float = 0
+    latency: float = 0,
+    gas_price_gwei: float = Config.MAX_GAS_PRICE,
 ) -> Dict:
     result = {
         "success": True,
@@ -532,11 +629,11 @@ def simulate_realistic_trade(
         "amountETH": token_amount * current_price,
         "executionPrice": current_price,
         "gasUsed": 0,
-        "gasPrice": Config.MAX_GAS_PRICE,
+        "gasPrice": gas_price_gwei,
         "feeAmount": 0,
         "priceImpact": 0,
         "slippage": 0,
-        "reason": None
+        "reason": None,
     }
 
     try:
@@ -548,7 +645,7 @@ def simulate_realistic_trade(
         result["gasUsed"] = estimate_swap_gas(action, token)
         fee_tier = pool_info.get("feeTier", Config.POOL_FEES["MEDIUM"])
         result["feeAmount"] = result["amountETH"] * (fee_tier / 1000000)
-        result["priceImpact"] = calculate_price_impact(token, token_amount, pool_info)
+        result["priceImpact"] = calculate_price_impact(token, token_amount, pool_info, app_state)
 
         base_slippage = result["priceImpact"]
         latency_slippage = (latency / 1000) * 0.01 if latency > 0 else 0
@@ -580,7 +677,6 @@ def simulate_realistic_trade(
         result["reason"] = str(e)
         return result
 
-
 def estimate_swap_gas(action: TradeType, token: str) -> int:
     base_gas = 120000
     if token in ["WBTC", "WETH"]:
@@ -596,8 +692,7 @@ def estimate_swap_gas(action: TradeType, token: str) -> int:
     base_gas += int(random.uniform(0, 15000))
     return min(base_gas, Config.GAS_LIMIT)
 
-
-def calculate_price_impact(token: str, token_amount: float, pool_info: Dict) -> float:
+def calculate_price_impact(token: str, token_amount: float, pool_info: Dict, app_state: AppState) -> float:
     token_price = app_state.prices.get(token, 0)
     token_value_weth = token_amount * token_price
     liquidity_weth = pool_info.get("liquidity", 100000)
@@ -606,7 +701,6 @@ def calculate_price_impact(token: str, token_amount: float, pool_info: Dict) -> 
         return 0
     return min((token_value_weth / liquidity_weth) * 100, 2)
 
-
 async def execute_live_trade(
     app_state: AppState,
     token: str,
@@ -614,32 +708,31 @@ async def execute_live_trade(
     token_amount: float,
     current_price: float,
     pool_info: Dict,
-    gas_price_gwei: float
+    gas_price_gwei: float,
 ) -> Dict:
     try:
-        w3 = Web3(Web3.HTTPProvider(Config.RPC_URL))
+        w3 = Web3(Web3.HTTPProvider(Config.RPC_URLS[0].replace("wss://", "https://")))
         router_address = Config.UNISWAP_ROUTER_ADDRESS
-
         token_address = Config.NETWORK_TOKENS[Config.BLOCKCHAIN_NETWORK].get(token)
         weth_address = Config.WETH_ADDRESS
 
         if not token_address:
-            return {
-                "success": False,
-                "reason": f"Token address not found for {token}"
-            }
+            return {"success": False, "reason": f"Token address not found for {token}"}
 
-        # Get token decimals
         ERC20_ABI = [
-            {"constant": True, "inputs": [], "name": "decimals", "outputs": [{"name": "", "type": "uint8"}], "type": "function"}
+            {
+                "constant": True,
+                "inputs": [],
+                "name": "decimals",
+                "outputs": [{"name": "", "type": "uint8"}],
+                "type": "function",
+            }
         ]
         token_contract = w3.eth.contract(address=token_address, abi=ERC20_ABI)
         decimals = token_contract.functions.decimals().call()
 
-        # Calculate amount in wei
         amount_in_wei = int(token_amount * (10 ** decimals))
 
-        # Build the transaction
         UNISWAP_ROUTER_ABI = [
             {
                 "inputs": [
@@ -654,7 +747,7 @@ async def execute_live_trade(
                 "name": "exactInputSingle",
                 "outputs": [{"internalType": "uint256", "name": "amountOut", "type": "uint256"}],
                 "stateMutability": "nonpayable",
-                "type": "function"
+                "type": "function",
             }
         ]
         router_contract = w3.eth.contract(address=router_address, abi=UNISWAP_ROUTER_ABI)
@@ -677,8 +770,8 @@ async def execute_live_trade(
                     app_state.signer.address,
                     amount_in_wei,
                     0,
-                    0
-                )
+                    0,
+                ),
             )
         else:
             tx["data"] = router_contract.encodeABI(
@@ -690,8 +783,8 @@ async def execute_live_trade(
                     app_state.signer.address,
                     amount_in_wei,
                     0,
-                    0
-                )
+                    0,
+                ),
             )
 
         signed_tx = sign_transaction(app_state, tx)
@@ -708,14 +801,10 @@ async def execute_live_trade(
             "priceImpact": 0,
             "slippage": 0,
             "txHash": tx_hash.hex(),
-            "reason": None
+            "reason": None,
         }
     except Exception as e:
-        return {
-            "success": False,
-            "reason": str(e)
-        }
-
+        return {"success": False, "reason": str(e)}
 
 async def execute_trade(
     app_state: AppState,
@@ -723,7 +812,7 @@ async def execute_trade(
     action: TradeType,
     pattern_description: str = "Manual",
     amount_weth: Optional[float] = None,
-    pattern: Optional[Pattern] = None
+    pattern: Optional[Pattern] = None,
 ) -> Optional[Trade]:
     try:
         if not app_state.is_running:
@@ -742,7 +831,7 @@ async def execute_trade(
 
             existing_position = next(
                 (p for p in app_state.portfolio.positions if p.token == token and p.status == "open"),
-                None
+                None,
             )
             if existing_position:
                 print(f"Blocked buy for {token}: Already has an open position.")
@@ -756,11 +845,13 @@ async def execute_trade(
                     print(f"Blocked buy for {token}: Pattern mode is set to swells only.")
                     return None
 
-        await update_gas_price(app_state)
+        # Use default gas price if WebSocket fails
         current_gas_price = app_state.current_gas_price or Config.MAX_GAS_PRICE
 
         if current_gas_price > Config.MAX_GAS_PRICE:
-            print(f"Gas price too high: {current_gas_price} gwei > {Config.MAX_GAS_PRICE} gwei max")
+            print(
+                f"Gas price too high: {current_gas_price} gwei > {Config.MAX_GAS_PRICE} gwei max"
+            )
             return None
 
         if amount_weth is None:
@@ -774,7 +865,10 @@ async def execute_trade(
             [p for p in app_state.portfolio.positions if p.status == "open"]
         )
         if total_open_positions >= Config.MAX_TRADES:
-            if not app_state.last_max_trade_toast or (time.time() - app_state.last_max_trade_toast) > 10:
+            if (
+                not app_state.last_max_trade_toast
+                or (time.time() - app_state.last_max_trade_toast) > 10
+            ):
                 print(f"Max trades ({Config.MAX_TRADES}) reached")
                 app_state.last_max_trade_toast = time.time()
             return None
@@ -801,33 +895,68 @@ async def execute_trade(
         else:
             token_amount = amount_weth / current_price
 
-        if app_state.live_mode and app_state.wallet_connected and app_state.signer:
+        if (
+            app_state.live_mode
+            and app_state.wallet_connected
+            and app_state.signer
+        ):
             trade_result = await execute_live_trade(
-                app_state, token, action, token_amount, current_price, pool_info, current_gas_price
+                app_state,
+                token,
+                action,
+                token_amount,
+                current_price,
+                pool_info,
+                current_gas_price,
             )
         else:
             trade_result = simulate_realistic_trade(
-                app_state, token, action, token_amount, current_price, pool_info, 0, current_gas_price
+                app_state,
+                token,
+                action,
+                token_amount,
+                current_price,
+                pool_info,
+                0,
+                current_gas_price,
             )
 
         if not trade_result.get("success"):
             failed_trade = create_trade_object(
-                token, action, current_price, token_amount, amount_weth,
-                pattern_description, TradeStatus.FAILED, trade_result.get("reason"),
-                trade_result.get("gasUsed", 0), trade_result.get("gasPrice", 0),
-                trade_result.get("feeAmount", 0), trade_result.get("priceImpact", 0),
-                trade_result.get("slippage", 0), pattern
+                token,
+                action,
+                current_price,
+                token_amount,
+                amount_weth,
+                pattern_description,
+                TradeStatus.FAILED,
+                trade_result.get("reason"),
+                trade_result.get("gasUsed", 0),
+                trade_result.get("gasPrice", 0),
+                trade_result.get("feeAmount", 0),
+                trade_result.get("priceImpact", 0),
+                trade_result.get("slippage", 0),
+                pattern,
             )
             app_state.trades.append(failed_trade)
             app_state.portfolio.failed_trades += 1
             return failed_trade
 
         trade = create_trade_object(
-            token, action, trade_result["executionPrice"], trade_result["tokenAmount"],
-            trade_result["amountETH"], pattern_description, TradeStatus.OPEN, None,
-            trade_result.get("gasUsed", 0), trade_result.get("gasPrice", 0),
-            trade_result.get("feeAmount", 0), trade_result.get("priceImpact", 0),
-            trade_result.get("slippage", 0), pattern
+            token,
+            action,
+            trade_result["executionPrice"],
+            trade_result["tokenAmount"],
+            trade_result["amountETH"],
+            pattern_description,
+            TradeStatus.OPEN,
+            None,
+            trade_result.get("gasUsed", 0),
+            trade_result.get("gasPrice", 0),
+            trade_result.get("feeAmount", 0),
+            trade_result.get("priceImpact", 0),
+            trade_result.get("slippage", 0),
+            pattern,
         )
 
         update_portfolio_for_trade(app_state, trade, action, trade_result)
@@ -839,8 +968,8 @@ async def execute_trade(
             app_state.open_buy_orders[token] = {
                 "tradeId": trade.id,
                 "pattern": pattern,
-                "entryPrice": trade_result["executionPrice"],
-                "entryTime": time.time()
+                "entryPrice": trade.price,
+                "entryTime": time.time(),
             }
         else:
             app_state.open_buy_orders.pop(token, None)
@@ -850,12 +979,11 @@ async def execute_trade(
         print(f"Error executing trade: {e}")
         return None
 
-
 def update_portfolio_for_trade(
     app_state: AppState,
     trade: Trade,
     action: TradeType,
-    trade_result: Dict
+    trade_result: Dict,
 ) -> None:
     try:
         token = trade.token
@@ -881,8 +1009,12 @@ def update_portfolio_for_trade(
             app_state.portfolio.balances[token_symbol] += trade_result["tokenAmount"]
 
             position = next(
-                (p for p in app_state.portfolio.positions if p.token == token_symbol and p.status == "open"),
-                None
+                (
+                    p
+                    for p in app_state.portfolio.positions
+                    if p.token == token_symbol and p.status == "open"
+                ),
+                None,
             )
             if not position:
                 position = Position(
@@ -897,7 +1029,7 @@ def update_portfolio_for_trade(
                     status="open",
                     trade_id=trade.id,
                     pattern=trade.pattern,
-                    pattern_obj=trade.pattern_obj
+                    pattern_obj=trade.pattern_obj,
                 )
                 app_state.portfolio.positions.append(position)
             else:
@@ -912,8 +1044,12 @@ def update_portfolio_for_trade(
 
         elif action == TradeType.SELL:
             open_positions = sorted(
-                [p for p in app_state.portfolio.positions if p.token == token_symbol and p.status == "open"],
-                key=lambda x: x.entry_time
+                [
+                    p
+                    for p in app_state.portfolio.positions
+                    if p.token == token_symbol and p.status == "open"
+                ],
+                key=lambda x: x.entry_time,
             )
 
             if not open_positions:
@@ -926,9 +1062,9 @@ def update_portfolio_for_trade(
             position = open_positions[0]
             amount_to_sell = min(trade_result["tokenAmount"], position.amount)
             sell_value_weth = amount_to_sell * trade_result["executionPrice"]
-            cost_basis = (amount_to_sell * position.entry_price) + (
-                (amount_to_sell / position.amount) * (position.fees_paid + position.gas_paid)
-            )
+            cost_basis = (
+                amount_to_sell * position.entry_price
+            ) + (amount_to_sell / position.amount) * (position.fees_paid + position.gas_paid)
             pnl = sell_value_weth - cost_basis - total_cost_weth
 
             position.amount -= amount_to_sell
@@ -948,7 +1084,9 @@ def update_portfolio_for_trade(
                     app_state.portfolio.losing_trades += 1
 
             app_state.portfolio.balances["WETH"] = (
-                app_state.portfolio.balances.get("WETH", 0) + sell_value_weth - total_cost_weth
+                app_state.portfolio.balances.get("WETH", 0)
+                + sell_value_weth
+                - total_cost_weth
             )
             trade.pnl = pnl
             trade.status = TradeStatus.CLOSED
@@ -967,7 +1105,6 @@ def update_portfolio_for_trade(
     except Exception as e:
         print(f"Error updating portfolio for trade: {e}")
 
-
 def update_portfolio_equity(app_state: AppState) -> None:
     try:
         total_weth = app_state.portfolio.balances.get("WETH", 0)
@@ -983,20 +1120,20 @@ def update_portfolio_equity(app_state: AppState) -> None:
             if position.status == "open":
                 current_price = app_state.prices.get(position.token, position.entry_price)
                 current_value = position.amount * current_price
-                cost_basis = (position.amount * position.entry_price) + position.fees_paid + position.gas_paid
+                cost_basis = (
+                    position.amount * position.entry_price
+                ) + position.fees_paid + position.gas_paid
                 unrealized_pnl += current_value - cost_basis
 
         app_state.portfolio.current_eth = total_weth
         app_state.portfolio.unrealized_pnl = unrealized_pnl
-        app_state.portfolio.equity_history.append({
-            "timestamp": time.time(),
-            "ethValue": total_weth
-        })
+        app_state.portfolio.equity_history.append(
+            {"timestamp": time.time(), "ethValue": total_weth}
+        )
         if len(app_state.portfolio.equity_history) > 1000:
             app_state.portfolio.equity_history.pop(0)
     except Exception as e:
         print(f"Error updating portfolio equity: {e}")
-
 
 # ====================
 # USDC PROFIT FUNNELING
@@ -1013,22 +1150,17 @@ async def get_usdc_price_in_weth(app_state: AppState) -> Optional[float]:
         print(f"Error fetching USDC price: {e}")
         return 0.0005
 
-
-async def execute_trade_for_usdc(app_state: AppState, amount_weth: float, usdc_price_in_weth: float) -> Dict:
+async def execute_trade_for_usdc(
+    app_state: AppState, amount_weth: float, usdc_price_in_weth: float
+) -> Dict:
     try:
         if not app_state.live_mode or not app_state.wallet_connected or not app_state.signer:
             usdc_amount = amount_weth / usdc_price_in_weth
-            return {
-                "success": True,
-                "amountWETH": amount_weth,
-                "usdcAmount": usdc_amount,
-                "reason": None
-            }
+            return {"success": True, "amountWETH": amount_weth, "usdcAmount": usdc_amount}
 
         usdc_address = Config.USDC_ADDRESS
         weth_address = Config.WETH_ADDRESS
-
-        w3 = Web3(Web3.HTTPProvider(Config.RPC_URL))
+        w3 = Web3(Web3.HTTPProvider(Config.RPC_URLS[0].replace("wss://", "https://")))
         router_address = Config.UNISWAP_ROUTER_ADDRESS
 
         UNISWAP_ROUTER_ABI = [
@@ -1045,23 +1177,31 @@ async def execute_trade_for_usdc(app_state: AppState, amount_weth: float, usdc_p
                 "name": "exactInputSingle",
                 "outputs": [{"internalType": "uint256", "name": "amountOut", "type": "uint256"}],
                 "stateMutability": "nonpayable",
-                "type": "function"
+                "type": "function",
             }
         ]
         router_contract = w3.eth.contract(address=router_address, abi=UNISWAP_ROUTER_ABI)
 
-        weth_contract = w3.eth.contract(address=weth_address, abi=[
-            {"constant": True, "inputs": [{"name": "_owner", "type": "address"}], "name": "balanceOf", "outputs": [{"name": "balance", "type": "uint256"}], "type": "function"}
-        ])
+        weth_contract = w3.eth.contract(
+            address=weth_address,
+            abi=[
+                {
+                    "constant": True,
+                    "inputs": [{"name": "_owner", "type": "address"}],
+                    "name": "balanceOf",
+                    "outputs": [{"name": "balance", "type": "uint256"}],
+                    "type": "function",
+                }
+            ],
+        )
         weth_balance = weth_contract.functions.balanceOf(app_state.signer.address).call()
         if w3.from_wei(weth_balance, "ether") < amount_weth:
-            return {
-                "success": False,
-                "reason": "Not enough WETH balance"
-            }
+            return {"success": False, "reason": "Not enough WETH balance"}
 
         amount_in = w3.to_wei(amount_weth, "ether")
-        min_amount_out = w3.to_wei((amount_weth / usdc_price_in_weth) * 0.995, "mwei")
+        min_amount_out = w3.to_wei(
+            (amount_weth / usdc_price_in_weth) * 0.995, "mwei"
+        )
 
         tx = router_contract.functions.exactInputSingle(
             weth_address,
@@ -1070,13 +1210,15 @@ async def execute_trade_for_usdc(app_state: AppState, amount_weth: float, usdc_p
             app_state.signer.address,
             amount_in,
             min_amount_out,
-            0
-        ).build_transaction({
-            "from": app_state.signer.address,
-            "gas": Config.GAS_LIMIT,
-            "gasPrice": w3.to_wei(Config.MAX_GAS_PRICE, "gwei"),
-            "nonce": w3.eth.get_transaction_count(app_state.signer.address)
-        })
+            0,
+        ).build_transaction(
+            {
+                "from": app_state.signer.address,
+                "gas": Config.GAS_LIMIT,
+                "gasPrice": w3.to_wei(Config.MAX_GAS_PRICE, "gwei"),
+                "nonce": w3.eth.get_transaction_count(app_state.signer.address),
+            }
+        )
 
         signed_tx = sign_transaction(app_state, tx)
         tx_hash = w3.eth.send_raw_transaction(signed_tx)
@@ -1084,15 +1226,11 @@ async def execute_trade_for_usdc(app_state: AppState, amount_weth: float, usdc_p
         return {
             "success": True,
             "usdcAmount": amount_weth / usdc_price_in_weth,
-            "txHash": tx_hash.hex()
+            "txHash": tx_hash.hex(),
         }
     except Exception as e:
         print(f"Error executing trade for USDC: {e}")
-        return {
-            "success": False,
-            "reason": str(e)
-        }
-
+        return {"success": False, "reason": str(e)}
 
 async def check_and_convert_to_usdc(app_state: AppState) -> None:
     try:
@@ -1104,7 +1242,9 @@ async def check_and_convert_to_usdc(app_state: AppState) -> None:
             print("Could not fetch USDC/WETH price.")
             return
 
-        total_profit_weth = app_state.portfolio.realized_pnl + app_state.portfolio.unrealized_pnl
+        total_profit_weth = (
+            app_state.portfolio.realized_pnl + app_state.portfolio.unrealized_pnl
+        )
         if total_profit_weth <= 0:
             print("No profit to convert to USDC.")
             return
@@ -1115,19 +1255,20 @@ async def check_and_convert_to_usdc(app_state: AppState) -> None:
         if total_profit_weth >= weth_needed_for_1_usdc:
             print(f"Converting {weth_needed_for_1_usdc} WETH to {usdc_target} USDC...")
 
-            trade_result = await execute_trade_for_usdc(app_state, weth_needed_for_1_usdc, usdc_price_in_weth)
+            trade_result = await execute_trade_for_usdc(
+                app_state, weth_needed_for_1_usdc, usdc_price_in_weth
+            )
             if trade_result["success"]:
                 app_state.portfolio.usdc_profit += usdc_target
-                app_state.portfolio.usdc_balance = (
-                    app_state.portfolio.usdc_balance + usdc_target
-                )
+                app_state.portfolio.usdc_balance += usdc_target
                 app_state.last_usdc_conversion = time.time()
-                print(f"Converted {format_eth(weth_needed_for_1_usdc)} to {format_usdc(usdc_target)}")
+                print(
+                    f"Converted {format_eth(weth_needed_for_1_usdc)} to {format_usdc(usdc_target)}"
+                )
             else:
                 print(f"Failed to convert to USDC: {trade_result.get('reason')}")
     except Exception as e:
         print(f"Error in check_and_convert_to_usdc: {e}")
-
 
 # ====================
 # BOT CONTROLS
@@ -1148,8 +1289,10 @@ async def start_bot(app_state: AppState) -> None:
         if app_state.live_mode:
             connect_wallet(app_state)
 
-        await update_gas_price(app_state)
-        start_price_polling(app_state)
+        # Start WebSocket connection for real-time updates
+        asyncio.create_task(connect_websocket(app_state))
+
+        # Start background tasks
         start_pattern_detection(app_state)
         start_usdc_conversion_timer(app_state)
 
@@ -1158,7 +1301,6 @@ async def start_bot(app_state: AppState) -> None:
         app_state.is_running = False
         print(f"Failed to start: {e}")
         raise
-
 
 def stop_bot(app_state: AppState) -> None:
     try:
@@ -1169,15 +1311,17 @@ def stop_bot(app_state: AppState) -> None:
         app_state.is_running = False
         app_state.manually_stopped = True
         stop_pattern_detection(app_state)
-        stop_price_polling(app_state)
         stop_usdc_conversion_timer(app_state)
+
+        # Close WebSocket connection
+        if app_state.ws_connection:
+            asyncio.create_task(app_state.ws_connection.close())
 
         app_state.open_buy_orders.clear()
         print("Trading stopped!")
     except Exception as e:
         print(f"Failed to stop: {e}")
         raise
-
 
 def reset_app(app_state: AppState) -> None:
     if app_state.is_running:
@@ -1189,7 +1333,7 @@ def reset_app(app_state: AppState) -> None:
         balances={"WETH": Config.STARTING_ETH},
         starting_eth=Config.STARTING_ETH,
         current_eth=Config.STARTING_ETH,
-        equity_history=[{"timestamp": time.time(), "ethValue": Config.STARTING_ETH}]
+        equity_history=[{"timestamp": time.time(), "ethValue": Config.STARTING_ETH}],
     )
     app_state.active_patterns = {}
     app_state.pattern_stats = {"total_patterns": 0, "tokens_with_patterns": 0}
@@ -1205,63 +1349,94 @@ def reset_app(app_state: AppState) -> None:
 
     print("App has been reset!")
 
-
 # ====================
 # PRICE AND GAS UPDATES
 # ====================
 
 async def update_gas_price(app_state: AppState) -> None:
     try:
-        w3 = Web3(Web3.HTTPProvider(Config.RPC_URL))
-        gas_price = w3.eth.gas_price
-        app_state.current_gas_price = w3.from_wei(gas_price, "gwei")
-    except Exception as e:
-        print(f"Failed to update gas price: {e}")
+        # Use a fallback if WebSocket fails
         app_state.current_gas_price = Config.MAX_GAS_PRICE
-
+    except Exception as e:
+        print(f"Failed to update gas price, using fallback: {e}")
+        app_state.current_gas_price = Config.MAX_GAS_PRICE
 
 async def get_enhanced_pool_info(token: str) -> Dict:
     defaults = {
-        "WETH": {"liquidity": 1000000, "feeTier": Config.POOL_FEES["LOW"], "token0": "WETH", "token1": "WETH"},
-        "ETH": {"liquidity": 1000000, "feeTier": Config.POOL_FEES["LOW"], "token0": "WETH", "token1": "WETH"},
-        "WBTC": {"liquidity": 500000, "feeTier": Config.POOL_FEES["MEDIUM"], "token0": "WETH", "token1": "WBTC"},
-        "UNI": {"liquidity": 1000000, "feeTier": Config.POOL_FEES["MEDIUM"], "token0": "WETH", "token1": "UNI"},
-        "LINK": {"liquidity": 800000, "feeTier": Config.POOL_FEES["MEDIUM"], "token0": "WETH", "token1": "LINK"},
-        "ARB": {"liquidity": 1500000, "feeTier": Config.POOL_FEES["MEDIUM"], "token0": "WETH", "token1": "ARB"},
-        "GMX": {"liquidity": 400000, "feeTier": Config.POOL_FEES["MEDIUM"], "token0": "WETH", "token1": "GMX"},
-        "USDC": {"liquidity": 50000000, "feeTier": Config.POOL_FEES["LOW"], "token0": "WETH", "token1": "USDC"},
-        "USDT": {"liquidity": 50000000, "feeTier": Config.POOL_FEES["LOW"], "token0": "WETH", "token1": "USDT"},
-        "LEVY": {"liquidity": 100000, "feeTier": Config.POOL_FEES["MEDIUM"], "token0": "WETH", "token1": "LEVY"},
-        "APEX": {"liquidity": 200000, "feeTier": Config.POOL_FEES["MEDIUM"], "token0": "WETH", "token1": "APEX"}
+        "WETH": {
+            "liquidity": 1000000,
+            "feeTier": Config.POOL_FEES["LOW"],
+            "token0": "WETH",
+            "token1": "WETH",
+        },
+        "ETH": {
+            "liquidity": 1000000,
+            "feeTier": Config.POOL_FEES["LOW"],
+            "token0": "WETH",
+            "token1": "WETH",
+        },
+        "WBTC": {
+            "liquidity": 500000,
+            "feeTier": Config.POOL_FEES["MEDIUM"],
+            "token0": "WETH",
+            "token1": "WBTC",
+        },
+        "UNI": {
+            "liquidity": 1000000,
+            "feeTier": Config.POOL_FEES["MEDIUM"],
+            "token0": "WETH",
+            "token1": "UNI",
+        },
+        "LINK": {
+            "liquidity": 800000,
+            "feeTier": Config.POOL_FEES["MEDIUM"],
+            "token0": "WETH",
+            "token1": "LINK",
+        },
+        "ARB": {
+            "liquidity": 1500000,
+            "feeTier": Config.POOL_FEES["MEDIUM"],
+            "token0": "WETH",
+            "token1": "ARB",
+        },
+        "GMX": {
+            "liquidity": 400000,
+            "feeTier": Config.POOL_FEES["MEDIUM"],
+            "token0": "WETH",
+            "token1": "GMX",
+        },
+        "USDC": {
+            "liquidity": 50000000,
+            "feeTier": Config.POOL_FEES["LOW"],
+            "token0": "WETH",
+            "token1": "USDC",
+        },
+        "USDT": {
+            "liquidity": 50000000,
+            "feeTier": Config.POOL_FEES["LOW"],
+            "token0": "WETH",
+            "token1": "USDT",
+        },
+        "LEVY": {
+            "liquidity": 100000,
+            "feeTier": Config.POOL_FEES["MEDIUM"],
+            "token0": "WETH",
+            "token1": "LEVY",
+        },
+        "APEX": {
+            "liquidity": 200000,
+            "feeTier": Config.POOL_FEES["MEDIUM"],
+            "token0": "WETH",
+            "token1": "APEX",
+        },
     }
-    return defaults.get(token, {"liquidity": 75000, "feeTier": Config.POOL_FEES["MEDIUM"], "token0": "WETH", "token1": token})
-
+    return defaults.get(
+        token, {"liquidity": 75000, "feeTier": Config.POOL_FEES["MEDIUM"], "token0": "WETH", "token1": token}
+    )
 
 # ====================
 # TIMERS AND POLLING
 # ====================
-
-def start_price_polling(app_state: AppState) -> None:
-    if hasattr(app_state, "price_update_timer"):
-        app_state.price_update_timer.cancel()
-
-    async def poll_prices():
-        while app_state.is_running:
-            try:
-                for token_symbol in list(app_state.observed_tokens):
-                    await check_patterns_for_token(app_state, token_symbol)
-                app_state.last_price_update = time.time()
-            except Exception as e:
-                print(f"Error in price polling: {e}")
-            await asyncio.sleep(3)
-
-    app_state.price_update_timer = asyncio.create_task(poll_prices())
-
-
-def stop_price_polling(app_state: AppState) -> None:
-    if hasattr(app_state, "price_update_timer"):
-        app_state.price_update_timer.cancel()
-
 
 def start_pattern_detection(app_state: AppState) -> None:
     if app_state.pattern_detection_active:
@@ -1281,12 +1456,10 @@ def start_pattern_detection(app_state: AppState) -> None:
 
     app_state.pattern_detection_timer = asyncio.create_task(detect_patterns())
 
-
 def stop_pattern_detection(app_state: AppState) -> None:
     if hasattr(app_state, "pattern_detection_timer"):
         app_state.pattern_detection_timer.cancel()
     app_state.pattern_detection_active = False
-
 
 def start_usdc_conversion_timer(app_state: AppState) -> None:
     if hasattr(app_state, "usdc_conversion_timer"):
@@ -1302,11 +1475,9 @@ def start_usdc_conversion_timer(app_state: AppState) -> None:
 
     app_state.usdc_conversion_timer = asyncio.create_task(convert_usdc())
 
-
 def stop_usdc_conversion_timer(app_state: AppState) -> None:
     if hasattr(app_state, "usdc_conversion_timer"):
         app_state.usdc_conversion_timer.cancel()
-
 
 # ====================
 # PATTERN DETECTION
@@ -1349,7 +1520,7 @@ async def detect_all_patterns(app_state: AppState) -> None:
                     second_rise_time=pattern.second_rise_time,
                     occurrences=1,
                     first_seen=pattern.timestamp,
-                    last_seen=pattern.timestamp
+                    last_seen=pattern.timestamp,
                 )
             else:
                 existing = new_active_patterns[existing_pattern_key]
@@ -1362,7 +1533,6 @@ async def detect_all_patterns(app_state: AppState) -> None:
         set(p.token for p in new_active_patterns.values())
     )
     app_state.last_detection_time = time.time()
-
 
 async def check_patterns_for_token(app_state: AppState, token: str) -> None:
     try:
@@ -1379,12 +1549,14 @@ async def check_patterns_for_token(app_state: AppState, token: str) -> None:
 
         open_position = next(
             (p for p in app_state.portfolio.positions if p.token == token and p.status == "open"),
-            None
+            None,
         )
 
         if open_position:
             current_value = open_position.amount * current_price
-            cost_basis = (open_position.amount * open_position.entry_price) + open_position.fees_paid + open_position.gas_paid
+            cost_basis = (
+                open_position.amount * open_position.entry_price
+            ) + open_position.fees_paid + open_position.gas_paid
             profit_weth = current_value - cost_basis
             profit_percent = (profit_weth / cost_basis) * 100
 
@@ -1393,7 +1565,7 @@ async def check_patterns_for_token(app_state: AppState, token: str) -> None:
                     app_state,
                     token,
                     TradeType.SELL,
-                    f"Profit target ({format_percent(profit_percent)}) reached"
+                    f"Profit target ({format_percent(profit_percent)}) reached",
                 )
             return
 
@@ -1409,7 +1581,7 @@ async def check_patterns_for_token(app_state: AppState, token: str) -> None:
 
             existing_position = next(
                 (p for p in app_state.portfolio.positions if p.token == token and p.status == "open"),
-                None
+                None,
             )
             if existing_position:
                 break
@@ -1420,7 +1592,7 @@ async def check_patterns_for_token(app_state: AppState, token: str) -> None:
                 TradeType.BUY,
                 get_pattern_description(pattern),
                 calculate_trade_amount(app_state),
-                pattern
+                pattern,
             )
 
             if trade and trade.status == TradeStatus.OPEN:
@@ -1428,12 +1600,11 @@ async def check_patterns_for_token(app_state: AppState, token: str) -> None:
                     "tradeId": trade.id,
                     "pattern": pattern,
                     "entryPrice": trade.price,
-                    "entryTime": time.time()
+                    "entryTime": time.time(),
                 }
                 break
     except Exception as e:
         print(f"Error checking patterns for token {token}: {e}")
-
 
 # ====================
 # DASHBOARD UPDATES
@@ -1444,15 +1615,16 @@ async def update_dashboard(app_state: AppState) -> Dict:
         observed_tokens = list(app_state.observed_tokens)
         return {
             "tracked_tokens_count": len(observed_tokens),
-            "last_price_update": time.ctime(app_state.last_price_update) if app_state.last_price_update else "Never",
+            "last_price_update": time.ctime(app_state.last_price_update)
+            if app_state.last_price_update
+            else "Never",
             "current_gas_price": f"{app_state.current_gas_price:.2f} gwei",
             "trade_amount_display": format_eth(calculate_trade_amount(app_state)),
-            "uptime": format_uptime(app_state.start_time) if app_state.start_time else "00:00:00"
+            "uptime": format_uptime(app_state.start_time) if app_state.start_time else "00:00:00",
         }
     except Exception as e:
         print(f"Error updating dashboard: {e}")
         return {}
-
 
 def get_portfolio_status(app_state: AppState) -> Dict:
     try:
@@ -1461,20 +1633,27 @@ def get_portfolio_status(app_state: AppState) -> Dict:
             "current_eth": format_eth(app_state.portfolio.current_eth),
             "realized_pnl": format_eth(app_state.portfolio.realized_pnl),
             "unrealized_pnl": format_eth(app_state.portfolio.unrealized_pnl),
-            "net_pnl": format_eth(app_state.portfolio.realized_pnl + app_state.portfolio.unrealized_pnl),
+            "net_pnl": format_eth(
+                app_state.portfolio.realized_pnl + app_state.portfolio.unrealized_pnl
+            ),
             "portfolio_return": format_percent(
-                ((app_state.portfolio.current_eth - app_state.portfolio.starting_eth) / app_state.portfolio.starting_eth) * 100
+                (
+                    (app_state.portfolio.current_eth - app_state.portfolio.starting_eth)
+                    / app_state.portfolio.starting_eth
+                )
+                * 100
             ),
             "usdc_profit": format_usdc(app_state.portfolio.usdc_profit),
             "usdc_balance": format_usdc(app_state.portfolio.usdc_balance),
             "gas_spent": format_eth(app_state.portfolio.gas_spent),
             "dex_fees": format_eth(app_state.portfolio.fees_paid),
-            "total_fees": format_eth(app_state.portfolio.gas_spent + app_state.portfolio.fees_paid)
+            "total_fees": format_eth(
+                app_state.portfolio.gas_spent + app_state.portfolio.fees_paid
+            ),
         }
     except Exception as e:
         print(f"Error getting portfolio status: {e}")
         return {}
-
 
 def get_recent_trades(app_state: AppState) -> List[Dict]:
     try:
@@ -1487,14 +1666,13 @@ def get_recent_trades(app_state: AppState) -> List[Dict]:
                 "price": format_number(trade.price, 8),
                 "amount": format_number(trade.token_amount, 4),
                 "pattern": trade.pattern or "Manual",
-                "profit": format_eth(trade.pnl, 8)
+                "profit": format_eth(trade.pnl, 8),
             }
             for trade in trades
         ]
     except Exception as e:
         print(f"Error getting recent trades: {e}")
         return []
-
 
 def get_last_swaps(app_state: AppState) -> List[Dict]:
     try:
@@ -1505,7 +1683,7 @@ def get_last_swaps(app_state: AppState) -> List[Dict]:
                 "token_out": swap.token_out,
                 "amount_in": format_number(swap.amount_in, 6),
                 "amount_out": format_number(swap.amount_out, 6),
-                "pool": swap.pool
+                "pool": swap.pool,
             }
             for swap in app_state.last_swaps[:10]
         ]
@@ -1513,19 +1691,19 @@ def get_last_swaps(app_state: AppState) -> List[Dict]:
         print(f"Error getting last swaps: {e}")
         return []
 
-
 def get_pattern_stats(app_state: AppState) -> Dict:
     try:
         return {
             "total_patterns": app_state.pattern_stats.get("total_patterns", 0),
             "tokens_with_patterns": app_state.pattern_stats.get("tokens_with_patterns", 0),
             "active_patterns_count": len(app_state.active_patterns),
-            "last_detection_time": time.ctime(app_state.last_detection_time) if app_state.last_detection_time else "Never"
+            "last_detection_time": time.ctime(app_state.last_detection_time)
+            if app_state.last_detection_time
+            else "Never",
         }
     except Exception as e:
         print(f"Error getting pattern stats: {e}")
         return {}
-
 
 def get_config_data(app_state: AppState) -> Dict:
     try:
@@ -1544,12 +1722,11 @@ def get_config_data(app_state: AppState) -> Dict:
             "price_history_duration": Config.PRICE_HISTORY_DURATION,
             "max_price_history": Config.MAX_PRICE_HISTORY,
             "usdc_target": Config.USDC_PROFIT_TARGET,
-            "pattern_mode": Config.PATTERN_MODE
+            "pattern_mode": Config.PATTERN_MODE,
         }
     except Exception as e:
         print(f"Error getting config: {e}")
         return {}
-
 
 def update_config_data(app_state: AppState, new_config: Dict) -> None:
     try:
@@ -1559,7 +1736,6 @@ def update_config_data(app_state: AppState, new_config: Dict) -> None:
     except Exception as e:
         print(f"Error updating config: {e}")
 
-
 # ====================
 # FLASK APP
 # ====================
@@ -1567,31 +1743,40 @@ def update_config_data(app_state: AppState, new_config: Dict) -> None:
 app = Flask(__name__)
 app_state = AppState()
 
-
-@app.route('/')
+@app.route("/")
 def index():
-    return render_template('index.html')
+    config_data = get_config_data(app_state)
+    return render_template("index.html", config=config_data)
 
-
-@app.route('/api/start', methods=['POST'])
+@app.route("/api/start", methods=["POST"])
 def start():
     try:
         asyncio.run(start_bot(app_state))
-        return jsonify({"status": "success", "message": "Bot started successfully"})
+        return jsonify(
+            {
+                "status": "success",
+                "message": "Bot started successfully",
+                "data": {"is_running": app_state.is_running},
+            }
+        )
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-
-@app.route('/api/stop', methods=['POST'])
+@app.route("/api/stop", methods=["POST"])
 def stop():
     try:
         stop_bot(app_state)
-        return jsonify({"status": "success", "message": "Bot stopped successfully"})
+        return jsonify(
+            {
+                "status": "success",
+                "message": "Bot stopped successfully",
+                "data": {"is_running": app_state.is_running},
+            }
+        )
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-
-@app.route('/api/reset', methods=['POST'])
+@app.route("/api/reset", methods=["POST"])
 def reset():
     try:
         reset_app(app_state)
@@ -1599,8 +1784,7 @@ def reset():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-
-@app.route('/api/status')
+@app.route("/api/status")
 def status():
     try:
         dashboard_data = asyncio.run(update_dashboard(app_state))
@@ -1609,64 +1793,72 @@ def status():
         last_swaps = get_last_swaps(app_state)
         pattern_stats = get_pattern_stats(app_state)
 
-        return jsonify({
-            "status": "success",
-            "data": {
-                "dashboard": dashboard_data,
-                "portfolio": portfolio_status,
-                "recent_trades": recent_trades,
-                "last_swaps": last_swaps,
-                "pattern_stats": pattern_stats,
-                "is_running": app_state.is_running,
-                "wallet_connected": app_state.wallet_connected,
-                "live_mode": app_state.live_mode,
+        return jsonify(
+            {
+                "status": "success",
+                "data": {
+                    "dashboard": dashboard_data,
+                    "portfolio": portfolio_status,
+                    "recent_trades": recent_trades,
+                    "last_swaps": last_swaps,
+                    "pattern_stats": pattern_stats,
+                    "is_running": app_state.is_running,
+                    "wallet_connected": app_state.wallet_connected,
+                    "live_mode": app_state.live_mode,
+                },
             }
-        })
+        )
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-
-@app.route('/api/config', methods=['GET', 'POST'])
+@app.route("/api/config", methods=["GET", "POST"])
 def config():
-    if request.method == 'GET':
+    if request.method == "GET":
         try:
             config_data = get_config_data(app_state)
             return jsonify({"status": "success", "config": config_data})
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
-    elif request.method == 'POST':
+    elif request.method == "POST":
         try:
             new_config = request.json
             update_config_data(app_state, new_config)
-            return jsonify({"status": "success", "message": "Config updated successfully"})
+            return jsonify(
+                {"status": "success", "message": "Config updated successfully"}
+            )
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
 
-
-@app.route('/api/connect_wallet', methods=['POST'])
+@app.route("/api/connect_wallet", methods=["POST"])
 def connect_wallet_route():
     try:
         success = connect_wallet(app_state)
         if success:
-            return jsonify({"status": "success", "message": "Wallet connected successfully"})
+            return jsonify(
+                {
+                    "status": "success",
+                    "message": "Wallet connected successfully",
+                    "wallet_address": app_state.wallet_address,
+                }
+            )
         else:
             return jsonify({"status": "error", "message": "Failed to connect wallet"}), 500
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-
-@app.route('/api/toggle_live_mode', methods=['POST'])
+@app.route("/api/toggle_live_mode", methods=["POST"])
 def toggle_live_mode():
     try:
         app_state.live_mode = not app_state.live_mode
-        return jsonify({
-            "status": "success",
-            "message": f"Live mode {'enabled' if app_state.live_mode else 'disabled'}",
-            "live_mode": app_state.live_mode
-        })
+        return jsonify(
+            {
+                "status": "success",
+                "message": f"Live mode {'enabled' if app_state.live_mode else 'disabled'}",
+                "live_mode": app_state.live_mode,
+            }
+        )
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=6767, debug=True)

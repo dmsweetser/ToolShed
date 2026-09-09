@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- app/templates/index.html -->
 <html lang="en">
 
 <head>
@@ -127,7 +126,8 @@
             margin-top: 10px;
         }
 
-        th, td {
+        th,
+        td {
             padding: 10px;
             text-align: left;
             border-bottom: 1px solid #e5e7eb;
@@ -200,6 +200,7 @@
                 transform: translateX(100%);
                 opacity: 0;
             }
+
             to {
                 transform: translateX(0);
                 opacity: 1;
@@ -225,7 +226,9 @@
         }
 
         @media (max-width: 768px) {
-            .grid-2, .grid-3 {
+
+            .grid-2,
+            .grid-3 {
                 grid-template-columns: 1fr;
             }
         }
@@ -294,7 +297,8 @@
             <h2>Controls</h2>
             <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 15px;">
                 <button class="btn btn-primary" id="connectWalletBtn" onclick="connectWallet()">Connect Wallet</button>
-                <button class="btn btn-warning" id="toggleLiveModeBtn" onclick="toggleLiveMode()" disabled>Live Mode: OFF</button>
+                <button class="btn btn-warning" id="toggleLiveModeBtn" onclick="toggleLiveMode()" disabled>Live Mode:
+                    OFF</button>
                 <button class="btn btn-success" id="startBotBtn" onclick="startBot()">
                     <span class="loading-spinner" id="startSpinner" style="display:none;"></span>Start Trading
                 </button>
@@ -305,8 +309,10 @@
                 <span id="botStatusIndicator"></span>
                 <span id="botStatusText">Not Running</span>
                 <span class="status status-disconnected" id="statusIndicator"></span>
-                <span id="blockchainStatus"><span class="loading-spinner" style="display:none;"></span> Market Connection</span>
-                <span id="priceFeedStatus"><span class="loading-spinner" style="display:none;"></span> Price Updates</span>
+                <span id="blockchainStatus"><span class="loading-spinner" style="display:none;"></span> Market
+                    Connection</span>
+                <span id="priceFeedStatus"><span class="loading-spinner" style="display:none;"></span> Price
+                    Updates</span>
             </div>
             <div class="grid-3" style="margin-top: 20px;">
                 <div class="metric-card">
@@ -344,19 +350,23 @@
                 <div style="display: grid; gap: 10px;">
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Starting Budget</div>
-                        <div style="font-size: 18px; font-weight: 600;"><span id="startingEthDisplay">0.01 WETH</span></div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="startingEthDisplay">{{
+                                config.starting_eth }} WETH</span></div>
                     </div>
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Current Value</div>
-                        <div style="font-size: 18px; font-weight: 600;"><span id="currentEth">0.01 WETH</span></div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="currentEth">{{ config.starting_eth }}
+                                WETH</span></div>
                     </div>
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Profit from Closed Trades</div>
-                        <div style="font-size: 18px; font-weight: 600;"><span class="price-up" id="realizedPnL">0.000000 WETH</span></div>
+                        <div style="font-size: 18px; font-weight: 600;"><span class="price-up" id="realizedPnL">0.000000
+                                WETH</span></div>
                     </div>
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Profit from Open Trades</div>
-                        <div style="font-size: 18px; font-weight: 600;"><span id="unrealizedPnL">0.000000 WETH</span></div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="unrealizedPnL">0.000000 WETH</span>
+                        </div>
                     </div>
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Total Profit</div>
@@ -385,7 +395,8 @@
                     </div>
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Profit Target</div>
-                        <div style="font-size: 18px; font-weight: 600;"><span id="targetProfitPercent">0.5%</span></div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="targetProfitPercent">{{
+                                config.min_profit }}%</span></div>
                     </div>
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Last Detection</div>
@@ -471,7 +482,8 @@
             <div style="display: grid; gap: 10px;">
                 <div>
                     <div style="font-size: 14px; color: #64748b;">USDC Target</div>
-                    <div style="font-size: 18px; font-weight: 600;"><span id="usdcTarget">1.00 USDC</span></div>
+                    <div style="font-size: 18px; font-weight: 600;"><span id="usdcTarget">{{ config.usdc_target }}
+                            USDC</span></div>
                 </div>
                 <div>
                     <div style="font-size: 14px; color: #64748b;">Last USDC Conversion</div>
@@ -489,7 +501,8 @@
             <div class="grid-3">
                 <div class="config-section">
                     <h3>Trading Budget</h3>
-                    <p><strong>Starting WETH:</strong> <span id="displayStartingEth">{{ config.starting_eth }} WETH</span></p>
+                    <p><strong>Starting WETH:</strong> <span id="displayStartingEth">{{ config.starting_eth }}
+                            WETH</span></p>
                     <p><strong>Trade %:</strong> <span id="displayTradePercent">{{ config.trade_percent }}%</span></p>
                     <p><strong>Min Trade:</strong> <span id="displayMinTrade">{{ config.min_trade }} WETH</span></p>
                     <p><strong>Max Trades:</strong> <span id="displayMaxTrades">{{ config.max_trades }}</span></p>
@@ -499,28 +512,41 @@
                     <p>
                         <strong>Pattern Mode:</strong>
                         <select id="patternModeSelect" class="form-control" onchange="updatePatternMode(this.value)">
-                            <option value="both" {% if config.pattern_mode == 'both' %}selected{% endif %}>Both (Dips + Swells)</option>
-                            <option value="dip" {% if config.pattern_mode == 'dip' %}selected{% endif %}>Dips Only</option>
-                            <option value="swell" {% if config.pattern_mode == 'swell' %}selected{% endif %}>Swells Only</option>
+                            <option value="both" {% if config.pattern_mode=='both' %}selected{% endif %}>Both (Dips +
+                                Swells)</option>
+                            <option value="dip" {% if config.pattern_mode=='dip' %}selected{% endif %}>Dips Only
+                            </option>
+                            <option value="swell" {% if config.pattern_mode=='swell' %}selected{% endif %}>Swells Only
+                            </option>
                         </select>
                     </p>
-                    <p><strong>Min Price Change:</strong> <span id="displayMinPriceChange">{{ config.min_price_change }}%</span></p>
-                    <p><strong>Min Time Window:</strong> <span id="displayMinTimeWindow">{{ config.min_time_window }}s</span></p>
-                    <p><strong>Max Time Window:</strong> <span id="displayMaxTimeWindow">{{ config.max_time_window }}s</span></p>
-                    <p><strong>Min Occurrences:</strong> <span id="displayMinOccurrences">{{ config.min_occurrences }}</span></p>
+                    <p><strong>Min Price Change:</strong> <span id="displayMinPriceChange">{{ config.min_price_change
+                            }}%</span></p>
+                    <p><strong>Min Time Window:</strong> <span id="displayMinTimeWindow">{{ config.min_time_window
+                            }}s</span></p>
+                    <p><strong>Max Time Window:</strong> <span id="displayMaxTimeWindow">{{ config.max_time_window
+                            }}s</span></p>
+                    <p><strong>Min Occurrences:</strong> <span id="displayMinOccurrences">{{ config.min_occurrences
+                            }}</span></p>
                 </div>
                 <div class="config-section">
                     <h3>Profit & Safety</h3>
-                    <p><strong>Min Profit to Sell:</strong> <span id="displayMinProfit">{{ config.min_profit }}%</span></p>
-                    <p><strong>Max Slippage:</strong> <span id="displayMaxSlippage">{{ config.max_slippage }}%</span></p>
-                    <p><strong>Max Gas Price:</strong> <span id="displayMaxGasPrice">{{ config.max_gas_price }} gwei</span></p>
-                    <p><strong>USDC Profit Target:</strong> <span id="displayUsdcTarget">{{ config.usdc_target }} USDC</span></p>
+                    <p><strong>Min Profit to Sell:</strong> <span id="displayMinProfit">{{ config.min_profit }}%</span>
+                    </p>
+                    <p><strong>Max Slippage:</strong> <span id="displayMaxSlippage">{{ config.max_slippage }}%</span>
+                    </p>
+                    <p><strong>Max Gas Price:</strong> <span id="displayMaxGasPrice">{{ config.max_gas_price }}
+                            gwei</span></p>
+                    <p><strong>USDC Profit Target:</strong> <span id="displayUsdcTarget">{{ config.usdc_target }}
+                            USDC</span></p>
                 </div>
             </div>
             <div class="config-section" style="margin-top: 15px;">
                 <h3>Data</h3>
-                <p><strong>Price History:</strong> <span id="displayPriceHistoryDuration">{{ config.price_history_duration }}h</span></p>
-                <p><strong>Max Price History:</strong> <span id="displayMaxPriceHistory">{{ config.max_price_history }}</span></p>
+                <p><strong>Price History:</strong> <span id="displayPriceHistoryDuration">{{
+                        config.price_history_duration }}h</span></p>
+                <p><strong>Max Price History:</strong> <span id="displayMaxPriceHistory">{{ config.max_price_history
+                        }}</span></p>
             </div>
         </div>
 
@@ -587,7 +613,7 @@
             // Update portfolio
             document.getElementById('startingEthDisplay').textContent = data.portfolio.starting_eth || '0.01 WETH';
             document.getElementById('currentEth').textContent = data.portfolio.current_eth || '0.01 WETH';
-            
+
             const realizedPnLEl = document.getElementById('realizedPnL');
             if (realizedPnLEl) {
                 realizedPnLEl.textContent = data.portfolio.realized_pnl || '0.000000 WETH';
@@ -717,7 +743,7 @@
 
                 const response = await fetch(`${API_BASE}/start`, { method: 'POST' });
                 const data = await response.json();
-                
+
                 startSpinner.style.display = 'none';
                 startBtn.disabled = !data.data || !data.data.is_running;
 
@@ -742,7 +768,7 @@
 
                 const response = await fetch(`${API_BASE}/stop`, { method: 'POST' });
                 const data = await response.json();
-                
+
                 if (stopSpinner) stopSpinner.style.display = 'none';
                 stopBtn.disabled = data.data && data.data.is_running;
 

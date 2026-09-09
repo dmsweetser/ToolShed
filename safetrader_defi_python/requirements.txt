@@ -1,3 +1,4 @@
-Flask==3.0.0
-python-dotenv==1.0.0
-web3==6.17.0
+Flask
+python-dotenv
+web3
+websockets
