@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Quick Swap Trader v8.1.0 (WETH-Centric + USDC Profit Funneling + Swell Patterns)</title>
+    <title>Uniswap Quick Swap Trader v8.2.0 (WETH-Centric + USDC Profit Funneling + Swell Patterns + Auto-Reconnect)
+    </title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
     <style>
         body {
@@ -311,7 +312,7 @@
     <div class="toast-container" id="toastContainer"></div>
     <div class="container">
         <h1>Uniswap Quick Swap Trader</h1>
-        <p><strong>v8.1.0 (WETH-Centric + USDC Profit Funneling + Swell Patterns + Auto-Reconnect)</strong></p>
+        <p><strong>v8.2.0 (WETH-Centric + USDC Profit Funneling + Swell Patterns + Auto-Reconnect)</strong></p>
 
         <!-- Controls -->
         <div class="card">
@@ -592,8 +593,9 @@
         // ======================
         // CONFIGURATION (UPDATED)
         // ======================
-        const APP_VERSION = '8.1.0 (WETH-Centric + USDC Profit Funneling + Swell Patterns + Auto-Reconnect)';
+        const APP_VERSION = '8.2.0 (WETH-Centric + USDC Profit Funneling + Swell Patterns + Auto-Reconnect)';
         const SWAP_DETECTION_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
+        const BLOCK_PROCESSING_TIMEOUT = 2 * 60 * 1000; // 2 minutes in milliseconds
 
         var CONFIG = {
             BLOCKCHAIN_NETWORK: 'arbitrum',
@@ -740,7 +742,10 @@
             lastMaxTradeToast: null,
             lastUsdcConversion: null,
             lastSwapDetected: null,
-            swapDetectionTimeoutTimer: null
+            swapDetectionTimeoutTimer: null,
+            lastBlockProcessed: null,
+            blockProcessingWatchdogTimer: null,
+            sessionResetTimer: null
         };
 
         // ======================
@@ -780,40 +785,37 @@
             if (el) el.innerHTML = html;
         }
 
-        // NEW: Update pattern mode from UI
         function updatePatternMode(mode) {
             CONFIG.PATTERN_MODE = mode;
             showToast('success', `Pattern mode set to: ${mode}`);
             if (state.isRunning) {
-                detectAllPatterns(); // Re-detect patterns with new mode
+                detectAllPatterns();
             }
         }
 
         // ======================
-        // SWAP DETECTION TIMEOUT
+        // WATCHDOG FUNCTIONS
         // ======================
         function checkSwapDetectionTimeout() {
             if (!state.isRunning || !state.activeSession?.connected) return;
 
             const now = Date.now();
-            if (state.lastSwapDetected && (now - state.lastSwapDetected) > SWAP_DETECTION_TIMEOUT) {
-                console.warn("No swaps detected in 5 minutes. Restarting connection...");
-                showToast('warning', 'No swaps detected in 5 minutes. Restarting connection...');
+            const lastSwapTime = state.lastSwapDetected || 0;
+            const lastBlockTime = state.lastBlockProcessed || 0;
+
+            const isStale = (now - lastSwapTime) > SWAP_DETECTION_TIMEOUT ||
+                (now - lastBlockTime) > SWAP_DETECTION_TIMEOUT;
+
+            if (isStale) {
+                console.warn("[Timeout] No activity detected in 5 minutes. Restarting connection...");
+                showToast('warning', 'No activity detected in 5 minutes. Restarting connection...');
                 restartConnection();
             }
         }
 
-        async function restartConnection() {
-            if (!state.isRunning) return;
-
-            showToast('info', 'Restarting connection...');
-            await stopUniswapSession();
-            await startUniswapSession();
-        }
-
         function startSwapDetectionTimeoutCheck() {
             if (state.swapDetectionTimeoutTimer) clearInterval(state.swapDetectionTimeoutTimer);
-            state.swapDetectionTimeoutTimer = setInterval(checkSwapDetectionTimeout, 30000); // Check every 30 seconds
+            state.swapDetectionTimeoutTimer = setInterval(checkSwapDetectionTimeout, 30000);
         }
 
         function stopSwapDetectionTimeoutCheck() {
@@ -821,6 +823,56 @@
                 clearInterval(state.swapDetectionTimeoutTimer);
                 state.swapDetectionTimeoutTimer = null;
             }
+        }
+
+        function startBlockProcessingWatchdog(s) {
+            if (state.blockProcessingWatchdogTimer) clearInterval(state.blockProcessingWatchdogTimer);
+            state.blockProcessingWatchdogTimer = setInterval(() => {
+                if (!current(s)) return;
+
+                const now = Date.now();
+                if (state.lastBlockProcessed && (now - state.lastBlockProcessed) > BLOCK_PROCESSING_TIMEOUT) {
+                    console.warn("[Watchdog] No blocks processed in 2 minutes. Forcing reconnect...");
+                    showToast('warning', 'No blocks processed in 2 minutes. Reconnecting...');
+                    s.connected = false;
+                    scheduleReconnect(s);
+                }
+            }, 30000);
+        }
+
+        function stopBlockProcessingWatchdog() {
+            if (state.blockProcessingWatchdogTimer) {
+                clearInterval(state.blockProcessingWatchdogTimer);
+                state.blockProcessingWatchdogTimer = null;
+            }
+        }
+
+        function startSessionResetWatchdog() {
+            if (state.sessionResetTimer) clearTimeout(state.sessionResetTimer);
+            state.sessionResetTimer = setTimeout(() => {
+                if (state.isRunning && (!state.activeSession?.connected || !state.lastBlockProcessed)) {
+                    console.warn('[Watchdog] Session appears stale. Resetting...');
+                    showToast('warning', 'Session stale. Resetting connection...');
+                    restartConnection();
+                }
+            }, 5 * 60 * 1000);
+        }
+
+        function stopSessionResetWatchdog() {
+            if (state.sessionResetTimer) {
+                clearTimeout(state.sessionResetTimer);
+                state.sessionResetTimer = null;
+            }
+        }
+
+        async function restartConnection() {
+            if (!state.isRunning) return;
+
+            showToast('info', 'Restarting connection...');
+            state.manuallyStopped = true;
+            await stopUniswapSession();
+            state.manuallyStopped = false;
+            await startUniswapSession();
         }
 
         // ======================
@@ -1195,7 +1247,6 @@
             try {
                 if (!state.isRunning) return null;
 
-                // Block buys if the token was recently traded or has an open buy order
                 if (action === 'buy') {
                     if (CONFIG.PREVENT_SEQUENTIAL_TRADES && state.lastTradedToken === token) {
                         const lastTradeTime = state.lastTradeTimes[token];
@@ -1210,14 +1261,12 @@
                         return null;
                     }
 
-                    // Prevent multiple open positions for the same token
                     const existingPosition = state.portfolio.positions.find(p => p.token === token && p.status === 'open');
                     if (existingPosition) {
                         console.log(`Blocked buy for ${token}: Already has an open position.`);
                         return null;
                     }
 
-                    // Only allow buy if pattern matches selected mode
                     if (pattern) {
                         if (CONFIG.PATTERN_MODE === 'dip' && pattern.type !== PATTERN_TYPES.BUY) {
                             console.log(`Blocked buy for ${token}: Pattern mode is set to dips only.`);
@@ -1230,7 +1279,6 @@
                     }
                 }
 
-                // Fetch the latest gas price before trade execution
                 await updateGasPrice();
                 const currentGasPrice = state.currentGasPrice || CONFIG.MAX_GAS_PRICE;
 
@@ -1391,13 +1439,11 @@
                         await executeTrade(token, 'sell', `Profit target (${formatPercent(profitPercent)}) reached`);
                         return;
                     }
-                    return; // Already has position, skip buy checks
+                    return;
                 }
 
-                // Check for buy patterns (dips or swells)
                 const tokenPatterns = Array.from(state.activePatterns.values()).filter(p => p.token === token);
                 for (const pattern of tokenPatterns) {
-                    // Only execute trades for the selected pattern mode
                     if (CONFIG.PATTERN_MODE === 'dip' && pattern.type !== PATTERN_TYPES.BUY) continue;
                     if (CONFIG.PATTERN_MODE === 'swell' && pattern.type !== PATTERN_TYPES.SWELL) continue;
 
@@ -1439,7 +1485,6 @@
                 const usdcAddress = NETWORK_TOKENS.arbitrum.USDC;
                 const wethAddress = NETWORK_TOKENS.arbitrum.WETH;
 
-                // Try to find a direct USDC/WETH pool
                 if (state.activeSession.pools) {
                     for (const [poolAddress, pool] of state.activeSession.pools) {
                         if (
@@ -1455,20 +1500,18 @@
                     }
                 }
 
-                // Fallback: Use a known price (1 USDC = 0.0005 WETH)
                 const fallbackPrice = 0.0005;
                 state.prices.USDC = fallbackPrice;
                 return fallbackPrice;
             } catch (e) {
                 console.error('Error fetching USDC price:', e);
-                return 0.0005; // Default fallback
+                return 0.0005;
             }
         }
 
         async function executeTradeForUSDC(amountWETH, usdcPriceInWETH) {
             try {
                 if (!state.liveMode || !state.walletConnected || !state.signer) {
-                    // Simulate the trade in non-live mode
                     const usdcAmount = amountWETH / usdcPriceInWETH;
                     return {
                         success: true,
@@ -1478,16 +1521,13 @@
                     };
                 }
 
-                // In live mode, execute the actual trade
                 const usdcAmount = amountWETH / usdcPriceInWETH;
                 const usdcAddress = NETWORK_TOKENS.arbitrum.USDC;
                 const wethAddress = NETWORK_TOKENS.arbitrum.WETH;
 
-                // Approve WETH spending if necessary
                 const wethContract = new ethers.Contract(wethAddress, ERC20_ABI, state.signer);
                 const usdcContract = new ethers.Contract(usdcAddress, ERC20_ABI, state.signer);
 
-                // Check WETH balance
                 const wethBalance = await wethContract.balanceOf(await state.signer.getAddress());
                 if (ethers.formatUnits(wethBalance, 18) < amountWETH) {
                     return {
@@ -1496,23 +1536,22 @@
                     };
                 }
 
-                // Execute swap via Uniswap Router
-                const routerAddress = "0xE592427A0AEce92De3Edee1F18E0157C05861564"; // Uniswap V3 Router
+                const routerAddress = "0xE592427A0AEce92De3Edee1F18E0157C05861564";
                 const routerAbi = ["function exactInputSingle(address,address,uint24,address,uint256,uint256,uint160) external returns (uint256)"];
                 const router = new ethers.Contract(routerAddress, routerAbi, state.signer);
 
                 const amountIn = ethers.parseUnits(amountWETH.toString(), 18);
-                const minAmountOut = ethers.parseUnits((usdcAmount * 0.995).toString(), 6); // 0.5% slippage
+                const minAmountOut = ethers.parseUnits((usdcAmount * 0.995).toString(), 6);
 
                 try {
                     const tx = await router.exactInputSingle(
                         wethAddress,
                         usdcAddress,
-                        500, // 0.05% fee tier (USDC/WETH pool)
+                        500,
                         await state.signer.getAddress(),
                         amountIn,
                         minAmountOut,
-                        Math.floor(Date.now() / 1000) + 60 * 20 // 20-minute deadline
+                        Math.floor(Date.now() / 1000) + 60 * 20
                     );
                     await tx.wait();
                     return { success: true, usdcAmount };
@@ -1532,29 +1571,24 @@
             try {
                 if (!state.isRunning || !state.activeSession?.connected) return;
 
-                // Get the current WETH/USDC price
                 const usdcPriceInWETH = await getUSDCPriceInWETH();
                 if (!usdcPriceInWETH) {
                     console.warn('Could not fetch USDC/WETH price.');
                     return;
                 }
 
-                // Calculate total profit in WETH
                 const totalProfitWETH = state.portfolio.realizedPnL + state.portfolio.unrealizedPnL;
                 if (totalProfitWETH <= 0) {
                     console.log('No profit to convert to USDC.');
                     return;
                 }
 
-                // Calculate how much WETH is needed to get $1 worth of USDC
                 const usdcTarget = CONFIG.USDC_PROFIT_TARGET;
                 const wethNeededFor1USDC = usdcTarget * usdcPriceInWETH;
 
-                // Check if we have enough profit to convert
                 if (totalProfitWETH >= wethNeededFor1USDC) {
                     console.log(`Converting ${wethNeededFor1USDC} WETH to ${usdcTarget} USDC...`);
 
-                    // Execute the trade: Sell WETH for USDC
                     const tradeResult = await executeTradeForUSDC(wethNeededFor1USDC, usdcPriceInWETH);
                     if (tradeResult.success) {
                         state.portfolio.usdcProfit += usdcTarget;
@@ -1608,7 +1642,6 @@
                     const history = state.priceHistory[token];
                     if (!history || history.length < 5) continue;
 
-                    // Only detect patterns based on selected mode
                     let patterns = [];
                     if (CONFIG.PATTERN_MODE === 'both' || CONFIG.PATTERN_MODE === 'dip') {
                         patterns.push(...detectBuyPatternsForToken(history, token));
@@ -1645,7 +1678,6 @@
                 state.lastDetectionTime = new Date();
                 safeSetText('lastDetectionTime', state.lastDetectionTime.toLocaleTimeString());
 
-                // Check patterns for trades sequentially
                 for (const token of tokens) {
                     await checkPatternsForToken(token);
                 }
@@ -1684,14 +1716,12 @@
                 let totalWETH = state.portfolio.balances['WETH'] || 0;
                 let unrealizedPnL = 0;
 
-                // Add value of all token holdings
                 for (const [tokenSymbol, amount] of Object.entries(state.portfolio.balances)) {
                     if (tokenSymbol === 'WETH') continue;
                     const price = state.prices[tokenSymbol] || 0;
                     totalWETH += amount * price;
                 }
 
-                // Add unrealized PnL from open positions
                 state.portfolio.positions.forEach(position => {
                     if (position.status === 'open') {
                         const currentPrice = state.prices[position.token] || position.entryPrice;
@@ -1998,7 +2028,6 @@
             safeSetText('displayUsdcTarget', CONFIG.USDC_PROFIT_TARGET + ' USDC');
             safeSetText('usdcTarget', formatUSDC(CONFIG.USDC_PROFIT_TARGET));
 
-            // Set the dropdown to the current pattern mode
             const patternModeSelect = document.getElementById('patternModeSelect');
             if (patternModeSelect) {
                 patternModeSelect.value = CONFIG.PATTERN_MODE;
@@ -2065,6 +2094,7 @@
                 startPatternDetection();
                 startUsdcConversionTimer();
                 startSwapDetectionTimeoutCheck();
+                startSessionResetWatchdog();
 
                 showToast('success', 'Started! Watching Arbitrum for quick swap opportunities.');
             } catch (error) {
@@ -2096,6 +2126,8 @@
                 stopPricePolling();
                 stopUsdcConversionTimer();
                 stopSwapDetectionTimeoutCheck();
+                stopSessionResetWatchdog();
+                stopBlockProcessingWatchdog();
 
                 await stopUniswapSession();
                 state.openBuyOrders.clear();
@@ -2239,7 +2271,8 @@
                 swaps: [],
                 gasPrice: null,
                 gasPriceHistory: [],
-                currentRpcIndex: 0
+                currentRpcIndex: 0,
+                blockPollingInterval: null
             };
         }
 
@@ -2262,6 +2295,11 @@
             if (s.priceUpdateInterval) {
                 clearInterval(s.priceUpdateInterval);
                 s.priceUpdateInterval = null;
+            }
+
+            if (s.blockPollingInterval) {
+                clearInterval(s.blockPollingInterval);
+                s.blockPollingInterval = null;
             }
 
             try { s.provider?.removeAllListeners(); } catch { }
@@ -2300,7 +2338,6 @@
 
             try {
                 await connectWithRetry(s);
-                // If still not connected after retry, stop running state
                 if (!s.connected) {
                     state.isRunning = false;
                     state.manuallyStopped = true;
@@ -2328,13 +2365,16 @@
 
                 if (wsRpc) {
                     try {
+                        console.log(`[WebSocket] Attempting connection to ${wsRpc}`);
                         provider = new ethers.WebSocketProvider(wsRpc, chain.chainId);
                     } catch (e) {
-                        console.warn('WebSocket connection failed, falling back to HTTP:', e);
+                        console.warn('[WebSocket] Failed, falling back to HTTP:', e);
                         provider = new ethers.JsonRpcProvider(chain.rpcs[0]);
+                        startBlockPolling(s);
                     }
                 } else {
                     provider = new ethers.JsonRpcProvider(chain.rpcs[0]);
+                    startBlockPolling(s);
                 }
 
                 if (!current(s)) {
@@ -2348,29 +2388,32 @@
                 if (s.ws) {
                     s.ws.addEventListener("open", () => {
                         if (!current(s)) return;
+                        console.log(`[WebSocket] Connected to ${s.chain.name}`);
                         s.connected = true;
                         s.reconnectAttempts = 0;
                         updateButton();
                         updateConnectionStatus();
                         initializeSessionHandlers(s);
-                        showToast('success', `Connected to Arbitrum`);
+                        showToast('success', `Connected to ${s.chain.name}`);
                     });
 
-                    s.ws.addEventListener("close", () => {
+                    s.ws.addEventListener("close", (e) => {
                         if (!current(s)) return;
+                        console.warn(`[WebSocket] Disconnected from ${s.chain.name}: ${e.code} ${e.reason}`);
                         s.connected = false;
                         updateButton();
                         updateConnectionStatus();
-                        showToast('warning', `Disconnected from Arbitrum, reconnecting...`);
+                        showToast('warning', `Disconnected from ${s.chain.name}, reconnecting...`);
                         scheduleReconnect(s);
                     });
 
-                    s.ws.addEventListener("error", e => {
+                    s.ws.addEventListener("error", (e) => {
                         if (!current(s)) return;
+                        console.error(`[WebSocket] Error for ${s.chain.name}:`, e);
                         s.connected = false;
                         updateButton();
                         updateConnectionStatus();
-                        showToast('error', `WebSocket error for Arbitrum: ${e.message || String(e)}`);
+                        showToast('error', `WebSocket error for ${s.chain.name}: ${e.message || String(e)}`);
                         scheduleReconnect(s);
                     });
                 }
@@ -2387,14 +2430,15 @@
 
                 startGasMonitoring(s);
                 startPriceMonitoring(s);
+                startBlockProcessingWatchdog(s);
             } catch (e) {
                 if (!current(s)) return;
+                console.error('[Connection] Failed:', e);
                 s.connected = false;
                 updateButton();
                 updateConnectionStatus();
-                showToast('error', `Connection failed for Arbitrum: ${e.message || String(e)}`);
+                showToast('error', `Connection failed for ${s.chain.name}: ${e.message || String(e)}`);
                 scheduleReconnect(s);
-                console.error('Connection error:', e);
             }
         }
 
@@ -2403,31 +2447,34 @@
 
             s.reconnectAttempts++;
             const maxAttempts = state.maxReconnectAttempts || 10;
+            const delay = Math.min(state.reconnectDelay * Math.pow(2, s.reconnectAttempts - 1), 30000);
 
             if (s.reconnectAttempts > maxAttempts) {
-                showToast('error', `Max reconnection attempts (${maxAttempts}) reached for Arbitrum.`);
+                showToast('error', `Max reconnection attempts (${maxAttempts}) reached for ${s.chain.name}.`);
                 updateConnectionStatus();
-                // Stop the bot when reconnection fails
                 state.isRunning = false;
                 state.manuallyStopped = true;
                 stopPatternDetection();
                 stopPricePolling();
                 stopUsdcConversionTimer();
                 stopSwapDetectionTimeoutCheck();
+                stopSessionResetWatchdog();
+                stopBlockProcessingWatchdog();
                 updateBotStatus();
                 updateButton();
                 return;
             }
 
-            destroySession(s);
-            s.currentRpcIndex = (s.currentRpcIndex + 1) % CHAINS.arbitrum.rpcs.length;
-            const delay = Math.min(state.reconnectDelay * Math.pow(2, s.reconnectAttempts - 1), 30000);
-
-            showToast('info', `Reconnecting to Arbitrum in ${delay / 1000} seconds (attempt ${s.reconnectAttempts}/${maxAttempts})...`);
+            console.log(`[Reconnect] Attempt ${s.reconnectAttempts}/${maxAttempts} in ${delay / 1000}s...`);
+            showToast('info', `Reconnecting to ${s.chain.name} in ${delay / 1000} seconds (attempt ${s.reconnectAttempts}/${maxAttempts})...`);
 
             s.reconnectTimer = setTimeout(() => {
                 s.reconnectTimer = null;
-                if (current(s)) connectWithRetry(s);
+                if (current(s)) {
+                    destroySession(s);
+                    s.currentRpcIndex = (s.currentRpcIndex + 1) % CHAINS.arbitrum.rpcs.length;
+                    connectWithRetry(s);
+                }
             }, delay);
         }
 
@@ -2435,15 +2482,41 @@
             if (!current(s)) return;
             if (s.provider && s.provider.on) {
                 s.provider.on("block", n => {
-                    if (current(s)) queueBlock(s, Number(n));
+                    if (current(s)) {
+                        console.log(`[Block] Received block ${n}`);
+                        queueBlock(s, Number(n));
+                    }
                 });
             }
 
             if (!s.priceUpdateInterval) {
                 s.priceUpdateInterval = setInterval(() => {
-                    if (current(s)) updatePricesForSession(s);
+                    if (current(s)) {
+                        console.log(`[Price Update] Fetching prices...`);
+                        updatePricesForSession(s);
+                    }
                 }, 10000);
             }
+        }
+
+        function startBlockPolling(s) {
+            if (s.blockPollingInterval) clearInterval(s.blockPollingInterval);
+            s.blockPollingInterval = setInterval(async () => {
+                if (!current(s) || !s.provider) return;
+
+                try {
+                    const latestBlock = await s.provider.getBlockNumber();
+                    if (current(s)) {
+                        s.rpcHead = latestBlock;
+                        if (s.lastProcessedBlock === null || latestBlock > s.lastProcessedBlock) {
+                            console.log(`[Block Polling] Latest block: ${latestBlock}`);
+                            queueBlock(s, latestBlock);
+                        }
+                    }
+                } catch (e) {
+                    console.error('[Block Polling] Error:', e);
+                }
+            }, 15000);
         }
 
         async function startPriceMonitoring(s) {
@@ -2573,7 +2646,10 @@
                     return;
                 }
 
-                if (!logs || !current(s) || !logs.length) return;
+                if (!logs || !current(s) || !logs.length) {
+                    state.lastBlockProcessed = Date.now();
+                    return;
+                }
 
                 const logBatches = [];
                 for (let i = 0; i < logs.length; i += 5) {
@@ -2589,6 +2665,8 @@
                         }
                     }));
                 }));
+
+                state.lastBlockProcessed = Date.now();
             } catch (error) {
                 console.error('Error processing block:', error);
             }
@@ -2636,7 +2714,6 @@
                 if (state.lastSwaps.length > 10) state.lastSwaps.pop();
                 renderLastSwaps();
 
-                // Update lastSwapDetected timestamp
                 state.lastSwapDetected = ts;
 
                 s.swaps.push(ts);
@@ -3147,6 +3224,8 @@
             stopPricePolling();
             stopUsdcConversionTimer();
             stopSwapDetectionTimeoutCheck();
+            stopSessionResetWatchdog();
+            stopBlockProcessingWatchdog();
         }
 
         // ======================
