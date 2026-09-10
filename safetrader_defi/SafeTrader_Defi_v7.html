@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Quick Swap Trader v9.1.0 (Regression-Only Pattern Detection)</title>
+    <title>Uniswap Quick Swap Trader v10.0.0 (Optimized Regression-Only)</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
     <style>
         body {
@@ -325,7 +325,7 @@
     <div class="toast-container" id="toastContainer"></div>
     <div class="container">
         <h1>Uniswap Quick Swap Trader</h1>
-        <p><strong>v9.1.0 (Regression-Only Pattern Detection)</strong></p>
+        <p><strong>v10.0.0 (Optimized Regression-Only)</strong></p>
         <p class="recovery-status" id="recoveryStatus">Last recovery: Never</p>
 
         <!-- Controls -->
@@ -537,90 +537,37 @@
         <!-- Configuration -->
         <div class="card">
             <h2>Configuration</h2>
-            <div class="grid-3">
-                <!-- Trading Budget -->
-                <div class="config-section">
-                    <h3>Trading Budget</h3>
-                    <div style="margin-bottom: 8px;">
+
+            <!-- Trading Budget -->
+            <div class="config-section">
+                <h3>Trading Budget</h3>
+                <div class="grid-3">
+                    <div>
                         <label>Starting WETH:</label>
                         <input type="number" class="form-control" id="inputStartingEth" value="0.01" step="0.001"
                             onchange="updateConfigFromUI()">
                     </div>
-                    <div style="margin-bottom: 8px;">
+                    <div>
                         <label>Trade %:</label>
                         <input type="number" class="form-control" id="inputTradePercent" value="10" step="1"
                             onchange="updateConfigFromUI()">
                     </div>
-                    <div style="margin-bottom: 8px;">
+                    <div>
                         <label>Min Trade (WETH):</label>
                         <input type="number" class="form-control" id="inputMinTrade" value="0.001" step="0.001"
                             onchange="updateConfigFromUI()">
                     </div>
-                    <div style="margin-bottom: 8px;">
+                </div>
+                <div class="grid-3" style="margin-top: 10px;">
+                    <div>
                         <label>Max Trades:</label>
                         <input type="number" class="form-control" id="inputMaxTrades" value="5" step="1"
                             onchange="updateConfigFromUI()">
                     </div>
                 </div>
-
-                <!-- Pattern Detection -->
-                <div class="config-section">
-                    <h3>Pattern Detection</h3>
-                    <div style="margin-bottom: 8px;">
-                        <label>Pattern Mode:</label>
-                        <select id="patternModeSelect" class="form-control" onchange="updateConfigFromUI()" disabled>
-                            <option value="regression" selected>Regression Only</option>
-                        </select>
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label>Min Price Change (%):</label>
-                        <input type="number" class="form-control" id="inputMinPriceChange" value="1" step="0.1"
-                            onchange="updateConfigFromUI()">
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label>Min Time Window (s):</label>
-                        <input type="number" class="form-control" id="inputMinTimeWindow" value="5" step="1"
-                            onchange="updateConfigFromUI()">
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label>Max Time Window (s):</label>
-                        <input type="number" class="form-control" id="inputMaxTimeWindow" value="60" step="1"
-                            onchange="updateConfigFromUI()">
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label>Min Occurrences:</label>
-                        <input type="number" class="form-control" id="inputMinOccurrences" value="2" step="1"
-                            onchange="updateConfigFromUI()">
-                    </div>
-                </div>
-
-                <!-- Profit & Safety -->
-                <div class="config-section">
-                    <h3>Profit & Safety</h3>
-                    <div style="margin-bottom: 8px;">
-                        <label>Min Profit to Sell (%):</label>
-                        <input type="number" class="form-control" id="inputMinProfit" value="0.5" step="0.1"
-                            onchange="updateConfigFromUI()">
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label>Max Slippage (%):</label>
-                        <input type="number" class="form-control" id="inputMaxSlippage" value="0.5" step="0.1"
-                            onchange="updateConfigFromUI()">
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label>Max Gas Price (gwei):</label>
-                        <input type="number" class="form-control" id="inputMaxGasPrice" value="500" step="1"
-                            onchange="updateConfigFromUI()">
-                    </div>
-                    <div style="margin-bottom: 8px;">
-                        <label>USDC Profit Target:</label>
-                        <input type="number" class="form-control" id="inputUsdcTarget" value="1.0" step="0.1"
-                            onchange="updateConfigFromUI()">
-                    </div>
-                </div>
             </div>
 
-            <!-- Regression-Based Pattern Detection Settings -->
+            <!-- Regression-Based Pattern Detection -->
             <div class="config-section" style="margin-top: 15px;">
                 <h3>Regression-Based Pattern Detection</h3>
                 <div class="grid-3">
@@ -637,10 +584,39 @@
                     <div>
                         <label>Regression Degree:</label>
                         <select class="form-control" id="inputRegressionDegree" onchange="updateConfigFromUI()">
+                            <option value="2" selected>Quadratic (2)</option>
                             <option value="1">Linear (1)</option>
-                            <option value="2">Quadratic (2)</option>
                             <option value="3">Cubic (3)</option>
                         </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profit & Safety -->
+            <div class="config-section" style="margin-top: 15px;">
+                <h3>Profit & Safety</h3>
+                <div class="grid-3">
+                    <div>
+                        <label>Min Profit to Sell (%):</label>
+                        <input type="number" class="form-control" id="inputMinProfit" value="0.5" step="0.1"
+                            onchange="updateConfigFromUI()">
+                    </div>
+                    <div>
+                        <label>Max Slippage (%):</label>
+                        <input type="number" class="form-control" id="inputMaxSlippage" value="0.5" step="0.1"
+                            onchange="updateConfigFromUI()">
+                    </div>
+                    <div>
+                        <label>Max Gas Price (gwei):</label>
+                        <input type="number" class="form-control" id="inputMaxGasPrice" value="500" step="1"
+                            onchange="updateConfigFromUI()">
+                    </div>
+                </div>
+                <div class="grid-3" style="margin-top: 10px;">
+                    <div>
+                        <label>USDC Profit Target:</label>
+                        <input type="number" class="form-control" id="inputUsdcTarget" value="1.0" step="0.1"
+                            onchange="updateConfigFromUI()">
                     </div>
                 </div>
             </div>
@@ -690,7 +666,7 @@
         // ======================
         // CONFIGURATION
         // ======================
-        const APP_VERSION = '9.1.0 (Regression-Only Pattern Detection)';
+        const APP_VERSION = '10.0.0 (Optimized Regression-Only)';
         const SWAP_DETECTION_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
         const BLOCK_PROCESSING_TIMEOUT = 2 * 60 * 1000; // 2 minutes in milliseconds
         const MAX_SWAPS_STORAGE = 20000; // Store last 20k swaps
@@ -717,10 +693,10 @@
             USDC_PROFIT_TARGET: 1.0,
             USDC_CONVERSION_INTERVAL: 300000,
             MIN_LIQUIDITY: 50000,
-            PATTERN_MODE: 'regression', // Only regression
+            PATTERN_MODE: 'regression',
             WINDOW_SIZE: 30, // seconds
             MARGIN_OF_ERROR: 2, // percentage
-            REGRESSION_DEGREE: 1 // 1=linear, 2=quadratic, 3=cubic
+            REGRESSION_DEGREE: 2 // 2=quadratic (best default)
         };
 
         // Pattern types
@@ -1079,7 +1055,7 @@
 
             const windowSize = CONFIG.WINDOW_SIZE * 1000; // Convert to milliseconds
             const marginOfError = CONFIG.MARGIN_OF_ERROR / 100;
-            const regressionDegree = parseInt(CONFIG.REGRESSION_DEGREE) || 1;
+            const regressionDegree = parseInt(CONFIG.REGRESSION_DEGREE) || 2;
             const patterns = [];
 
             // Group history into windows
@@ -1165,7 +1141,7 @@
 
         function isPatternValid(pattern) {
             if (pattern.type === PATTERN_TYPES.REGRESSION) {
-                return true; // Always valid for now
+                return true;
             }
             return false;
         }
@@ -2168,26 +2144,8 @@
         }
 
         function updateConstantsDisplay() {
-            safeSetText('displayStartingEth', CONFIG.STARTING_ETH + ' WETH');
-            safeSetText('displayTradePercent', CONFIG.TRADE_AMOUNT_PERCENT + '%');
-            safeSetText('displayMinTrade', CONFIG.MIN_TRADE_AMOUNT_ETH + ' WETH');
-            safeSetText('displayMaxTrades', CONFIG.MAX_TRADES);
-            safeSetText('displayMinPriceChange', CONFIG.MIN_PRICE_CHANGE + '%');
-            safeSetText('displayMinTimeWindow', CONFIG.MIN_TIME_WINDOW + 's');
-            safeSetText('displayMaxTimeWindow', CONFIG.MAX_TIME_WINDOW + 's');
-            safeSetText('displayMinOccurrences', CONFIG.MIN_OCCURRENCES);
-            safeSetText('displayMinProfit', CONFIG.MIN_PROFIT_PERCENT + '%');
-            safeSetText('displayMaxSlippage', CONFIG.MAX_SLIPPAGE + '%');
-            safeSetText('displayMaxGasPrice', CONFIG.MAX_GAS_PRICE + ' gwei');
-            safeSetText('displayPriceHistoryDuration', CONFIG.PRICE_HISTORY_DURATION + 'h');
-            safeSetText('displayMaxPriceHistory', CONFIG.MAX_PRICE_HISTORY);
-            safeSetText('displayUsdcTarget', CONFIG.USDC_PROFIT_TARGET + ' USDC');
+            safeSetText('targetProfitPercent', CONFIG.MIN_PROFIT_PERCENT + '%');
             safeSetText('usdcTarget', formatUSDC(CONFIG.USDC_PROFIT_TARGET));
-
-            const patternModeSelect = document.getElementById('patternModeSelect');
-            if (patternModeSelect) {
-                patternModeSelect.value = CONFIG.PATTERN_MODE;
-            }
         }
 
         function showToast(type, message, duration = 5000) {
@@ -2228,11 +2186,6 @@
             CONFIG.TRADE_AMOUNT_PERCENT = parseFloat(document.getElementById('inputTradePercent').value) || 10;
             CONFIG.MIN_TRADE_AMOUNT_ETH = parseFloat(document.getElementById('inputMinTrade').value) || 0.001;
             CONFIG.MAX_TRADES = parseInt(document.getElementById('inputMaxTrades').value) || 5;
-            CONFIG.PATTERN_MODE = document.getElementById('patternModeSelect').value;
-            CONFIG.MIN_PRICE_CHANGE = parseFloat(document.getElementById('inputMinPriceChange').value) || 1;
-            CONFIG.MIN_TIME_WINDOW = parseInt(document.getElementById('inputMinTimeWindow').value) || 5;
-            CONFIG.MAX_TIME_WINDOW = parseInt(document.getElementById('inputMaxTimeWindow').value) || 60;
-            CONFIG.MIN_OCCURRENCES = parseInt(document.getElementById('inputMinOccurrences').value) || 2;
             CONFIG.MIN_PROFIT_PERCENT = parseFloat(document.getElementById('inputMinProfit').value) || 0.5;
             CONFIG.MAX_SLIPPAGE = parseFloat(document.getElementById('inputMaxSlippage').value) || 0.5;
             CONFIG.MAX_GAS_PRICE = parseInt(document.getElementById('inputMaxGasPrice').value) || 500;
@@ -2241,7 +2194,7 @@
             // Regression-based pattern detection settings
             CONFIG.WINDOW_SIZE = parseInt(document.getElementById('inputWindowSize').value) || 30;
             CONFIG.MARGIN_OF_ERROR = parseFloat(document.getElementById('inputMarginOfError').value) || 2;
-            CONFIG.REGRESSION_DEGREE = parseInt(document.getElementById('inputRegressionDegree').value) || 1;
+            CONFIG.REGRESSION_DEGREE = parseInt(document.getElementById('inputRegressionDegree').value) || 2;
 
             updateConstantsDisplay();
             backupData();
@@ -2254,11 +2207,6 @@
                 TRADE_AMOUNT_PERCENT: CONFIG.TRADE_AMOUNT_PERCENT,
                 MIN_TRADE_AMOUNT_ETH: CONFIG.MIN_TRADE_AMOUNT_ETH,
                 MAX_TRADES: CONFIG.MAX_TRADES,
-                PATTERN_MODE: CONFIG.PATTERN_MODE,
-                MIN_PRICE_CHANGE: CONFIG.MIN_PRICE_CHANGE,
-                MIN_TIME_WINDOW: CONFIG.MIN_TIME_WINDOW,
-                MAX_TIME_WINDOW: CONFIG.MAX_TIME_WINDOW,
-                MIN_OCCURRENCES: CONFIG.MIN_OCCURRENCES,
                 MIN_PROFIT_PERCENT: CONFIG.MIN_PROFIT_PERCENT,
                 MAX_SLIPPAGE: CONFIG.MAX_SLIPPAGE,
                 MAX_GAS_PRICE: CONFIG.MAX_GAS_PRICE,
@@ -2283,11 +2231,6 @@
                 document.getElementById('inputTradePercent').value = CONFIG.TRADE_AMOUNT_PERCENT;
                 document.getElementById('inputMinTrade').value = CONFIG.MIN_TRADE_AMOUNT_ETH;
                 document.getElementById('inputMaxTrades').value = CONFIG.MAX_TRADES;
-                document.getElementById('patternModeSelect').value = CONFIG.PATTERN_MODE;
-                document.getElementById('inputMinPriceChange').value = CONFIG.MIN_PRICE_CHANGE;
-                document.getElementById('inputMinTimeWindow').value = CONFIG.MIN_TIME_WINDOW;
-                document.getElementById('inputMaxTimeWindow').value = CONFIG.MAX_TIME_WINDOW;
-                document.getElementById('inputMinOccurrences').value = CONFIG.MIN_OCCURRENCES;
                 document.getElementById('inputMinProfit').value = CONFIG.MIN_PROFIT_PERCENT;
                 document.getElementById('inputMaxSlippage').value = CONFIG.MAX_SLIPPAGE;
                 document.getElementById('inputMaxGasPrice').value = CONFIG.MAX_GAS_PRICE;
@@ -2310,18 +2253,13 @@
                 document.getElementById('inputTradePercent').value = 10;
                 document.getElementById('inputMinTrade').value = 0.001;
                 document.getElementById('inputMaxTrades').value = 5;
-                document.getElementById('patternModeSelect').value = 'regression';
-                document.getElementById('inputMinPriceChange').value = 1;
-                document.getElementById('inputMinTimeWindow').value = 5;
-                document.getElementById('inputMaxTimeWindow').value = 60;
-                document.getElementById('inputMinOccurrences').value = 2;
                 document.getElementById('inputMinProfit').value = 0.5;
                 document.getElementById('inputMaxSlippage').value = 0.5;
                 document.getElementById('inputMaxGasPrice').value = 500;
                 document.getElementById('inputUsdcTarget').value = 1.0;
                 document.getElementById('inputWindowSize').value = 30;
                 document.getElementById('inputMarginOfError').value = 2;
-                document.getElementById('inputRegressionDegree').value = 1;
+                document.getElementById('inputRegressionDegree').value = 2;
 
                 updateConfigFromUI();
                 showToast('success', 'Configuration reset to defaults!');

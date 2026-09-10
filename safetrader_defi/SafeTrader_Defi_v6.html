@@ -2428,6 +2428,7 @@
                 const head = await provider.getBlockNumber();
                 if (!current(s)) return;
 
+                s.connected = true;
                 s.rpcHead = head;
                 s.blockCount = head;
 
@@ -2477,11 +2478,9 @@
 
             s.reconnectTimer = setTimeout(() => {
                 s.reconnectTimer = null;
-                if (current(s)) {
-                    destroySession(s);
-                    s.currentRpcIndex = (s.currentRpcIndex + 1) % CHAINS.arbitrum.rpcs.length;
-                    connectWithRetry(s);
-                }
+                destroySession(s);
+                s.currentRpcIndex = (s.currentRpcIndex + 1) % CHAINS.arbitrum.rpcs.length;
+                connectWithRetry(s);
             }, delay);
         }
 
