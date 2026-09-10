@@ -4,8 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Quick Swap Trader v8.2.0 (WETH-Centric + USDC Profit Funneling + Swell Patterns + Auto-Reconnect)
-    </title>
+    <title>Uniswap Quick Swap Trader v8.3.0 (WebSocket-Only + Auto-Recovery + Persistent State)</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
     <style>
         body {
@@ -305,6 +304,12 @@
             background: white;
             font-size: 14px;
         }
+
+        .recovery-status {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 5px;
+        }
     </style>
 </head>
 
@@ -312,7 +317,8 @@
     <div class="toast-container" id="toastContainer"></div>
     <div class="container">
         <h1>Uniswap Quick Swap Trader</h1>
-        <p><strong>v8.2.0 (WETH-Centric + USDC Profit Funneling + Swell Patterns + Auto-Reconnect)</strong></p>
+        <p><strong>v8.3.0 (WebSocket-Only + Auto-Recovery + Persistent State)</strong></p>
+        <p class="recovery-status" id="recoveryStatus">Last recovery: Never</p>
 
         <!-- Controls -->
         <div class="card">
@@ -593,9 +599,10 @@
         // ======================
         // CONFIGURATION (UPDATED)
         // ======================
-        const APP_VERSION = '8.2.0 (WETH-Centric + USDC Profit Funneling + Swell Patterns + Auto-Reconnect)';
+        const APP_VERSION = '8.3.0 (WebSocket-Only + Auto-Recovery + Persistent State)';
         const SWAP_DETECTION_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
         const BLOCK_PROCESSING_TIMEOUT = 2 * 60 * 1000; // 2 minutes in milliseconds
+        const MAX_SWAPS_STORAGE = 20000; // Store last 20k swaps
 
         var CONFIG = {
             BLOCKCHAIN_NETWORK: 'arbitrum',
@@ -630,16 +637,15 @@
 
         const POOL_FEES = { LOW: 500, MEDIUM: 3000, HIGH: 10000 };
 
-        // Chain configurations
+        // Chain configurations (WebSocket-only)
         const CHAINS = {
             arbitrum: {
                 name: "Arbitrum One",
                 chainId: 42161,
                 rpcs: [
-                    "https://arbitrum-mainnet.public.blastapi.io",
-                    "https://arb1.arbitrum.io/rpc",
-                    "https://arbitrum-mainnet.rpcfast.com",
-                    "wss://arbitrum-one-rpc.publicnode.com"
+                    "wss://arbitrum-one-rpc.publicnode.com",
+                    "wss://arb1.arbitrum.io/ws",
+                    "wss://arbitrum-mainnet.public.blastapi.io"
                 ],
                 factory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
                 wrappedNative: "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
@@ -690,9 +696,9 @@
         let lastPositionUpdate = 0;
         let usdcConversionTimer = null;
         let isDetectingPatterns = false;
-
         let state = {
             isRunning: false,
+            wasRunningBeforeReload: false,
             currentNetwork: 'arbitrum',
             currentChainKey: 'arbitrum',
             prices: {},
@@ -745,7 +751,8 @@
             swapDetectionTimeoutTimer: null,
             lastBlockProcessed: null,
             blockProcessingWatchdogTimer: null,
-            sessionResetTimer: null
+            sessionResetTimer: null,
+            lastRecoveryTime: null
         };
 
         // ======================
@@ -1870,7 +1877,7 @@
                 }
 
                 let html = '';
-                state.lastSwaps.forEach(swap => {
+                state.lastSwaps.slice(0, 10).forEach(swap => {
                     html += `<tr>
                         <td>${new Date(swap.timestamp).toLocaleTimeString()}</td>
                         <td><strong>${swap.tokenIn}</strong></td>
@@ -2083,6 +2090,7 @@
                 await startUniswapSession();
 
                 state.isRunning = true;
+                state.wasRunningBeforeReload = true;
                 state.startTime = new Date();
                 state.lastTradedToken = null;
                 state.openBuyOrders.clear();
@@ -2097,6 +2105,7 @@
                 startSessionResetWatchdog();
 
                 showToast('success', 'Started! Watching Arbitrum for quick swap opportunities.');
+                backupData();
             } catch (error) {
                 const errorMsg = error && error.message ? error.message : String(error);
                 hideLoading('startSpinner');
@@ -2121,6 +2130,7 @@
                 if (stopBtn) stopBtn.disabled = true;
 
                 state.isRunning = false;
+                state.wasRunningBeforeReload = false;
                 state.manuallyStopped = true;
                 stopPatternDetection();
                 stopPricePolling();
@@ -2134,6 +2144,7 @@
                 updateBotStatus();
 
                 showToast('success', 'Trading stopped!');
+                backupData();
             } catch (error) {
                 const errorMsg = error && error.message ? error.message : String(error);
                 showToast('error', `Failed to stop: ${errorMsg}`);
@@ -2183,6 +2194,7 @@
                 state.lastSwaps = [];
                 state.lastUsdcConversion = null;
                 state.lastSwapDetected = null;
+                state.wasRunningBeforeReload = false;
 
                 localStorage.removeItem('uniswapTraderBackup');
                 updateUI();
@@ -2245,7 +2257,7 @@
         }
 
         // ======================
-        // SESSION MANAGEMENT
+        // SESSION MANAGEMENT (WebSocket-Only)
         // ======================
         function createSession(key) {
             const chain = CHAINS[key];
@@ -2360,22 +2372,17 @@
 
             try {
                 const chain = CHAINS.arbitrum;
-                let provider;
-                const wsRpc = chain.rpcs.find(rpc => rpc.startsWith('wss:'));
+                const wsRpc = chain.rpcs[s.currentRpcIndex % chain.rpcs.length];
 
-                if (wsRpc) {
-                    try {
-                        console.log(`[WebSocket] Attempting connection to ${wsRpc}`);
-                        provider = new ethers.WebSocketProvider(wsRpc, chain.chainId);
-                    } catch (e) {
-                        console.warn('[WebSocket] Failed, falling back to HTTP:', e);
-                        provider = new ethers.JsonRpcProvider(chain.rpcs[0]);
-                        startBlockPolling(s);
-                    }
-                } else {
-                    provider = new ethers.JsonRpcProvider(chain.rpcs[0]);
-                    startBlockPolling(s);
+                if (!wsRpc.startsWith('wss://')) {
+                    console.warn(`[WebSocket] Skipping non-WebSocket RPC: ${wsRpc}`);
+                    s.currentRpcIndex++;
+                    scheduleReconnect(s);
+                    return;
                 }
+
+                console.log(`[WebSocket] Attempting connection to ${wsRpc}`);
+                const provider = new ethers.WebSocketProvider(wsRpc, chain.chainId);
 
                 if (!current(s)) {
                     try { provider.destroy(); } catch { }
@@ -2497,26 +2504,6 @@
                     }
                 }, 10000);
             }
-        }
-
-        function startBlockPolling(s) {
-            if (s.blockPollingInterval) clearInterval(s.blockPollingInterval);
-            s.blockPollingInterval = setInterval(async () => {
-                if (!current(s) || !s.provider) return;
-
-                try {
-                    const latestBlock = await s.provider.getBlockNumber();
-                    if (current(s)) {
-                        s.rpcHead = latestBlock;
-                        if (s.lastProcessedBlock === null || latestBlock > s.lastProcessedBlock) {
-                            console.log(`[Block Polling] Latest block: ${latestBlock}`);
-                            queueBlock(s, latestBlock);
-                        }
-                    }
-                } catch (e) {
-                    console.error('[Block Polling] Error:', e);
-                }
-            }, 15000);
         }
 
         async function startPriceMonitoring(s) {
@@ -2710,8 +2697,11 @@
                     pool: short(logEntry.address)
                 };
 
+                // Store last 20k swaps
                 state.lastSwaps.unshift(swapRecord);
-                if (state.lastSwaps.length > 10) state.lastSwaps.pop();
+                if (state.lastSwaps.length > MAX_SWAPS_STORAGE) {
+                    state.lastSwaps.pop();
+                }
                 renderLastSwaps();
 
                 state.lastSwapDetected = ts;
@@ -3092,7 +3082,7 @@
             } else {
                 sb.disabled = state.isRunning;
                 stopb.disabled = !state.isRunning;
-                sb.innerHTML = 'Connected!';
+                sb.innerHTML = state.isRunning ? 'Running' : 'Connected!';
             }
         }
 
@@ -3120,42 +3110,41 @@
         }
 
         function initializePortfolio() {
-            state.portfolio = {
-                balances: { 'WETH': CONFIG.STARTING_ETH },
-                positions: [],
-                realizedPnL: 0,
-                unrealizedPnL: 0,
-                gasSpent: 0,
-                feesPaid: 0,
-                startingEth: CONFIG.STARTING_ETH,
-                currentEth: CONFIG.STARTING_ETH,
-                equityHistory: [{ timestamp: Date.now(), ethValue: CONFIG.STARTING_ETH }],
-                totalTrades: 0,
-                winningTrades: 0,
-                losingTrades: 0,
-                failedTrades: 0,
-                totalFees: 0,
-                usdcBalance: 0,
-                usdcProfit: 0
-            };
+            if (!state.portfolio.balances['WETH']) {
+                state.portfolio = {
+                    balances: { 'WETH': CONFIG.STARTING_ETH },
+                    positions: [],
+                    realizedPnL: 0,
+                    unrealizedPnL: 0,
+                    gasSpent: 0,
+                    feesPaid: 0,
+                    startingEth: CONFIG.STARTING_ETH,
+                    currentEth: CONFIG.STARTING_ETH,
+                    equityHistory: [{ timestamp: Date.now(), ethValue: CONFIG.STARTING_ETH }],
+                    totalTrades: 0,
+                    winningTrades: 0,
+                    losingTrades: 0,
+                    failedTrades: 0,
+                    totalFees: 0,
+                    usdcBalance: 0,
+                    usdcProfit: 0
+                };
+            }
             state.lastTradedToken = null;
             state.lastTradeTimes = {};
             state.openBuyOrders.clear();
-            state.activePatterns.clear();
-            state.patternStats = { totalPatterns: 0, tokensWithPatterns: 0 };
-            state.observedTokens.clear();
-            state.prices = {};
-            state.priceHistory = {};
-            state.trades = [];
-            state.lastSwaps = [];
             updatePortfolioUI();
             updateStartingEthDisplay();
             updateTradeAmountDisplay();
         }
 
+        // ======================
+        // STATE PERSISTENCE
+        // ======================
         function backupData() {
             try {
                 const backup = {
+                    wasRunning: state.isRunning,
                     trades: state.trades.slice(-50),
                     portfolio: {
                         balances: state.portfolio.balances,
@@ -3175,15 +3164,23 @@
                         usdcProfit: state.portfolio.usdcProfit
                     },
                     activePatterns: Array.from(state.activePatterns.values()).slice(0, 20),
-                    lastBackup: new Date().toISOString(),
+                    prices: state.prices,
+                    priceHistory: Object.fromEntries(
+                        Object.entries(state.priceHistory).map(([token, history]) => [
+                            token,
+                            history.slice(-CONFIG.MAX_PRICE_HISTORY)
+                        ])
+                    ),
+                    lastSwaps: state.lastSwaps.slice(-MAX_SWAPS_STORAGE),
+                    observedTokens: Array.from(state.observedTokens),
+                    lastRecoveryTime: new Date().toISOString(),
                     config: CONFIG
                 };
 
                 try {
                     localStorage.setItem('uniswapTraderBackup', JSON.stringify(backup));
                 } catch (e) {
-                    localStorage.removeItem('uniswapTraderBackup');
-                    localStorage.setItem('uniswapTraderBackup', JSON.stringify(backup));
+                    console.error('Error saving to localStorage:', e);
                 }
             } catch (e) {
                 console.error('Error backing up data:', e);
@@ -3195,6 +3192,10 @@
                 const backup = localStorage.getItem('uniswapTraderBackup');
                 if (backup) {
                     const data = JSON.parse(backup);
+                    if (data.wasRunning) {
+                        state.wasRunningBeforeReload = true;
+                        safeSetText('recoveryStatus', `Last recovery: ${new Date(data.lastRecoveryTime).toLocaleString()}`);
+                    }
                     if (data.trades) state.trades = data.trades;
                     if (data.portfolio) state.portfolio = data.portfolio;
                     if (data.activePatterns) {
@@ -3204,11 +3205,11 @@
                     }
                     if (data.prices) state.prices = data.prices;
                     if (data.priceHistory) state.priceHistory = data.priceHistory;
-                    if (data.config) CONFIG = { ...CONFIG, ...data.config };
-
-                    for (const token in state.priceHistory) {
-                        state.observedTokens.add(token);
+                    if (data.lastSwaps) state.lastSwaps = data.lastSwaps;
+                    if (data.observedTokens) {
+                        state.observedTokens = new Set(data.observedTokens);
                     }
+                    if (data.config) CONFIG = { ...CONFIG, ...data.config };
 
                     updateUI();
                 }
@@ -3241,6 +3242,15 @@
             initializeKnownTokens();
             updateUI();
             startUptimeTimer();
+            loadBackup();
+
+            // Auto-start if it was running before reload
+            if (state.wasRunningBeforeReload) {
+                setTimeout(() => {
+                    showToast('info', 'Restoring previous session...');
+                    startBot();
+                }, 2000);
+            }
 
             document.addEventListener('visibilitychange', () => {
                 if (state.isRunning && document.visibilityState === 'visible') {
@@ -3310,7 +3320,6 @@
             initializeApp();
             setupEventListeners();
             updateConstantsDisplay();
-            loadBackup();
         });
     </script>
 </body>
