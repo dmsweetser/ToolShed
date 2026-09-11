@@ -1,1 +1,0 @@
-BASED ON SafeTrader_Defi_v6.html
