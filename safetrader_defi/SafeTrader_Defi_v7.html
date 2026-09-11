@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Quick Swap Trader v11.0.0 (Cubic Regression)</title>
+    <title>Uniswap Quick Swap Trader v11.1.0 (Fixed Connectivity + Enhanced Validation)</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
     <style>
         body {
@@ -320,6 +320,26 @@
             font-size: 12px;
             color: #64748b;
         }
+
+        .validation-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-left: 5px;
+        }
+
+        .validation-pending {
+            background: #f59e0b;
+        }
+
+        .validation-success {
+            background: #10b981;
+        }
+
+        .validation-failed {
+            background: #dc2626;
+        }
     </style>
 </head>
 
@@ -327,7 +347,7 @@
     <div class="toast-container" id="toastContainer"></div>
     <div class="container">
         <h1>Uniswap Quick Swap Trader</h1>
-        <p><strong>v11.0.0 (Cubic Regression Optimized)</strong></p>
+        <p><strong>v11.1.0 (Fixed Connectivity + Enhanced Validation)</strong></p>
         <p class="recovery-status" id="recoveryStatus">Last recovery: Never</p>
 
         <!-- Controls -->
@@ -430,6 +450,13 @@
                         <div style="font-size: 18px; font-weight: 600;"><span id="targetProfitPercent">0.5%</span></div>
                     </div>
                     <div>
+                        <div style="font-size: 14px; color: #64748b;">Prediction Validation</div>
+                        <div style="font-size: 18px; font-weight: 600;">
+                            <span id="predictionValidationCount">3</span>
+                            <span class="validation-indicator validation-pending" id="validationStatus"></span>
+                        </div>
+                    </div>
+                    <div>
                         <div style="font-size: 14px; color: #64748b;">Last Detection</div>
                         <div style="font-size: 18px; font-weight: 600;"><span id="lastDetectionTime">Never</span></div>
                     </div>
@@ -476,12 +503,13 @@
                             <th>Price (WETH)</th>
                             <th>Amount</th>
                             <th>Pattern</th>
+                            <th>Validation</th>
                             <th>Profit (WETH)</th>
                         </tr>
                     </thead>
                     <tbody id="recentTrades">
                         <tr>
-                            <td colspan="7" style="text-align: center; color: #94a3b8;">No trades yet</td>
+                            <td colspan="8" style="text-align: center; color: #94a3b8;">No trades yet</td>
                         </tr>
                     </tbody>
                 </table>
@@ -538,14 +566,14 @@
                 <div class="grid-3" style="margin-top: 10px;">
                     <div>
                         <label>Max Trades:</label>
-                        <input type="number" class="form-control" id="inputMaxTrades" value="3" step="1" disabled>
+                        <input type="number" class="form-control" id="inputMaxTrades" value="10" step="1" disabled>
                     </div>
                 </div>
             </div>
 
-            <!-- Cubic Regression-Based Pattern Detection -->
+            <!-- Enhanced Cubic Regression-Based Pattern Detection -->
             <div class="config-section" style="margin-top: 15px;">
-                <h3>Cubic Regression-Based Pattern Detection</h3>
+                <h3>Enhanced Cubic Regression-Based Pattern Detection</h3>
                 <div class="grid-3">
                     <div>
                         <label>Window Size (s):</label>
@@ -562,6 +590,16 @@
                             <option value="2">Quadratic (2)</option>
                             <option value="3" selected>Cubic (3)</option>
                         </select>
+                    </div>
+                </div>
+                <div class="grid-3" style="margin-top: 10px;">
+                    <div>
+                        <label>Prediction Validation Count:</label>
+                        <input type="number" class="form-control" id="inputValidationCount" value="3" step="1" disabled>
+                    </div>
+                    <div>
+                        <label>Min Prediction Accuracy (%):</label>
+                        <input type="number" class="form-control" id="inputMinAccuracy" value="95" step="1" disabled>
                     </div>
                 </div>
             </div>
@@ -624,7 +662,7 @@
         // ======================
         // HARDCODED CONFIGURATION
         // ======================
-        const APP_VERSION = '11.0.0 (Cubic Regression Optimized)';
+        const APP_VERSION = '11.1.0 (Fixed Connectivity + Enhanced Validation)';
         const SWAP_DETECTION_TIMEOUT = 5 * 60 * 1000; // 5 minutes
         const BLOCK_PROCESSING_TIMEOUT = 2 * 60 * 1000; // 2 minutes
         const MAX_SWAPS_STORAGE = 1000;
@@ -636,7 +674,7 @@
             STARTING_ETH: 0.01,
             TRADE_AMOUNT_PERCENT: 10,
             MIN_TRADE_AMOUNT_ETH: 0.001,
-            MAX_TRADES: 3,
+            MAX_TRADES: 10, // Increased from 3 to 10
             TRADE_COOLDOWN: 60,
             MIN_PRICE_CHANGE: 1,
             MIN_TIME_WINDOW: 5,
@@ -653,7 +691,9 @@
             MARGIN_OF_ERROR: 3, // 3% for cubic
             REGRESSION_DEGREE: 3, // Cubic
             MIN_LIQUIDITY: 50000,
-            PATTERN_MODE: 'regression'
+            PATTERN_MODE: 'regression',
+            PREDICTION_VALIDATION_COUNT: 3, // Number of times to validate prediction
+            MIN_PREDICTION_ACCURACY: 95 // Minimum accuracy percentage for validation
         };
 
         const PATTERN_TYPES = {
@@ -662,7 +702,7 @@
 
         const POOL_FEES = { LOW: 500, MEDIUM: 3000, HIGH: 10000 };
 
-        // Chain configurations (WebSocket-only)
+        // Chain configurations (WebSocket-only) - Simplified to use a single reliable RPC
         const CHAINS = {
             arbitrum: {
                 name: "Arbitrum One",
@@ -773,7 +813,9 @@
             lastBlockProcessed: null,
             blockProcessingWatchdogTimer: null,
             sessionResetTimer: null,
-            lastRecoveryTime: null
+            lastRecoveryTime: null,
+            predictionValidation: new Map(),
+            pendingValidations: new Map()
         };
 
         // ======================
@@ -929,6 +971,70 @@
         }
 
         // ======================
+        // PREDICTION VALIDATION (NEW)
+        // ======================
+        async function validatePrediction(token, pattern, currentPrice) {
+            const validationKey = `${token}_${pattern.predictedPrice.toFixed(8)}`;
+            const existingValidation = state.predictionValidation.get(validationKey);
+
+            if (existingValidation) {
+                return existingValidation.validated;
+            }
+
+            if (!state.pendingValidations.has(validationKey)) {
+                state.pendingValidations.set(validationKey, {
+                    count: 0,
+                    successes: 0,
+                    lastCheck: 0,
+                    pattern: pattern
+                });
+            }
+
+            const validation = state.pendingValidations.get(validationKey);
+            validation.count++;
+
+            const now = Date.now();
+            if (now - validation.lastCheck < 1000) {
+                return false;
+            }
+            validation.lastCheck = now;
+
+            const priceHistory = state.priceHistory[token];
+            if (!priceHistory || priceHistory.length < 3) {
+                return false;
+            }
+
+            const recentPrices = priceHistory.slice(-5).map(p => p.price);
+            const recentTimestamps = priceHistory.slice(-5).map(p => p.timestamp);
+
+            let totalChange = 0;
+            for (let i = 1; i < recentPrices.length; i++) {
+                const timeDiff = (recentTimestamps[i] - recentTimestamps[i - 1]) / 1000;
+                if (timeDiff > 0) {
+                    const priceDiff = recentPrices[i] - recentPrices[i - 1];
+                    totalChange += priceDiff / timeDiff;
+                }
+            }
+            const avgChangeRate = totalChange / (recentPrices.length - 1);
+            const predictedNextPrice = currentPrice + (avgChangeRate * 1);
+            const directionCorrect = (predictedNextPrice > currentPrice) === (pattern.predictedPrice > currentPrice);
+
+            if (directionCorrect) {
+                validation.successes++;
+            }
+
+            if (validation.count >= CONFIG.PREDICTION_VALIDATION_COUNT) {
+                const accuracy = (validation.successes / validation.count) * 100;
+                const isValid = accuracy >= CONFIG.MIN_PREDICTION_ACCURACY;
+                state.predictionValidation.set(validationKey, { validated: isValid, accuracy });
+                state.pendingValidations.delete(validationKey);
+                return isValid;
+            }
+
+            return false;
+        }
+
+        // ======================
         // WATCHDOG FUNCTIONS
         // ======================
         function checkSwapDetectionTimeout() {
@@ -1007,7 +1113,12 @@
             state.manuallyStopped = true;
             await stopUniswapSession();
             state.manuallyStopped = false;
-            await startUniswapSession();
+
+            setTimeout(async () => {
+                if (state.isRunning) {
+                    await startUniswapSession();
+                }
+            }, 2000);
         }
 
         // ======================
@@ -1027,11 +1138,9 @@
                 const profitWETH = currentValue - costBasis;
                 const profitPercent = (profitWETH / costBasis) * 100;
 
-                // Check for profit-taking
                 if (profitPercent >= CONFIG.MIN_PROFIT_PERCENT && profitWETH > 0) {
                     console.log(`[Profit-Taking] Selling ${token} at ${profitPercent.toFixed(4)}% profit`);
                     await executeTrade(token, 'sell', `Profit target (${formatPercent(profitPercent)}) reached`);
-                    continue;
                 }
             }
         }
@@ -1042,7 +1151,7 @@
                 if (state.isRunning && state.activeSession?.connected) {
                     await checkOpenPositionsForProfitTaking();
                 }
-            }, 5000); // Check every 5 seconds
+            }, 5000);
         }
 
         function stopProfitTakingMonitor() {
@@ -1053,7 +1162,7 @@
         }
 
         // ======================
-        // CUBIC REGRESSION-BASED PATTERN DETECTION
+        // ENHANCED CUBIC REGRESSION-BASED PATTERN DETECTION
         // ======================
         function detectPatternsForToken(history, token) {
             if (!history || history.length < 5) {
@@ -1061,15 +1170,11 @@
                 return [];
             }
 
-            // Smooth the data
             const smoothedHistory = smoothData(history, 3);
-
-            const windowSize = CONFIG.WINDOW_SIZE * 1000; // Convert to milliseconds
+            const windowSize = CONFIG.WINDOW_SIZE * 1000;
             const marginOfError = CONFIG.MARGIN_OF_ERROR / 100;
-            const regressionDegree = 3; // Cubic
             const patterns = [];
 
-            // Group history into windows
             const windows = [];
             let currentWindow = [];
             let windowStartTime = smoothedHistory[0].timestamp;
@@ -1090,37 +1195,35 @@
                 return [];
             }
 
-            // Calculate window averages
             const windowAverages = windows.map(window => ({
                 avg: window.map(p => p.price).reduce((a, b) => a + b, 0) / window.length,
                 timestamp: window[window.length - 1].timestamp
             }));
 
-            // Prepare data for regression
             const xValues = windowAverages.map((_, i) => i);
             const yValues = windowAverages.map(w => w.avg);
-
-            // Fit cubic regression
-            const regression = polynomialRegression(xValues, yValues, regressionDegree);
+            const regression = polynomialRegression(xValues, yValues, 3);
             const nextX = xValues.length;
             let predictedY = regression.predict(nextX);
             const currentPrice = smoothedHistory[smoothedHistory.length - 1].price;
 
-            // Clamp prediction to reasonable range (±50%)
             const maxDeviation = 0.5;
             const maxPredicted = currentPrice * (1 + maxDeviation);
             const minPredicted = currentPrice * (1 - maxDeviation);
             predictedY = Math.min(Math.max(predictedY, minPredicted), maxPredicted);
 
-            // Calculate error bounds
             const errorMargin = predictedY * marginOfError;
             const lowerBound = predictedY - errorMargin;
             const upperBound = predictedY + errorMargin;
 
-            console.log(`[Cubic] ${token}: Predicted=${predictedY.toFixed(8)}, Current=${currentPrice.toFixed(8)}, Bounds=[${lowerBound.toFixed(8)}, ${upperBound.toFixed(8)}]`);
+            const predictedProfitPercent = ((predictedY - currentPrice) / currentPrice) * 100;
+            const minProfitThreshold = CONFIG.MIN_PROFIT_PERCENT * 0.5;
 
-            // Only accept patterns where predicted > current and current is within bounds
-            if (currentPrice >= lowerBound && currentPrice <= upperBound && predictedY > currentPrice) {
+            if (currentPrice >= lowerBound &&
+                currentPrice <= upperBound &&
+                predictedY > currentPrice &&
+                predictedProfitPercent >= minProfitThreshold) {
+
                 patterns.push({
                     type: PATTERN_TYPES.REGRESSION,
                     token,
@@ -1133,7 +1236,8 @@
                     windowSize: windowSize / 1000,
                     marginOfError: marginOfError * 100,
                     regressionDegree: 3,
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
+                    predictedProfitPercent
                 });
             }
 
@@ -1142,21 +1246,21 @@
 
         function getPatternKey(pattern) {
             if (pattern.type === PATTERN_TYPES.REGRESSION) {
-                return `CUBIC_${Math.round(pattern.predictedPrice * 100) / 100}_${Math.round(pattern.cubicTerm * 100) / 100}`;
+                return `CUBIC_${Math.round(pattern.predictedPrice * 10000) / 10000}_${Math.round(pattern.cubicTerm * 100) / 100}`;
             }
             return 'UNKNOWN';
         }
 
         function getPatternDescription(pattern) {
             if (pattern.type === PATTERN_TYPES.REGRESSION) {
-                return `Cubic: Predicted ${pattern.predictedPrice.toFixed(8)} WETH`;
+                return `Cubic: Predicted ${pattern.predictedPrice.toFixed(8)} WETH (${pattern.predictedProfitPercent.toFixed(2)}% profit)`;
             }
             return 'Manual';
         }
 
         function isPatternValid(pattern) {
             if (pattern.type === PATTERN_TYPES.REGRESSION) {
-                return true;
+                return pattern.predictedProfitPercent >= (CONFIG.MIN_PROFIT_PERCENT * 0.5);
             }
             return false;
         }
@@ -1193,7 +1297,6 @@
                 const percentBasedAmount = availableWETH * (CONFIG.TRADE_AMOUNT_PERCENT / 100);
                 const minTradeAmountWETH = CONFIG.MIN_TRADE_AMOUNT_ETH;
 
-                // Ensure the trade amount accounts for fees and gas
                 let tradeAmount = Math.max(percentBasedAmount - (totalGasCost / maxTrades), minTradeAmountWETH);
                 tradeAmount = Math.min(tradeAmount, availableWETH * 0.95);
 
@@ -1204,14 +1307,17 @@
             }
         }
 
-        function createTradeObject(token, action, price, tokenAmount, amountWETH, pattern, status, reason = null, gasUsed = 0, gasPrice = 0, feeAmount = 0, priceImpact = 0, slippage = 0, patternObj = null) {
+        function createTradeObject(token, action, price, tokenAmount, amountWETH, pattern, status, reason = null,
+            gasUsed = 0, gasPrice = 0, feeAmount = 0, priceImpact = 0, slippage = 0,
+            patternObj = null, validationCount = 0, validationSuccesses = 0) {
             return {
                 id: generateUniqueTradeId(),
                 timestamp: new Date().toISOString(),
                 token, type: action, price, tokenAmount, amountETH: amountWETH, fee: feeAmount,
                 gasUsed, gasPrice, priceImpact, slippage, status, reason, pnl: 0, pattern, patternObj,
                 txHash: status === 'closed' || status === 'failed' ? null : '0x' + Math.random().toString(16).substring(2, 66) + Date.now().toString(16).substring(4),
-                network: state.currentNetwork, entryTime: Date.now()
+                network: state.currentNetwork, entryTime: Date.now(),
+                validationCount, validationSuccesses
             };
         }
 
@@ -1338,7 +1444,9 @@
                             status: 'open',
                             tradeId: trade.id,
                             pattern: trade.pattern,
-                            patternObj: trade.patternObj
+                            patternObj: trade.patternObj,
+                            validationCount: trade.validationCount,
+                            validationSuccesses: trade.validationSuccesses
                         };
                         state.portfolio.positions.push(position);
                     } else {
@@ -1434,6 +1542,29 @@
                         console.log(`Blocked buy for ${token}: Already has an open position.`);
                         return null;
                     }
+
+                    const totalOpenPositions = state.portfolio.positions.filter(p => p.status === 'open').length;
+                    if (totalOpenPositions >= CONFIG.MAX_TRADES) {
+                        if (!state.lastMaxTradeToast || Date.now() - state.lastMaxTradeToast > 10000) {
+                            showToast('warning', `Max trades (${CONFIG.MAX_TRADES}) reached`);
+                            state.lastMaxTradeToast = Date.now();
+                        }
+                        return null;
+                    }
+
+                    if (pattern && action === 'buy') {
+                        const currentPrice = state.prices[token];
+                        if (!currentPrice) {
+                            console.log(`No current price for ${token}, cannot validate prediction`);
+                            return null;
+                        }
+
+                        const isValid = await validatePrediction(token, pattern, currentPrice);
+                        if (!isValid) {
+                            console.log(`Prediction validation failed for ${token}`);
+                            return null;
+                        }
+                    }
                 }
 
                 await updateGasPrice();
@@ -1448,23 +1579,6 @@
                 const currentPrice = state.prices[token];
                 if (!currentPrice || amountWETH <= 0) return null;
 
-                const totalOpenPositions = state.portfolio.positions.filter(p => p.status === 'open').length;
-                if (totalOpenPositions >= CONFIG.MAX_TRADES) {
-                    if (!state.lastMaxTradeToast || Date.now() - state.lastMaxTradeToast > 10000) {
-                        showToast('warning', `Max trades (${CONFIG.MAX_TRADES}) reached`);
-                        state.lastMaxTradeToast = Date.now();
-                    }
-                    return null;
-                }
-
-                const lastTradeTime = state.lastTradeTimes[token];
-                if (lastTradeTime && (Date.now() - lastTradeTime) < (CONFIG.TRADE_COOLDOWN * 1000)) {
-                    if (action === 'buy') {
-                        console.log(`Blocked buy for ${token}: Cooldown active.`);
-                        return null;
-                    }
-                }
-
                 const tokenSymbol = token;
                 const tokenAmount = amountWETH / currentPrice;
                 const poolInfo = await getEnhancedPoolInfo(tokenSymbol);
@@ -1477,7 +1591,6 @@
                     if (sellableAmount <= 0) return null;
                 }
 
-                // Always simulate (live trading disabled in this version)
                 let tradeResult = await simulateRealisticTrade(tokenSymbol, action, tokenAmount, currentPrice, poolInfo, 0, currentGasPrice);
 
                 if (!tradeResult.success) {
@@ -1494,11 +1607,21 @@
                     return failedTrade;
                 }
 
+                let validationCount = 0;
+                let validationSuccesses = 0;
+                if (pattern) {
+                    const validationKey = `${token}_${pattern.predictedPrice.toFixed(8)}`;
+                    const validationData = state.predictionValidation.get(validationKey) || {};
+                    validationCount = validationData.count || 0;
+                    validationSuccesses = validationData.successes || 0;
+                }
+
                 const trade = createTradeObject(
                     tokenSymbol, action, tradeResult.executionPrice, tradeResult.tokenAmount,
                     tradeResult.amountETH, patternDescription, 'open', null,
                     tradeResult.gasUsed, tradeResult.gasPrice, tradeResult.feeAmount,
-                    tradeResult.priceImpact, tradeResult.slippage, pattern
+                    tradeResult.priceImpact, tradeResult.slippage, pattern,
+                    validationCount, validationSuccesses
                 );
 
                 updatePortfolioForTrade(trade, action, tradeResult);
@@ -1544,7 +1667,6 @@
 
                 const openPosition = state.portfolio.positions.find(p => p.token === token && p.status === 'open');
                 if (openPosition) {
-                    // Skip pattern-based buying if already in position
                     return;
                 }
 
@@ -1553,6 +1675,14 @@
                     if (state.openBuyOrders.has(token)) break;
                     const existingPosition = state.portfolio.positions.find(p => p.token === token && p.status === 'open');
                     if (existingPosition) break;
+
+                    const validationKey = `${token}_${pattern.predictedPrice.toFixed(8)}`;
+                    const validationData = state.predictionValidation.get(validationKey);
+
+                    if (!validationData || !validationData.validated) {
+                        console.log(`Prediction not yet validated for ${token}, skipping trade`);
+                        continue;
+                    }
 
                     const trade = await executeTrade(
                         token,
@@ -1621,6 +1751,12 @@
                 state.lastDetectionTime = new Date();
                 safeSetText('lastDetectionTime', state.lastDetectionTime.toLocaleTimeString());
 
+                for (const [key, pattern] of state.activePatterns) {
+                    if (!state.predictionValidation.has(`${pattern.token}_${pattern.predictedPrice.toFixed(8)}`)) {
+                        validatePrediction(pattern.token, pattern, state.prices[pattern.token]);
+                    }
+                }
+
                 for (const token of tokens) {
                     await checkPatternsForToken(token);
                 }
@@ -1639,7 +1775,7 @@
                 if (state.isRunning && state.activeSession?.connected && !isDetectingPatterns) {
                     detectAllPatterns();
                 }
-            }, 15000); // Check every 15 seconds
+            }, 15000);
         }
 
         function stopPatternDetection() {
@@ -1772,13 +1908,21 @@
                     return;
                 }
 
-                let html = '<table><thead><tr><th>Token</th><th>Bought At</th><th>Amount</th><th>Current Value</th><th>Profit/Loss</th><th>Pattern</th><th>Age</th></tr></thead><tbody>';
+                let html = '<table><thead><tr><th>Token</th><th>Bought At</th><th>Amount</th><th>Current Value</th><th>Profit/Loss</th><th>Pattern</th><th>Validation</th><th>Age</th></tr></thead><tbody>';
                 openPositions.forEach(position => {
                     const currentPrice = state.prices[position.token] || position.entryPrice;
                     const currentValue = position.amount * currentPrice;
                     const unrealizedPnL = currentValue - (position.amount * position.entryPrice) - position.feesPaid - position.gasPaid;
                     const returnPct = (unrealizedPnL / (position.amount * position.entryPrice + position.feesPaid + position.gasPaid)) * 100;
                     const ageSeconds = ((Date.now() - position.entryTime) / 1000);
+
+                    let validationIndicator = '';
+                    if (position.validationCount > 0) {
+                        const accuracy = (position.validationSuccesses / position.validationCount) * 100;
+                        const validationClass = accuracy >= CONFIG.MIN_PREDICTION_ACCURACY ? 'validation-success' :
+                            accuracy >= 50 ? 'validation-pending' : 'validation-failed';
+                        validationIndicator = `<span class="validation-indicator ${validationClass}" title="Validation: ${position.validationSuccesses}/${position.validationCount} (${accuracy.toFixed(0)}%)"></span>`;
+                    }
 
                     html += `<tr>
                         <td><strong>${position.token}</strong></td>
@@ -1787,6 +1931,7 @@
                         <td>${formatETH(currentValue, 8)}</td>
                         <td class="${unrealizedPnL >= 0 ? 'price-up' : 'price-down'}">${formatETH(unrealizedPnL, 8)} (${formatPercent(returnPct)})</td>
                         <td><small>${position.pattern || 'Manual'}</small></td>
+                        <td>${validationIndicator}</td>
                         <td>${Math.round(ageSeconds)}s</td>
                     </tr>`;
                 });
@@ -1835,7 +1980,7 @@
                 const trades = [...state.trades].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 20);
 
                 if (trades.length === 0) {
-                    recentTradesEl.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #94a3b8;">No trades yet</td></tr>';
+                    recentTradesEl.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #94a3b8;">No trades yet</td></tr>';
                     return;
                 }
 
@@ -1845,6 +1990,14 @@
                     const typeClass = trade.type === 'buy' ? 'btn-success' : 'btn-danger';
                     const pnlText = trade.pnl !== 0 ? formatETH(trade.pnl, 8) : '0';
 
+                    let validationIndicator = '';
+                    if (trade.validationCount > 0) {
+                        const accuracy = (trade.validationSuccesses / trade.validationCount) * 100;
+                        const validationClass = accuracy >= CONFIG.MIN_PREDICTION_ACCURACY ? 'validation-success' :
+                            accuracy >= 50 ? 'validation-pending' : 'validation-failed';
+                        validationIndicator = `<span class="validation-indicator ${validationClass}" title="Validation: ${trade.validationSuccesses}/${trade.validationCount} (${accuracy.toFixed(0)}%)"></span>`;
+                    }
+
                     html += `<tr>
                         <td>${new Date(trade.timestamp).toLocaleTimeString()}</td>
                         <td><strong>${trade.token}</strong></td>
@@ -1852,6 +2005,7 @@
                         <td>${formatNumber(trade.price, 8)}</td>
                         <td>${formatNumber(trade.tokenAmount, 4)}</td>
                         <td><small>${trade.pattern || 'Manual'}</small></td>
+                        <td>${validationIndicator}</td>
                         <td class="${pnlClass}">${pnlText}</td>
                     </tr>`;
                 });
@@ -1893,6 +2047,7 @@
             safeSetText('startingEthDisplay', formatETH(state.portfolio.startingEth));
             safeSetText('currentEth', formatETH(state.portfolio.currentEth));
             safeSetText('targetProfitPercent', CONFIG.MIN_PROFIT_PERCENT + '%');
+            safeSetText('predictionValidationCount', CONFIG.PREDICTION_VALIDATION_COUNT);
         }
 
         // ======================
@@ -2010,6 +2165,8 @@
                 state.lastTradedToken = null;
                 state.openBuyOrders.clear();
                 state.reconnectAttempts = 0;
+                state.predictionValidation.clear();
+                state.pendingValidations.clear();
 
                 updateBotStatus();
                 await updateGasPrice();
@@ -2019,7 +2176,7 @@
                 startSessionResetWatchdog();
                 startProfitTakingMonitor();
 
-                showToast('success', 'Started! Watching Arbitrum for cubic regression-based opportunities and monitoring open positions for profit-taking.');
+                showToast('success', 'Started! Watching Arbitrum for enhanced cubic regression-based opportunities with prediction validation.');
             } catch (error) {
                 const errorMsg = error && error.message ? error.message : String(error);
                 hideLoading('startSpinner');
@@ -2105,6 +2262,8 @@
                 state.lastSwaps = [];
                 state.lastSwapDetected = null;
                 state.wasRunningBeforeReload = false;
+                state.predictionValidation.clear();
+                state.pendingValidations.clear();
 
                 updateUI();
                 showToast('success', 'App has been reset!');
@@ -2153,7 +2312,7 @@
         }
 
         // ======================
-        // SESSION MANAGEMENT (WebSocket-Only)
+        // SESSION MANAGEMENT (Fixed Connectivity)
         // ======================
         function createSession(key) {
             const chain = CHAINS[key];
@@ -2180,7 +2339,8 @@
                 gasPrice: null,
                 gasPriceHistory: [],
                 currentRpcIndex: 0,
-                blockPollingInterval: null
+                blockPollingInterval: null,
+                priceUpdateInterval: null
             };
         }
 
@@ -2268,16 +2428,11 @@
 
             try {
                 const chain = CHAINS.arbitrum;
-                const wsRpc = chain.rpcs[s.currentRpcIndex % chain.rpcs.length];
+                const wsRpc = chain.rpcs[0]; // Use the first (most reliable) RPC
 
-                if (!wsRpc.startsWith('wss://')) {
-                    console.warn(`[WebSocket] Skipping non-WebSocket RPC: ${wsRpc}`);
-                    s.currentRpcIndex++;
-                    scheduleReconnect(s);
-                    return;
-                }
+                console.log(`[WebSocket] Connecting to ${wsRpc}...`);
+                showToast('info', `Connecting to Arbitrum...`);
 
-                console.log(`[WebSocket] Attempting connection to ${wsRpc}`);
                 const provider = new ethers.WebSocketProvider(wsRpc, chain.chainId);
 
                 if (!current(s)) {
@@ -2302,25 +2457,26 @@
 
                     s.ws.addEventListener("close", (e) => {
                         if (!current(s)) return;
-                        console.warn(`[WebSocket] Disconnected from ${s.chain.name}: ${e.code} ${e.reason}`);
+                        console.warn(`[WebSocket] Disconnected: ${e.code} ${e.reason}`);
                         s.connected = false;
                         updateButton();
                         updateConnectionStatus();
-                        showToast('warning', `Disconnected from ${s.chain.name}, reconnecting...`);
+                        showToast('warning', `Disconnected. Reconnecting...`);
                         scheduleReconnect(s);
                     });
 
                     s.ws.addEventListener("error", (e) => {
                         if (!current(s)) return;
-                        console.error(`[WebSocket] Error for ${s.chain.name}:`, e);
+                        console.error(`[WebSocket] Error:`, e);
                         s.connected = false;
                         updateButton();
                         updateConnectionStatus();
-                        showToast('error', `WebSocket error for ${s.chain.name}: ${e.message || String(e)}`);
+                        showToast('error', `WebSocket error: ${e.message || String(e)}`);
                         scheduleReconnect(s);
                     });
                 }
 
+                // Verify connection by fetching block number
                 const head = await provider.getBlockNumber();
                 if (!current(s)) return;
 
@@ -2334,13 +2490,14 @@
                 startGasMonitoring(s);
                 startPriceMonitoring(s);
                 startBlockProcessingWatchdog(s);
+
             } catch (e) {
                 if (!current(s)) return;
                 console.error('[Connection] Failed:', e);
                 s.connected = false;
                 updateButton();
                 updateConnectionStatus();
-                showToast('error', `Connection failed for ${s.chain.name}: ${e.message || String(e)}`);
+                showToast('error', `Connection failed: ${e.message || String(e)}`);
                 scheduleReconnect(s);
             }
         }
@@ -2350,32 +2507,22 @@
 
             s.reconnectAttempts++;
             const maxAttempts = state.maxReconnectAttempts || 10;
-            const delay = Math.min(state.reconnectDelay * Math.pow(2, s.reconnectAttempts - 1), 30000);
+            const delay = Math.min(5000 * s.reconnectAttempts, 30000); // Max 30s delay
 
             if (s.reconnectAttempts > maxAttempts) {
-                showToast('error', `Max reconnection attempts (${maxAttempts}) reached for ${s.chain.name}.`);
-                updateConnectionStatus();
+                showToast('error', `Max reconnection attempts (${maxAttempts}) reached.`);
                 state.isRunning = false;
                 state.manuallyStopped = true;
-                stopPatternDetection();
-                stopPricePolling();
-                stopSwapDetectionTimeoutCheck();
-                stopSessionResetWatchdog();
-                stopBlockProcessingWatchdog();
-                stopProfitTakingMonitor();
                 updateBotStatus();
-                updateButton();
                 return;
             }
 
             console.log(`[Reconnect] Attempt ${s.reconnectAttempts}/${maxAttempts} in ${delay / 1000}s...`);
-            showToast('info', `Reconnecting to ${s.chain.name} in ${delay / 1000} seconds (attempt ${s.reconnectAttempts}/${maxAttempts})...`);
+            showToast('info', `Reconnecting in ${delay / 1000} seconds...`);
 
             s.reconnectTimer = setTimeout(() => {
                 s.reconnectTimer = null;
                 if (current(s)) {
-                    destroySession(s);
-                    s.currentRpcIndex = (s.currentRpcIndex + 1) % CHAINS.arbitrum.rpcs.length;
                     connectWithRetry(s);
                 }
             }, delay);
@@ -2592,7 +2739,6 @@
                     pool: short(logEntry.address)
                 };
 
-                // Store last 1k swaps
                 state.lastSwaps.unshift(swapRecord);
                 if (state.lastSwaps.length > MAX_SWAPS_STORAGE) {
                     state.lastSwaps.pop();
@@ -2702,6 +2848,7 @@
             } catch (error) {
                 console.warn('Failed to update gas price, using cached value:', error);
                 state.currentGasPrice = state.currentGasPrice || CONFIG.MAX_GAS_PRICE;
+                safeSetText('currentGasPrice', (state.currentGasPrice || 0).toFixed(2) + ' gwei');
             }
         }
 
