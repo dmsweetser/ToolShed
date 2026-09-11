@@ -1217,7 +1217,7 @@
             const upperBound = predictedY + errorMargin;
 
             const predictedProfitPercent = ((predictedY - currentPrice) / currentPrice) * 100;
-            const minProfitThreshold = CONFIG.MIN_PROFIT_PERCENT * 0.5;
+            const minProfitThreshold = CONFIG.MIN_PROFIT_PERCENT;
 
             if (currentPrice >= lowerBound &&
                 currentPrice <= upperBound &&
@@ -1260,7 +1260,7 @@
 
         function isPatternValid(pattern) {
             if (pattern.type === PATTERN_TYPES.REGRESSION) {
-                return pattern.predictedProfitPercent >= (CONFIG.MIN_PROFIT_PERCENT * 0.5);
+                return pattern.predictedProfitPercent >= CONFIG.MIN_PROFIT_PERCENT;
             }
             return false;
         }
@@ -1454,6 +1454,12 @@
                         position.usdValue += tradeResult.amountETH;
                         position.gasPaid += gasCostWETH;
                         position.feesPaid += feeCostWETH;
+
+                        const totalFeesGas = position.feesPaid + position.gasPaid;
+                        if (position.amount > 0 && Number.isFinite(totalFeesGas)) {
+                            const entryWithCosts = (position.amount * position.entryPrice) + totalFeesGas;
+                            position.entryPrice = entryWithCosts / position.amount;
+                        }
                     }
 
                     state.portfolio.gasSpent += gasCostWETH;
@@ -1475,9 +1481,11 @@
 
                     const position = openPositions[0];
                     const amountToSell = Math.min(tradeResult.tokenAmount, position.amount);
+                    const oldAmount = position.amount;
                     const sellValueWETH = amountToSell * tradeResult.executionPrice;
+                    const totalFeesGasOld = position.feesPaid + position.gasPaid;
                     const costBasis = (amountToSell * position.entryPrice) +
-                        (amountToSell / position.amount) * (position.feesPaid + position.gasPaid);
+                        (amountToSell / oldAmount) * totalFeesGasOld;
                     const pnl = sellValueWETH - costBasis - totalCostWETH;
 
                     position.amount -= amountToSell;
@@ -1493,6 +1501,13 @@
                         state.portfolio.realizedPnL += pnl;
                         if (pnl > 0) state.portfolio.winningTrades++;
                         else if (pnl < 0) state.portfolio.losingTrades++;
+                    } else {
+                        const newAmount = position.amount;
+                        const totalFeesGasNew = position.feesPaid + position.gasPaid;
+                        const entryWithCosts = ((oldAmount - amountToSell) * position.entryPrice) + totalFeesGasNew;
+                        if (newAmount > 0 && Number.isFinite(entryWithCosts)) {
+                            position.entryPrice = entryWithCosts / newAmount;
+                        }
                     }
 
                     state.portfolio.balances['WETH'] = (state.portfolio.balances['WETH'] || 0) + sellValueWETH - totalCostWETH;
