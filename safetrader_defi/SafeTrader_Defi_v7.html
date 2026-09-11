@@ -615,11 +615,6 @@
                 </div>
                 <div class="grid-3" style="margin-top: 10px;">
                     <div>
-                        <label>Stop-Loss (%):</label>
-                        <input type="number" class="form-control" id="inputStopLoss" value="1.0" step="0.1"
-                            onchange="updateConfigFromUI()">
-                    </div>
-                    <div>
                         <label>USDC Profit Target:</label>
                         <input type="number" class="form-control" id="inputUsdcTarget" value="0.5" step="0.1"
                             onchange="updateConfigFromUI()">
@@ -693,7 +688,6 @@
             MAX_SLIPPAGE: 0.5,
             MAX_GAS_PRICE: 500,
             GAS_LIMIT: 300000,
-            STOP_LOSS_PERCENT: 1.0,
             PREVENT_SEQUENTIAL_TRADES: true,
             PRICE_HISTORY_DURATION: 24,
             MAX_PRICE_HISTORY: 1000, // Reduced from 20k to 1k
@@ -1077,12 +1071,6 @@
                     console.log(`[Profit-Taking] Selling ${token} at ${profitPercent.toFixed(4)}% profit`);
                     await executeTrade(token, 'sell', `Profit target (${formatPercent(profitPercent)}) reached`);
                     continue;
-                }
-
-                // Check for stop-loss
-                if (profitPercent <= -CONFIG.STOP_LOSS_PERCENT) {
-                    console.log(`[Stop-Loss] Selling ${token} at ${profitPercent.toFixed(4)}% loss`);
-                    await executeTrade(token, 'sell', `Stop-loss triggered (${formatPercent(profitPercent)})`);
                 }
             }
         }
@@ -2241,7 +2229,6 @@
             CONFIG.MIN_PROFIT_PERCENT = parseFloat(document.getElementById('inputMinProfit').value) || 0.5;
             CONFIG.MAX_SLIPPAGE = parseFloat(document.getElementById('inputMaxSlippage').value) || 0.5;
             CONFIG.MAX_GAS_PRICE = parseInt(document.getElementById('inputMaxGasPrice').value) || 500;
-            CONFIG.STOP_LOSS_PERCENT = parseFloat(document.getElementById('inputStopLoss').value) || 1.0;
             CONFIG.USDC_PROFIT_TARGET = parseFloat(document.getElementById('inputUsdcTarget').value) || 0.5;
 
             // Regression-based pattern detection settings
@@ -2263,7 +2250,6 @@
                 MIN_PROFIT_PERCENT: CONFIG.MIN_PROFIT_PERCENT,
                 MAX_SLIPPAGE: CONFIG.MAX_SLIPPAGE,
                 MAX_GAS_PRICE: CONFIG.MAX_GAS_PRICE,
-                STOP_LOSS_PERCENT: CONFIG.STOP_LOSS_PERCENT,
                 USDC_PROFIT_TARGET: CONFIG.USDC_PROFIT_TARGET,
                 WINDOW_SIZE: CONFIG.WINDOW_SIZE,
                 MARGIN_OF_ERROR: CONFIG.MARGIN_OF_ERROR,
@@ -2288,7 +2274,6 @@
                 document.getElementById('inputMinProfit').value = CONFIG.MIN_PROFIT_PERCENT;
                 document.getElementById('inputMaxSlippage').value = CONFIG.MAX_SLIPPAGE;
                 document.getElementById('inputMaxGasPrice').value = CONFIG.MAX_GAS_PRICE;
-                document.getElementById('inputStopLoss').value = CONFIG.STOP_LOSS_PERCENT;
                 document.getElementById('inputUsdcTarget').value = CONFIG.USDC_PROFIT_TARGET;
                 document.getElementById('inputWindowSize').value = CONFIG.WINDOW_SIZE;
                 document.getElementById('inputMarginOfError').value = CONFIG.MARGIN_OF_ERROR;
@@ -2311,7 +2296,6 @@
                 document.getElementById('inputMinProfit').value = 0.5;
                 document.getElementById('inputMaxSlippage').value = 0.5;
                 document.getElementById('inputMaxGasPrice').value = 500;
-                document.getElementById('inputStopLoss').value = 1.0;
                 document.getElementById('inputUsdcTarget').value = 0.5;
                 document.getElementById('inputWindowSize').value = 60;
                 document.getElementById('inputMarginOfError').value = 2;
