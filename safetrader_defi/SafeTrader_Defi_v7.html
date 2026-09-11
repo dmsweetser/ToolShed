@@ -431,7 +431,7 @@
                     </div>
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Profit Target</div>
-                        <div style="font-size: 18px; font-weight: 600;"><span id="targetProfitPercent">0.2%</span></div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="targetProfitPercent">0.5%</span></div>
                     </div>
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Last Detection</div>
@@ -550,7 +550,7 @@
                     </div>
                     <div>
                         <label>Trade %:</label>
-                        <input type="number" class="form-control" id="inputTradePercent" value="20" step="1"
+                        <input type="number" class="form-control" id="inputTradePercent" value="10" step="1"
                             onchange="updateConfigFromUI()">
                     </div>
                     <div>
@@ -574,12 +574,12 @@
                 <div class="grid-3">
                     <div>
                         <label>Window Size (s):</label>
-                        <input type="number" class="form-control" id="inputWindowSize" value="30" step="1"
+                        <input type="number" class="form-control" id="inputWindowSize" value="60" step="1"
                             onchange="updateConfigFromUI()">
                     </div>
                     <div>
                         <label>Margin of Error (%):</label>
-                        <input type="number" class="form-control" id="inputMarginOfError" value="1" step="0.1"
+                        <input type="number" class="form-control" id="inputMarginOfError" value="2" step="0.1"
                             onchange="updateConfigFromUI()">
                     </div>
                     <div>
@@ -599,7 +599,7 @@
                 <div class="grid-3">
                     <div>
                         <label>Min Profit to Sell (%):</label>
-                        <input type="number" class="form-control" id="inputMinProfit" value="0.2" step="0.1"
+                        <input type="number" class="form-control" id="inputMinProfit" value="0.5" step="0.1"
                             onchange="updateConfigFromUI()">
                     </div>
                     <div>
@@ -675,34 +675,34 @@
         const APP_VERSION = '10.1.0 (Optimized with Profit-Taking)';
         const SWAP_DETECTION_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
         const BLOCK_PROCESSING_TIMEOUT = 2 * 60 * 1000; // 2 minutes in milliseconds
-        const MAX_SWAPS_STORAGE = 20000; // Store last 20k swaps
+        const MAX_SWAPS_STORAGE = 1000; // Reduced from 20k to 1k to prevent storage issues
 
         const CONFIG = {
             BLOCKCHAIN_NETWORK: 'arbitrum',
             UNISWAP_VERSION: 'v3',
             STARTING_ETH: 0.01,
-            TRADE_AMOUNT_PERCENT: 20, // Increased from 10% to 20%
+            TRADE_AMOUNT_PERCENT: 10,
             MIN_TRADE_AMOUNT_ETH: 0.001,
-            MAX_TRADES: 3, // Reduced from 5 to 3
+            MAX_TRADES: 3,
             TRADE_COOLDOWN: 60,
             MIN_PRICE_CHANGE: 1,
             MIN_TIME_WINDOW: 5,
             MAX_TIME_WINDOW: 60,
             MIN_OCCURRENCES: 2,
-            MIN_PROFIT_PERCENT: 0.2, // Reduced from 0.5% to 0.2%
+            MIN_PROFIT_PERCENT: 0.5,
             MAX_SLIPPAGE: 0.5,
             MAX_GAS_PRICE: 500,
             GAS_LIMIT: 300000,
-            STOP_LOSS_PERCENT: 1.0, // New: Stop-loss at 1%
+            STOP_LOSS_PERCENT: 1.0,
             PREVENT_SEQUENTIAL_TRADES: true,
             PRICE_HISTORY_DURATION: 24,
-            MAX_PRICE_HISTORY: 20000,
-            USDC_PROFIT_TARGET: 0.5, // Reduced from 1.0 to 0.5
+            MAX_PRICE_HISTORY: 1000, // Reduced from 20k to 1k
+            USDC_PROFIT_TARGET: 0.5,
             USDC_CONVERSION_INTERVAL: 300000,
             MIN_LIQUIDITY: 50000,
             PATTERN_MODE: 'regression',
-            WINDOW_SIZE: 30, // seconds
-            MARGIN_OF_ERROR: 1, // percentage (reduced from 2% to 1%)
+            WINDOW_SIZE: 60, // seconds
+            MARGIN_OF_ERROR: 2, // percentage
             REGRESSION_DEGREE: 2 // 2=quadratic (best default)
         };
 
@@ -772,7 +772,7 @@
         let lastPositionUpdate = 0;
         let usdcConversionTimer = null;
         let isDetectingPatterns = false;
-        let profitTakingTimer = null; // New timer for profit-taking
+        let profitTakingTimer = null;
         let state = {
             isRunning: false,
             wasRunningBeforeReload: false,
@@ -1056,7 +1056,7 @@
         }
 
         // ======================
-        // PROFIT-TAKING LOGIC (NEW)
+        // PROFIT-TAKING LOGIC
         // ======================
         async function checkOpenPositionsForProfitTaking() {
             if (!state.isRunning) return;
@@ -1164,18 +1164,21 @@
             const upperBound = predictedY + errorMargin;
 
             if (currentPrice >= lowerBound && currentPrice <= upperBound) {
-                patterns.push({
-                    type: PATTERN_TYPES.REGRESSION,
-                    token,
-                    predictedPrice: predictedY,
-                    currentPrice,
-                    slope: regressionDegree === 1 ? regression.coefficients[1] : null,
-                    intercept: regressionDegree === 1 ? regression.coefficients[0] : null,
-                    windowSize: windowSize / 1000,
-                    marginOfError: marginOfError * 100,
-                    regressionDegree,
-                    timestamp: Date.now()
-                });
+                // Only consider patterns where the predicted price is higher than the current price for buying
+                if (predictedY > currentPrice) {
+                    patterns.push({
+                        type: PATTERN_TYPES.REGRESSION,
+                        token,
+                        predictedPrice: predictedY,
+                        currentPrice,
+                        slope: regressionDegree === 1 ? regression.coefficients[1] : null,
+                        intercept: regressionDegree === 1 ? regression.coefficients[0] : null,
+                        windowSize: windowSize / 1000,
+                        marginOfError: marginOfError * 100,
+                        regressionDegree,
+                        timestamp: Date.now()
+                    });
+                }
             }
 
             return patterns;
@@ -1234,6 +1237,7 @@
                 const percentBasedAmount = availableWETH * (CONFIG.TRADE_AMOUNT_PERCENT / 100);
                 const minTradeAmountWETH = CONFIG.MIN_TRADE_AMOUNT_ETH;
 
+                // Ensure the trade amount accounts for fees and gas
                 let tradeAmount = Math.max(percentBasedAmount - (totalGasCost / maxTrades), minTradeAmountWETH);
                 tradeAmount = Math.min(tradeAmount, availableWETH * 0.95);
 
@@ -1622,7 +1626,7 @@
             try {
                 if (!state.isRunning) return;
                 const history = state.priceHistory[token];
-                if (!history || history.length < 2) return;
+                if (!history || history.length < 5) return;
                 const currentPrice = state.prices[token];
                 if (!currentPrice) return;
 
@@ -1876,7 +1880,7 @@
                 if (state.isRunning && state.activeSession?.connected && !isDetectingPatterns) {
                     detectAllPatterns();
                 }
-            }, 3000);
+            }, 15000); // Reduced frequency to 15 seconds
         }
 
         function stopPatternDetection() {
@@ -2231,18 +2235,18 @@
         // ======================
         function updateConfigFromUI() {
             CONFIG.STARTING_ETH = parseFloat(document.getElementById('inputStartingEth').value) || 0.01;
-            CONFIG.TRADE_AMOUNT_PERCENT = parseFloat(document.getElementById('inputTradePercent').value) || 20;
+            CONFIG.TRADE_AMOUNT_PERCENT = parseFloat(document.getElementById('inputTradePercent').value) || 10;
             CONFIG.MIN_TRADE_AMOUNT_ETH = parseFloat(document.getElementById('inputMinTrade').value) || 0.001;
             CONFIG.MAX_TRADES = parseInt(document.getElementById('inputMaxTrades').value) || 3;
-            CONFIG.MIN_PROFIT_PERCENT = parseFloat(document.getElementById('inputMinProfit').value) || 0.2;
+            CONFIG.MIN_PROFIT_PERCENT = parseFloat(document.getElementById('inputMinProfit').value) || 0.5;
             CONFIG.MAX_SLIPPAGE = parseFloat(document.getElementById('inputMaxSlippage').value) || 0.5;
             CONFIG.MAX_GAS_PRICE = parseInt(document.getElementById('inputMaxGasPrice').value) || 500;
             CONFIG.STOP_LOSS_PERCENT = parseFloat(document.getElementById('inputStopLoss').value) || 1.0;
             CONFIG.USDC_PROFIT_TARGET = parseFloat(document.getElementById('inputUsdcTarget').value) || 0.5;
 
             // Regression-based pattern detection settings
-            CONFIG.WINDOW_SIZE = parseInt(document.getElementById('inputWindowSize').value) || 30;
-            CONFIG.MARGIN_OF_ERROR = parseFloat(document.getElementById('inputMarginOfError').value) || 1;
+            CONFIG.WINDOW_SIZE = parseInt(document.getElementById('inputWindowSize').value) || 60;
+            CONFIG.MARGIN_OF_ERROR = parseFloat(document.getElementById('inputMarginOfError').value) || 2;
             CONFIG.REGRESSION_DEGREE = parseInt(document.getElementById('inputRegressionDegree').value) || 2;
 
             updateConstantsDisplay();
@@ -2301,16 +2305,16 @@
             if (confirm('Are you sure you want to reset the configuration to defaults?')) {
                 // Reset to default values
                 document.getElementById('inputStartingEth').value = 0.01;
-                document.getElementById('inputTradePercent').value = 20;
+                document.getElementById('inputTradePercent').value = 10;
                 document.getElementById('inputMinTrade').value = 0.001;
                 document.getElementById('inputMaxTrades').value = 3;
-                document.getElementById('inputMinProfit').value = 0.2;
+                document.getElementById('inputMinProfit').value = 0.5;
                 document.getElementById('inputMaxSlippage').value = 0.5;
                 document.getElementById('inputMaxGasPrice').value = 500;
                 document.getElementById('inputStopLoss').value = 1.0;
                 document.getElementById('inputUsdcTarget').value = 0.5;
-                document.getElementById('inputWindowSize').value = 30;
-                document.getElementById('inputMarginOfError').value = 1;
+                document.getElementById('inputWindowSize').value = 60;
+                document.getElementById('inputMarginOfError').value = 2;
                 document.getElementById('inputRegressionDegree').value = 2;
 
                 updateConfigFromUI();
@@ -2350,7 +2354,7 @@
                 startUsdcConversionTimer();
                 startSwapDetectionTimeoutCheck();
                 startSessionResetWatchdog();
-                startProfitTakingMonitor(); // Start the new profit-taking monitor
+                startProfitTakingMonitor();
 
                 showToast('success', 'Started! Watching Arbitrum for regression-based opportunities and monitoring open positions for profit-taking.');
                 backupData();
@@ -2386,7 +2390,7 @@
                 stopSwapDetectionTimeoutCheck();
                 stopSessionResetWatchdog();
                 stopBlockProcessingWatchdog();
-                stopProfitTakingMonitor(); // Stop the profit-taking monitor
+                stopProfitTakingMonitor();
 
                 await stopUniswapSession();
                 state.openBuyOrders.clear();
@@ -2946,7 +2950,7 @@
                     pool: short(logEntry.address)
                 };
 
-                // Store last 20k swaps
+                // Store last 1k swaps
                 state.lastSwaps.unshift(swapRecord);
                 if (state.lastSwaps.length > MAX_SWAPS_STORAGE) {
                     state.lastSwaps.pop();
