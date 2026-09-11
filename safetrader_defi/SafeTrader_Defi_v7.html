@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Quick Swap Trader v11.1.0 (Fixed Connectivity + Enhanced Validation + Full Sell + Persistence)
-    </title>
+    <title>Uniswap Quick Swap Trader v11.1.0 (Fixed Connectivity + Enhanced Validation + Full Sell + Persistence + Lock
+        Recovery)</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
     <style>
         body {
@@ -348,7 +348,8 @@
     <div class="toast-container" id="toastContainer"></div>
     <div class="container">
         <h1>Uniswap Quick Swap Trader</h1>
-        <p><strong>v11.1.0 (Fixed Connectivity + Enhanced Validation + Full Sell + Persistence)</strong></p>
+        <p><strong>v11.1.0 (Fixed Connectivity + Enhanced Validation + Full Sell + Persistence + Lock Recovery)</strong>
+        </p>
         <p class="recovery-status" id="recoveryStatus">Last recovery: <span id="lastRecoveryTime">Never</span></p>
 
         <!-- Controls -->
@@ -361,6 +362,8 @@
                 </button>
                 <button class="btn btn-danger" id="stopBotBtn" onclick="stopBot()" disabled>Stop Trading</button>
                 <button class="btn btn-secondary" onclick="resetApp()">Reset App</button>
+                <button class="btn btn-warning" id="reconnectBtn" onclick="restartConnection()"
+                    style="display: none;">Reconnect</button>
             </div>
             <div style="display: flex; align-items: center; gap: 10px; margin-top: 15px;">
                 <span id="botStatusIndicator"></span>
@@ -663,7 +666,7 @@
         // ======================
         // HARDCODED CONFIGURATION
         // ======================
-        const APP_VERSION = '11.1.0 (Fixed Connectivity + Enhanced Validation + Full Sell + Persistence)';
+        const APP_VERSION = '11.1.0 (Fixed Connectivity + Enhanced Validation + Full Sell + Persistence + Lock Recovery)';
         const SWAP_DETECTION_TIMEOUT = 5 * 60 * 1000; // 5 minutes
         const BLOCK_PROCESSING_TIMEOUT = 2 * 60 * 1000; // 2 minutes
         const MAX_SWAPS_STORAGE = 1000;
@@ -1207,7 +1210,7 @@
 
         function startSwapDetectionTimeoutCheck() {
             if (state.swapDetectionTimeoutTimer) clearInterval(state.swapDetectionTimeoutTimer);
-            state.swapDetectionTimeoutTimer = setInterval(checkSwapDetectionTimeout, 30000);
+            state.swapDetectionTimeoutTimer = setInterval(checkSwapDetectionTimeout, 15000);
         }
 
         function stopSwapDetectionTimeoutCheck() {
@@ -1229,7 +1232,7 @@
                     s.connected = false;
                     scheduleReconnect(s);
                 }
-            }, 30000);
+            }, 15000);
         }
 
         function stopBlockProcessingWatchdog() {
@@ -1263,13 +1266,18 @@
             showToast('info', 'Restarting connection...');
             state.manuallyStopped = true;
             await stopUniswapSession();
-            state.manuallyStopped = false;
 
-            setTimeout(async () => {
-                if (state.isRunning) {
-                    await startUniswapSession();
+            // Wait 1 second before reconnecting
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            state.manuallyStopped = false;
+            if (state.isRunning) {
+                await startUniswapSession();
+                // Force a pattern detection after reconnect
+                if (state.activeSession?.connected) {
+                    setTimeout(detectAllPatterns, 2000);
                 }
-            }, 2000);
+            }
         }
 
         // ======================
@@ -2235,6 +2243,7 @@
                 const st = document.getElementById('botStatusText');
                 const sb = document.getElementById('startBotBtn');
                 const stopb = document.getElementById('stopBotBtn');
+                const reconnectBtn = document.getElementById('reconnectBtn');
 
                 const isConnected = state.activeSession?.connected || false;
 
@@ -2243,11 +2252,13 @@
                     if (st) st.textContent = 'Running';
                     if (sb) sb.disabled = true;
                     if (stopb) stopb.disabled = false;
+                    if (reconnectBtn) reconnectBtn.style.display = 'none';
                 } else {
                     if (si) si.className = 'status status-disconnected';
                     if (st) st.textContent = isConnected ? 'Paused' : 'Disconnected';
                     if (sb) sb.disabled = false;
                     if (stopb) stopb.disabled = true;
+                    if (reconnectBtn) reconnectBtn.style.display = (state.isRunning && !isConnected) ? 'inline-block' : 'none';
                 }
                 updateConnectionStatus();
             } catch (e) {
@@ -2519,7 +2530,8 @@
                 gasPriceHistory: [],
                 currentRpcIndex: 0,
                 blockPollingInterval: null,
-                priceUpdateInterval: null
+                priceUpdateInterval: null,
+                heartbeatInterval: null
             };
         }
 
@@ -2547,6 +2559,11 @@
             if (s.blockPollingInterval) {
                 clearInterval(s.blockPollingInterval);
                 s.blockPollingInterval = null;
+            }
+
+            if (s.heartbeatInterval) {
+                clearInterval(s.heartbeatInterval);
+                s.heartbeatInterval = null;
             }
 
             try { s.provider?.removeAllListeners(); } catch { }
@@ -2641,7 +2658,12 @@
                         updateButton();
                         updateConnectionStatus();
                         showToast('warning', `Disconnected. Reconnecting...`);
-                        scheduleReconnect(s);
+                        // Reconnect immediately if this was an unexpected close (code 1006 = abnormal closure)
+                        if (e.code !== 1000) {
+                            scheduleReconnect(s);
+                        } else {
+                            scheduleReconnect(s);
+                        }
                     });
 
                     s.ws.addEventListener("error", (e) => {
@@ -2725,6 +2747,21 @@
                     }
                 }, 10000);
             }
+
+            // Heartbeat: Check WebSocket every 10 seconds
+            if (!s.heartbeatInterval) {
+                s.heartbeatInterval = setInterval(async () => {
+                    if (!current(s) || !s.connected) return;
+                    try {
+                        const blockNumber = await s.provider.getBlockNumber();
+                        s.lastBlockProcessed = Date.now();
+                    } catch (e) {
+                        console.warn('[Heartbeat] WebSocket failed. Reconnecting...');
+                        s.connected = false;
+                        scheduleReconnect(s);
+                    }
+                }, 10000);
+            }
         }
 
         async function startPriceMonitoring(s) {
@@ -2804,7 +2841,7 @@
                         head = await s.provider.getBlockNumber();
                     } catch {
                         s.pendingBlock = target;
-                        await sleep(1000);
+                        await new Promise(resolve => setTimeout(resolve, 1000));
                         continue;
                     }
 
@@ -2814,7 +2851,7 @@
 
                     if (target > head) {
                         s.pendingBlock = target;
-                        await sleep(1000);
+                        await new Promise(resolve => setTimeout(resolve, 1000));
                         continue;
                     }
 
@@ -2837,7 +2874,7 @@
                 s.rpcHead = head;
 
                 if (n > head) {
-                    await sleep(1000);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                     return;
                 }
 
@@ -3056,6 +3093,7 @@
 
         function norm(a) { return a ? String(a).toLowerCase() : ''; }
         function short(a) { if (!a) return ''; return a.substring(0, 6) + '...' + a.substring(a.length - 4); }
+
         function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
         function isStable(s, address) {
@@ -3290,20 +3328,24 @@
         function updateButton() {
             const sb = document.getElementById('startBotBtn');
             const stopb = document.getElementById('stopBotBtn');
+            const reconnectBtn = document.getElementById('reconnectBtn');
 
-            if (!sb || !stopb) return;
+            if (!sb || !stopb || !reconnectBtn) return;
 
             if (state.manuallyStopped || !state.activeSession) {
                 sb.disabled = false;
                 stopb.disabled = true;
+                reconnectBtn.style.display = 'none';
                 sb.innerHTML = 'Start Trading';
             } else if (!state.activeSession?.connected) {
                 sb.disabled = true;
                 stopb.disabled = true;
+                reconnectBtn.style.display = state.isRunning ? 'inline-block' : 'none';
                 sb.innerHTML = '<span class="loading-spinner"></span>Connecting...';
             } else {
                 sb.disabled = state.isRunning;
                 stopb.disabled = !state.isRunning;
+                reconnectBtn.style.display = 'none';
                 sb.innerHTML = state.isRunning ? 'Running' : 'Connected!';
             }
         }
@@ -3397,21 +3439,38 @@
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') e.preventDefault();
             });
+
+            // Visibility API listener for machine lock/unlock
+            document.addEventListener('visibilitychange', async () => {
+                if (document.visibilityState === 'visible' && state.isRunning) {
+                    console.log('[Visibility] Tab is visible again. Checking connection...');
+                    if (!state.activeSession?.connected) {
+                        await restartConnection();
+                    } else {
+                        try {
+                            const blockNumber = await state.activeSession.provider.getBlockNumber();
+                            state.lastBlockProcessed = Date.now();
+                        } catch (e) {
+                            console.warn('[Visibility] WebSocket seems dead. Reconnecting...');
+                            await restartConnection();
+                        }
+                    }
+                }
+            });
         }
 
         // ======================
         // WINDOW EVENTS
         // ======================
         window.addEventListener('beforeunload', function (e) {
-            if (state.isRunning || state.trades.length > 0 || state.portfolio.positions.length > 0) {
-                e.preventDefault();
-                e.returnValue = 'Warning: You may lose unsaved data if you close or refresh this page.';
-                return e.returnValue;
+            if (state.isRunning) {
+                saveState(); // Force save state
+                shutdownBot();
             }
         });
 
         window.addEventListener('unload', function () {
-            if (state.isRunning || state.trades.length > 0 || state.portfolio.positions.length > 0) {
+            if (state.isRunning) {
                 shutdownBot();
             }
         });
