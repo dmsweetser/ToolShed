@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uniswap Quick Swap Trader v10.1.0 (Optimized with Profit-Taking)</title>
+    <title>Uniswap Quick Swap Trader v11.0.0 (Cubic Regression)</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.17.0/dist/ethers.umd.min.js"></script>
     <style>
         body {
@@ -151,6 +151,8 @@
             margin-right: 8px;
             font-size: 14px;
             width: 100%;
+            background: #f8fafc;
+            color: #64748b;
         }
 
         .form-control:focus {
@@ -325,7 +327,7 @@
     <div class="toast-container" id="toastContainer"></div>
     <div class="container">
         <h1>Uniswap Quick Swap Trader</h1>
-        <p><strong>v10.1.0 (Optimized with Profit-Taking)</strong></p>
+        <p><strong>v11.0.0 (Cubic Regression Optimized)</strong></p>
         <p class="recovery-status" id="recoveryStatus">Last recovery: Never</p>
 
         <!-- Controls -->
@@ -333,8 +335,6 @@
             <h2>Controls</h2>
             <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 15px;">
                 <button class="btn btn-primary" id="connectWalletBtn" onclick="connectWallet()">Connect Wallet</button>
-                <button class="btn btn-warning" id="toggleLiveModeBtn" onclick="toggleLiveMode()" disabled>Live Mode:
-                    OFF</button>
                 <button class="btn btn-success" id="startBotBtn" onclick="startBot()">
                     <span class="loading-spinner" id="startSpinner" style="display:none;"></span>Start Trading
                 </button>
@@ -411,10 +411,6 @@
                     <div>
                         <div style="font-size: 14px; color: #64748b;">Return</div>
                         <div style="font-size: 18px; font-weight: 600;"><span id="portfolioReturn">0.00%</span></div>
-                    </div>
-                    <div>
-                        <div style="font-size: 14px; color: #64748b;">USDC Profit</div>
-                        <div style="font-size: 18px; font-weight: 600;"><span id="usdcProfit">0.00 USDC</span></div>
                     </div>
                 </div>
             </div>
@@ -516,28 +512,9 @@
             </div>
         </div>
 
-        <!-- USDC Profit Funneling -->
+        <!-- Configuration (Read-Only) -->
         <div class="card">
-            <h2>USDC Profit Funneling</h2>
-            <div style="display: grid; gap: 10px;">
-                <div>
-                    <div style="font-size: 14px; color: #64748b;">USDC Target</div>
-                    <div style="font-size: 18px; font-weight: 600;"><span id="usdcTarget">0.50 USDC</span></div>
-                </div>
-                <div>
-                    <div style="font-size: 14px; color: #64748b;">Last USDC Conversion</div>
-                    <div style="font-size: 18px; font-weight: 600;"><span id="lastUsdcConversion">Never</span></div>
-                </div>
-                <div>
-                    <div style="font-size: 14px; color: #64748b;">USDC Balance</div>
-                    <div style="font-size: 18px; font-weight: 600;"><span id="usdcBalance">0.00 USDC</span></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Configuration -->
-        <div class="card">
-            <h2>Configuration</h2>
+            <h2>Configuration (Read-Only)</h2>
 
             <!-- Trading Budget -->
             <div class="config-section">
@@ -546,48 +523,44 @@
                     <div>
                         <label>Starting WETH:</label>
                         <input type="number" class="form-control" id="inputStartingEth" value="0.01" step="0.001"
-                            onchange="updateConfigFromUI()">
+                            disabled>
                     </div>
                     <div>
                         <label>Trade %:</label>
-                        <input type="number" class="form-control" id="inputTradePercent" value="10" step="1"
-                            onchange="updateConfigFromUI()">
+                        <input type="number" class="form-control" id="inputTradePercent" value="10" step="1" disabled>
                     </div>
                     <div>
                         <label>Min Trade (WETH):</label>
                         <input type="number" class="form-control" id="inputMinTrade" value="0.001" step="0.001"
-                            onchange="updateConfigFromUI()">
+                            disabled>
                     </div>
                 </div>
                 <div class="grid-3" style="margin-top: 10px;">
                     <div>
                         <label>Max Trades:</label>
-                        <input type="number" class="form-control" id="inputMaxTrades" value="3" step="1"
-                            onchange="updateConfigFromUI()">
+                        <input type="number" class="form-control" id="inputMaxTrades" value="3" step="1" disabled>
                     </div>
                 </div>
             </div>
 
-            <!-- Regression-Based Pattern Detection -->
+            <!-- Cubic Regression-Based Pattern Detection -->
             <div class="config-section" style="margin-top: 15px;">
-                <h3>Regression-Based Pattern Detection</h3>
+                <h3>Cubic Regression-Based Pattern Detection</h3>
                 <div class="grid-3">
                     <div>
                         <label>Window Size (s):</label>
-                        <input type="number" class="form-control" id="inputWindowSize" value="60" step="1"
-                            onchange="updateConfigFromUI()">
+                        <input type="number" class="form-control" id="inputWindowSize" value="90" step="1" disabled>
                     </div>
                     <div>
                         <label>Margin of Error (%):</label>
-                        <input type="number" class="form-control" id="inputMarginOfError" value="2" step="0.1"
-                            onchange="updateConfigFromUI()">
+                        <input type="number" class="form-control" id="inputMarginOfError" value="3" step="0.1" disabled>
                     </div>
                     <div>
                         <label>Regression Degree:</label>
-                        <select class="form-control" id="inputRegressionDegree" onchange="updateConfigFromUI()">
-                            <option value="2" selected>Quadratic (2)</option>
+                        <select class="form-control" id="inputRegressionDegree" disabled>
                             <option value="1">Linear (1)</option>
-                            <option value="3">Cubic (3)</option>
+                            <option value="2">Quadratic (2)</option>
+                            <option value="3" selected>Cubic (3)</option>
                         </select>
                     </div>
                 </div>
@@ -599,33 +572,17 @@
                 <div class="grid-3">
                     <div>
                         <label>Min Profit to Sell (%):</label>
-                        <input type="number" class="form-control" id="inputMinProfit" value="0.5" step="0.1"
-                            onchange="updateConfigFromUI()">
+                        <input type="number" class="form-control" id="inputMinProfit" value="0.5" step="0.1" disabled>
                     </div>
                     <div>
                         <label>Max Slippage (%):</label>
-                        <input type="number" class="form-control" id="inputMaxSlippage" value="0.5" step="0.1"
-                            onchange="updateConfigFromUI()">
+                        <input type="number" class="form-control" id="inputMaxSlippage" value="0.5" step="0.1" disabled>
                     </div>
                     <div>
                         <label>Max Gas Price (gwei):</label>
-                        <input type="number" class="form-control" id="inputMaxGasPrice" value="500" step="1"
-                            onchange="updateConfigFromUI()">
+                        <input type="number" class="form-control" id="inputMaxGasPrice" value="500" step="1" disabled>
                     </div>
                 </div>
-                <div class="grid-3" style="margin-top: 10px;">
-                    <div>
-                        <label>USDC Profit Target:</label>
-                        <input type="number" class="form-control" id="inputUsdcTarget" value="0.5" step="0.1"
-                            onchange="updateConfigFromUI()">
-                    </div>
-                </div>
-            </div>
-
-            <div style="margin-top: 15px; display: flex; gap: 10px;">
-                <button class="btn btn-primary" onclick="saveConfig()">Save Configuration</button>
-                <button class="btn btn-secondary" onclick="loadConfig()">Load Configuration</button>
-                <button class="btn btn-secondary" onclick="resetConfigToDefaults()">Reset to Defaults</button>
             </div>
         </div>
 
@@ -665,13 +622,14 @@
 
     <script>
         // ======================
-        // CONFIGURATION
+        // HARDCODED CONFIGURATION
         // ======================
-        const APP_VERSION = '10.1.0 (Optimized with Profit-Taking)';
-        const SWAP_DETECTION_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
-        const BLOCK_PROCESSING_TIMEOUT = 2 * 60 * 1000; // 2 minutes in milliseconds
-        const MAX_SWAPS_STORAGE = 1000; // Reduced from 20k to 1k to prevent storage issues
+        const APP_VERSION = '11.0.0 (Cubic Regression Optimized)';
+        const SWAP_DETECTION_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+        const BLOCK_PROCESSING_TIMEOUT = 2 * 60 * 1000; // 2 minutes
+        const MAX_SWAPS_STORAGE = 1000;
 
+        // Hardcoded config (no persistence)
         const CONFIG = {
             BLOCKCHAIN_NETWORK: 'arbitrum',
             UNISWAP_VERSION: 'v3',
@@ -690,17 +648,14 @@
             GAS_LIMIT: 300000,
             PREVENT_SEQUENTIAL_TRADES: true,
             PRICE_HISTORY_DURATION: 24,
-            MAX_PRICE_HISTORY: 1000, // Reduced from 20k to 1k
-            USDC_PROFIT_TARGET: 0.5,
-            USDC_CONVERSION_INTERVAL: 300000,
+            MAX_PRICE_HISTORY: 1000,
+            WINDOW_SIZE: 90, // Optimized for cubic
+            MARGIN_OF_ERROR: 3, // 3% for cubic
+            REGRESSION_DEGREE: 3, // Cubic
             MIN_LIQUIDITY: 50000,
-            PATTERN_MODE: 'regression',
-            WINDOW_SIZE: 60, // seconds
-            MARGIN_OF_ERROR: 2, // percentage
-            REGRESSION_DEGREE: 2 // 2=quadratic (best default)
+            PATTERN_MODE: 'regression'
         };
 
-        // Pattern types
         const PATTERN_TYPES = {
             REGRESSION: 'regression'
         };
@@ -764,7 +719,6 @@
 
         // State
         let lastPositionUpdate = 0;
-        let usdcConversionTimer = null;
         let isDetectingPatterns = false;
         let profitTakingTimer = null;
         let state = {
@@ -791,9 +745,7 @@
                 winningTrades: 0,
                 losingTrades: 0,
                 failedTrades: 0,
-                totalFees: 0,
-                usdcBalance: 0,
-                usdcProfit: 0
+                totalFees: 0
             },
             lastTradedToken: null,
             lastTradeTimes: {},
@@ -809,7 +761,6 @@
             maxReconnectAttempts: 10,
             reconnectDelay: 1000,
             walletConnected: false,
-            liveMode: false,
             provider: null,
             signer: null,
             sessionSerial: 0,
@@ -817,7 +768,6 @@
             currentRpcIndex: 0,
             lastDetectionTime: null,
             lastMaxTradeToast: null,
-            lastUsdcConversion: null,
             lastSwapDetected: null,
             swapDetectionTimeoutTimer: null,
             lastBlockProcessed: null,
@@ -843,11 +793,6 @@
             return formatNumber(value, decimals) + ' WETH';
         }
 
-        function formatUSDC(value, decimals = 2) {
-            if (value === null || value === undefined) return '0.00 USDC';
-            return value.toFixed(decimals) + ' USDC';
-        }
-
         function formatPercent(value, decimals = 2) {
             if (value === null || value === undefined) return '0.00%';
             return value.toFixed(decimals) + '%';
@@ -861,6 +806,22 @@
         function safeSetHTML(elementId, html) {
             const el = document.getElementById(elementId);
             if (el) el.innerHTML = html;
+        }
+
+        // ======================
+        // SMOOTHING FUNCTION
+        // ======================
+        function smoothData(history, windowSize = 3) {
+            if (history.length <= windowSize) return history;
+            const smoothed = [];
+            for (let i = 0; i < history.length; i++) {
+                const start = Math.max(0, i - Math.floor(windowSize / 2));
+                const end = Math.min(history.length, i + Math.ceil(windowSize / 2));
+                const window = history.slice(start, end);
+                const avgPrice = window.reduce((sum, p) => sum + p.price, 0) / window.length;
+                smoothed.push({ timestamp: history[i].timestamp, price: avgPrice });
+            }
+            return smoothed;
         }
 
         // ======================
@@ -1092,81 +1053,88 @@
         }
 
         // ======================
-        // REGRESSION-BASED PATTERN DETECTION
+        // CUBIC REGRESSION-BASED PATTERN DETECTION
         // ======================
         function detectPatternsForToken(history, token) {
-            if (!history || history.length < 5) return [];
+            if (!history || history.length < 5) {
+                console.warn(`[Cubic] Not enough history for ${token}. Length: ${history.length}`);
+                return [];
+            }
+
+            // Smooth the data
+            const smoothedHistory = smoothData(history, 3);
 
             const windowSize = CONFIG.WINDOW_SIZE * 1000; // Convert to milliseconds
             const marginOfError = CONFIG.MARGIN_OF_ERROR / 100;
-            const regressionDegree = parseInt(CONFIG.REGRESSION_DEGREE) || 2;
+            const regressionDegree = 3; // Cubic
             const patterns = [];
 
             // Group history into windows
             const windows = [];
             let currentWindow = [];
-            let windowStartTime = history[0].timestamp;
+            let windowStartTime = smoothedHistory[0].timestamp;
 
-            for (const point of history) {
+            for (const point of smoothedHistory) {
                 if (point.timestamp - windowStartTime > windowSize) {
-                    if (currentWindow.length > 0) {
-                        windows.push(currentWindow);
-                    }
+                    if (currentWindow.length > 0) windows.push(currentWindow);
                     currentWindow = [point];
                     windowStartTime = point.timestamp;
                 } else {
                     currentWindow.push(point);
                 }
             }
-            if (currentWindow.length > 0) {
-                windows.push(currentWindow);
+            if (currentWindow.length > 0) windows.push(currentWindow);
+
+            if (windows.length < 2) {
+                console.warn(`[Cubic] Not enough windows for ${token}. Need at least 2.`);
+                return [];
             }
 
-            // If not enough windows, return no patterns
-            if (windows.length < 2) return [];
-
-            // For each window, find the average price
-            const windowAverages = windows.map(window => {
-                const prices = window.map(p => p.price);
-                return {
-                    avg: prices.reduce((a, b) => a + b, 0) / prices.length,
-                    timestamp: window[window.length - 1].timestamp
-                };
-            });
+            // Calculate window averages
+            const windowAverages = windows.map(window => ({
+                avg: window.map(p => p.price).reduce((a, b) => a + b, 0) / window.length,
+                timestamp: window[window.length - 1].timestamp
+            }));
 
             // Prepare data for regression
             const xValues = windowAverages.map((_, i) => i);
             const yValues = windowAverages.map(w => w.avg);
 
-            // Fit regression
+            // Fit cubic regression
             const regression = polynomialRegression(xValues, yValues, regressionDegree);
-
-            // Predict the next value
             const nextX = xValues.length;
-            const predictedY = regression.predict(nextX);
+            let predictedY = regression.predict(nextX);
+            const currentPrice = smoothedHistory[smoothedHistory.length - 1].price;
 
-            // Check if the current price is within the margin of error
-            const currentPrice = history[history.length - 1].price;
+            // Clamp prediction to reasonable range (±50%)
+            const maxDeviation = 0.5;
+            const maxPredicted = currentPrice * (1 + maxDeviation);
+            const minPredicted = currentPrice * (1 - maxDeviation);
+            predictedY = Math.min(Math.max(predictedY, minPredicted), maxPredicted);
+
+            // Calculate error bounds
             const errorMargin = predictedY * marginOfError;
             const lowerBound = predictedY - errorMargin;
             const upperBound = predictedY + errorMargin;
 
-            if (currentPrice >= lowerBound && currentPrice <= upperBound) {
-                // Only consider patterns where the predicted price is higher than the current price for buying
-                if (predictedY > currentPrice) {
-                    patterns.push({
-                        type: PATTERN_TYPES.REGRESSION,
-                        token,
-                        predictedPrice: predictedY,
-                        currentPrice,
-                        slope: regressionDegree === 1 ? regression.coefficients[1] : null,
-                        intercept: regressionDegree === 1 ? regression.coefficients[0] : null,
-                        windowSize: windowSize / 1000,
-                        marginOfError: marginOfError * 100,
-                        regressionDegree,
-                        timestamp: Date.now()
-                    });
-                }
+            console.log(`[Cubic] ${token}: Predicted=${predictedY.toFixed(8)}, Current=${currentPrice.toFixed(8)}, Bounds=[${lowerBound.toFixed(8)}, ${upperBound.toFixed(8)}]`);
+
+            // Only accept patterns where predicted > current and current is within bounds
+            if (currentPrice >= lowerBound && currentPrice <= upperBound && predictedY > currentPrice) {
+                patterns.push({
+                    type: PATTERN_TYPES.REGRESSION,
+                    token,
+                    predictedPrice: predictedY,
+                    currentPrice,
+                    slope: regression.coefficients[1],
+                    intercept: regression.coefficients[0],
+                    quadraticTerm: regression.coefficients[2],
+                    cubicTerm: regression.coefficients[3],
+                    windowSize: windowSize / 1000,
+                    marginOfError: marginOfError * 100,
+                    regressionDegree: 3,
+                    timestamp: Date.now()
+                });
             }
 
             return patterns;
@@ -1174,14 +1142,14 @@
 
         function getPatternKey(pattern) {
             if (pattern.type === PATTERN_TYPES.REGRESSION) {
-                return `REGRESSION_${Math.round(pattern.predictedPrice * 100) / 100}_${Math.round(pattern.slope * 100) / 100}_${pattern.regressionDegree}`;
+                return `CUBIC_${Math.round(pattern.predictedPrice * 100) / 100}_${Math.round(pattern.cubicTerm * 100) / 100}`;
             }
             return 'UNKNOWN';
         }
 
         function getPatternDescription(pattern) {
             if (pattern.type === PATTERN_TYPES.REGRESSION) {
-                return `Regression: Predicted ${pattern.predictedPrice.toFixed(8)} WETH (Degree: ${pattern.regressionDegree})`;
+                return `Cubic: Predicted ${pattern.predictedPrice.toFixed(8)} WETH`;
             }
             return 'Manual';
         }
@@ -1373,7 +1341,6 @@
                             patternObj: trade.patternObj
                         };
                         state.portfolio.positions.push(position);
-                        backupData();
                     } else {
                         position.amount += tradeResult.tokenAmount;
                         position.usdValue += tradeResult.amountETH;
@@ -1510,9 +1477,8 @@
                     if (sellableAmount <= 0) return null;
                 }
 
-                let tradeResult = state.liveMode && state.walletConnected && state.signer
-                    ? await executeLiveTrade(tokenSymbol, action, tokenAmount, currentPrice, poolInfo, currentGasPrice)
-                    : await simulateRealisticTrade(tokenSymbol, action, tokenAmount, currentPrice, poolInfo, 0, currentGasPrice);
+                // Always simulate (live trading disabled in this version)
+                let tradeResult = await simulateRealisticTrade(tokenSymbol, action, tokenAmount, currentPrice, poolInfo, 0, currentGasPrice);
 
                 if (!tradeResult.success) {
                     const failedTrade = createTradeObject(
@@ -1557,53 +1523,11 @@
                 updateDashboard();
                 updatePortfolioUI();
                 updateTradeAmountDisplay();
-                backupData();
                 return trade;
             } catch (e) {
                 console.error('Error executing trade:', e);
                 showToast('error', `Trade execution error: ${e.message}`);
                 return null;
-            }
-        }
-
-        async function executeLiveTrade(tokenSymbol, action, tokenAmount, currentPrice, poolInfo, gasPriceGwei) {
-            try {
-                const gasUsed = estimateSwapGas(action, tokenSymbol);
-                const feeTier = poolInfo.feeTier || POOL_FEES.MEDIUM;
-                const feePercent = feeTier / 1000000;
-                const feeAmount = (tokenAmount * currentPrice) * feePercent;
-                const priceImpact = calculatePriceImpact(tokenSymbol, tokenAmount, poolInfo);
-                const slippage = Math.random() * CONFIG.MAX_SLIPPAGE * 0.5;
-                const executionPrice = action === 'buy'
-                    ? currentPrice * (1 + slippage / 100)
-                    : currentPrice * (1 - slippage / 100);
-                const amountWETH = tokenAmount * executionPrice;
-
-                return {
-                    success: true,
-                    tokenAmount: action === 'buy' ? (amountWETH / executionPrice) : tokenAmount,
-                    amountETH: amountWETH,
-                    executionPrice,
-                    gasUsed,
-                    gasPrice: gasPriceGwei,
-                    feeAmount,
-                    priceImpact,
-                    slippage,
-                    reason: null
-                };
-            } catch (error) {
-                return {
-                    success: false,
-                    tokenAmount,
-                    amountETH: tokenAmount * currentPrice,
-                    executionPrice: currentPrice,
-                    gasUsed: 0,
-                    gasPrice: gasPriceGwei,
-                    feeAmount: 0,
-                    priceImpact: 0,
-                    slippage: 0,
-                    reason: error.reason || error.message || 'Transaction failed or rejected'
-                };
             }
         }
 
@@ -1650,159 +1574,6 @@
                 }
             } catch (e) {
                 console.error('Error checking patterns for token:', e);
-            }
-        }
-
-        // ======================
-        // USDC PROFIT FUNNELING
-        // ======================
-        async function getUSDCPriceInWETH() {
-            try {
-                if (state.prices.USDC) return state.prices.USDC;
-                if (!state.activeSession?.connected) return null;
-
-                const usdcAddress = NETWORK_TOKENS.arbitrum.USDC;
-                const wethAddress = NETWORK_TOKENS.arbitrum.WETH;
-
-                if (state.activeSession.pools) {
-                    for (const [poolAddress, pool] of state.activeSession.pools) {
-                        if (
-                            (pool.token0 === usdcAddress && pool.token1 === wethAddress) ||
-                            (pool.token0 === wethAddress && pool.token1 === usdcAddress)
-                        ) {
-                            const price = quotePrice(state.activeSession, usdcAddress);
-                            if (price) {
-                                state.prices.USDC = price;
-                                return price;
-                            }
-                        }
-                    }
-                }
-
-                const fallbackPrice = 0.0005;
-                state.prices.USDC = fallbackPrice;
-                return fallbackPrice;
-            } catch (e) {
-                console.error('Error fetching USDC price:', e);
-                return 0.0005;
-            }
-        }
-
-        async function executeTradeForUSDC(amountWETH, usdcPriceInWETH) {
-            try {
-                if (!state.liveMode || !state.walletConnected || !state.signer) {
-                    const usdcAmount = amountWETH / usdcPriceInWETH;
-                    return {
-                        success: true,
-                        amountWETH,
-                        usdcAmount,
-                        reason: null
-                    };
-                }
-
-                const usdcAmount = amountWETH / usdcPriceInWETH;
-                const usdcAddress = NETWORK_TOKENS.arbitrum.USDC;
-                const wethAddress = NETWORK_TOKENS.arbitrum.WETH;
-
-                const wethContract = new ethers.Contract(wethAddress, ERC20_ABI, state.signer);
-                const usdcContract = new ethers.Contract(usdcAddress, ERC20_ABI, state.signer);
-
-                const wethBalance = await wethContract.balanceOf(await state.signer.getAddress());
-                if (ethers.formatUnits(wethBalance, 18) < amountWETH) {
-                    return {
-                        success: false,
-                        reason: 'Not enough WETH balance'
-                    };
-                }
-
-                const routerAddress = "0xE592427A0AEce92De3Edee1F18E0157C05861564";
-                const routerAbi = ["function exactInputSingle(address,address,uint24,address,uint256,uint256,uint160) external returns (uint256)"];
-                const router = new ethers.Contract(routerAddress, routerAbi, state.signer);
-
-                const amountIn = ethers.parseUnits(amountWETH.toString(), 18);
-                const minAmountOut = ethers.parseUnits((usdcAmount * 0.995).toString(), 6);
-
-                try {
-                    const tx = await router.exactInputSingle(
-                        wethAddress,
-                        usdcAddress,
-                        500,
-                        await state.signer.getAddress(),
-                        amountIn,
-                        minAmountOut,
-                        Math.floor(Date.now() / 1000) + 60 * 20
-                    );
-                    await tx.wait();
-                    return { success: true, usdcAmount };
-                } catch (e) {
-                    return { success: false, reason: e.message };
-                }
-            } catch (e) {
-                console.error('Error executing trade for USDC:', e);
-                return {
-                    success: false,
-                    reason: e.message || 'Unknown error'
-                };
-            }
-        }
-
-        async function checkAndConvertToUSDC() {
-            try {
-                if (!state.isRunning || !state.activeSession?.connected) return;
-
-                const usdcPriceInWETH = await getUSDCPriceInWETH();
-                if (!usdcPriceInWETH) {
-                    console.warn('Could not fetch USDC/WETH price.');
-                    return;
-                }
-
-                const totalProfitWETH = state.portfolio.realizedPnL + state.portfolio.unrealizedPnL;
-                if (totalProfitWETH <= 0) {
-                    console.log('No profit to convert to USDC.');
-                    return;
-                }
-
-                const usdcTarget = CONFIG.USDC_PROFIT_TARGET;
-                const wethNeededFor1USDC = usdcTarget * usdcPriceInWETH;
-
-                if (totalProfitWETH >= wethNeededFor1USDC) {
-                    console.log(`Converting ${wethNeededFor1USDC} WETH to ${usdcTarget} USDC...`);
-
-                    const tradeResult = await executeTradeForUSDC(wethNeededFor1USDC, usdcPriceInWETH);
-                    if (tradeResult.success) {
-                        state.portfolio.usdcProfit += usdcTarget;
-                        state.portfolio.usdcBalance = (state.portfolio.usdcBalance || 0) + usdcTarget;
-                        state.lastUsdcConversion = new Date();
-                        safeSetText('lastUsdcConversion', state.lastUsdcConversion.toLocaleTimeString());
-                        safeSetText('usdcProfit', formatUSDC(state.portfolio.usdcProfit));
-                        safeSetText('usdcBalance', formatUSDC(state.portfolio.usdcBalance));
-                        showToast('success', `Converted ${formatETH(wethNeededFor1USDC)} to ${formatUSDC(usdcTarget)}`);
-                        backupData();
-                    } else {
-                        showToast('error', `Failed to convert to USDC: ${tradeResult.reason}`);
-                    }
-                } else {
-                    console.log(`Not enough profit to convert. Current: ${totalProfitWETH} WETH, Needed: ${wethNeededFor1USDC} WETH`);
-                }
-            } catch (e) {
-                console.error('Error in checkAndConvertToUSDC:', e);
-                showToast('error', `Error converting to USDC: ${e.message}`);
-            }
-        }
-
-        function startUsdcConversionTimer() {
-            if (usdcConversionTimer) clearInterval(usdcConversionTimer);
-            usdcConversionTimer = setInterval(async () => {
-                if (state.isRunning && state.activeSession?.connected) {
-                    await checkAndConvertToUSDC();
-                }
-            }, CONFIG.USDC_CONVERSION_INTERVAL);
-        }
-
-        function stopUsdcConversionTimer() {
-            if (usdcConversionTimer) {
-                clearInterval(usdcConversionTimer);
-                usdcConversionTimer = null;
             }
         }
 
@@ -1868,7 +1639,7 @@
                 if (state.isRunning && state.activeSession?.connected && !isDetectingPatterns) {
                     detectAllPatterns();
                 }
-            }, 15000); // Reduced frequency to 15 seconds
+            }, 15000); // Check every 15 seconds
         }
 
         function stopPatternDetection() {
@@ -1952,8 +1723,6 @@
                 safeSetText('gasSpent', formatETH(gasSpent));
                 safeSetText('dexFees', formatETH(feesPaid));
                 safeSetText('totalFees', formatETH(gasSpent + feesPaid));
-                safeSetText('usdcProfit', formatUSDC(state.portfolio.usdcProfit));
-                safeSetText('usdcBalance', formatUSDC(state.portfolio.usdcBalance));
                 updatePositionDetails();
             } catch (e) {
                 console.error('Error updating portfolio UI:', e);
@@ -2185,7 +1954,6 @@
 
         function updateConstantsDisplay() {
             safeSetText('targetProfitPercent', CONFIG.MIN_PROFIT_PERCENT + '%');
-            safeSetText('usdcTarget', formatUSDC(CONFIG.USDC_PROFIT_TARGET));
         }
 
         function showToast(type, message, duration = 5000) {
@@ -2219,94 +1987,6 @@
         }
 
         // ======================
-        // CONFIGURATION UI FUNCTIONS
-        // ======================
-        function updateConfigFromUI() {
-            CONFIG.STARTING_ETH = parseFloat(document.getElementById('inputStartingEth').value) || 0.01;
-            CONFIG.TRADE_AMOUNT_PERCENT = parseFloat(document.getElementById('inputTradePercent').value) || 10;
-            CONFIG.MIN_TRADE_AMOUNT_ETH = parseFloat(document.getElementById('inputMinTrade').value) || 0.001;
-            CONFIG.MAX_TRADES = parseInt(document.getElementById('inputMaxTrades').value) || 3;
-            CONFIG.MIN_PROFIT_PERCENT = parseFloat(document.getElementById('inputMinProfit').value) || 0.5;
-            CONFIG.MAX_SLIPPAGE = parseFloat(document.getElementById('inputMaxSlippage').value) || 0.5;
-            CONFIG.MAX_GAS_PRICE = parseInt(document.getElementById('inputMaxGasPrice').value) || 500;
-            CONFIG.USDC_PROFIT_TARGET = parseFloat(document.getElementById('inputUsdcTarget').value) || 0.5;
-
-            // Regression-based pattern detection settings
-            CONFIG.WINDOW_SIZE = parseInt(document.getElementById('inputWindowSize').value) || 60;
-            CONFIG.MARGIN_OF_ERROR = parseFloat(document.getElementById('inputMarginOfError').value) || 2;
-            CONFIG.REGRESSION_DEGREE = parseInt(document.getElementById('inputRegressionDegree').value) || 2;
-
-            updateConstantsDisplay();
-            backupData();
-            showToast('success', 'Configuration updated!');
-        }
-
-        function saveConfig() {
-            const configToSave = {
-                STARTING_ETH: CONFIG.STARTING_ETH,
-                TRADE_AMOUNT_PERCENT: CONFIG.TRADE_AMOUNT_PERCENT,
-                MIN_TRADE_AMOUNT_ETH: CONFIG.MIN_TRADE_AMOUNT_ETH,
-                MAX_TRADES: CONFIG.MAX_TRADES,
-                MIN_PROFIT_PERCENT: CONFIG.MIN_PROFIT_PERCENT,
-                MAX_SLIPPAGE: CONFIG.MAX_SLIPPAGE,
-                MAX_GAS_PRICE: CONFIG.MAX_GAS_PRICE,
-                USDC_PROFIT_TARGET: CONFIG.USDC_PROFIT_TARGET,
-                WINDOW_SIZE: CONFIG.WINDOW_SIZE,
-                MARGIN_OF_ERROR: CONFIG.MARGIN_OF_ERROR,
-                REGRESSION_DEGREE: CONFIG.REGRESSION_DEGREE
-            };
-
-            localStorage.setItem('uniswapTraderConfig', JSON.stringify(configToSave));
-            showToast('success', 'Configuration saved!');
-        }
-
-        function loadConfig() {
-            const savedConfig = localStorage.getItem('uniswapTraderConfig');
-            if (savedConfig) {
-                const config = JSON.parse(savedConfig);
-                Object.assign(CONFIG, config);
-
-                // Update UI inputs
-                document.getElementById('inputStartingEth').value = CONFIG.STARTING_ETH;
-                document.getElementById('inputTradePercent').value = CONFIG.TRADE_AMOUNT_PERCENT;
-                document.getElementById('inputMinTrade').value = CONFIG.MIN_TRADE_AMOUNT_ETH;
-                document.getElementById('inputMaxTrades').value = CONFIG.MAX_TRADES;
-                document.getElementById('inputMinProfit').value = CONFIG.MIN_PROFIT_PERCENT;
-                document.getElementById('inputMaxSlippage').value = CONFIG.MAX_SLIPPAGE;
-                document.getElementById('inputMaxGasPrice').value = CONFIG.MAX_GAS_PRICE;
-                document.getElementById('inputUsdcTarget').value = CONFIG.USDC_PROFIT_TARGET;
-                document.getElementById('inputWindowSize').value = CONFIG.WINDOW_SIZE;
-                document.getElementById('inputMarginOfError').value = CONFIG.MARGIN_OF_ERROR;
-                document.getElementById('inputRegressionDegree').value = CONFIG.REGRESSION_DEGREE;
-
-                updateConfigFromUI();
-                showToast('success', 'Configuration loaded!');
-            } else {
-                showToast('info', 'No saved configuration found.');
-            }
-        }
-
-        function resetConfigToDefaults() {
-            if (confirm('Are you sure you want to reset the configuration to defaults?')) {
-                // Reset to default values
-                document.getElementById('inputStartingEth').value = 0.01;
-                document.getElementById('inputTradePercent').value = 10;
-                document.getElementById('inputMinTrade').value = 0.001;
-                document.getElementById('inputMaxTrades').value = 3;
-                document.getElementById('inputMinProfit').value = 0.5;
-                document.getElementById('inputMaxSlippage').value = 0.5;
-                document.getElementById('inputMaxGasPrice').value = 500;
-                document.getElementById('inputUsdcTarget').value = 0.5;
-                document.getElementById('inputWindowSize').value = 60;
-                document.getElementById('inputMarginOfError').value = 2;
-                document.getElementById('inputRegressionDegree').value = 2;
-
-                updateConfigFromUI();
-                showToast('success', 'Configuration reset to defaults!');
-            }
-        }
-
-        // ======================
         // BOT LIFECYCLE
         // ======================
         async function startBot() {
@@ -2335,13 +2015,11 @@
                 await updateGasPrice();
                 startPricePolling();
                 startPatternDetection();
-                startUsdcConversionTimer();
                 startSwapDetectionTimeoutCheck();
                 startSessionResetWatchdog();
                 startProfitTakingMonitor();
 
-                showToast('success', 'Started! Watching Arbitrum for regression-based opportunities and monitoring open positions for profit-taking.');
-                backupData();
+                showToast('success', 'Started! Watching Arbitrum for cubic regression-based opportunities and monitoring open positions for profit-taking.');
             } catch (error) {
                 const errorMsg = error && error.message ? error.message : String(error);
                 hideLoading('startSpinner');
@@ -2370,7 +2048,6 @@
                 state.manuallyStopped = true;
                 stopPatternDetection();
                 stopPricePolling();
-                stopUsdcConversionTimer();
                 stopSwapDetectionTimeoutCheck();
                 stopSessionResetWatchdog();
                 stopBlockProcessingWatchdog();
@@ -2381,7 +2058,6 @@
                 updateBotStatus();
 
                 showToast('success', 'Trading stopped!');
-                backupData();
             } catch (error) {
                 const errorMsg = error && error.message ? error.message : String(error);
                 showToast('error', `Failed to stop: ${errorMsg}`);
@@ -2415,9 +2091,7 @@
                     winningTrades: 0,
                     losingTrades: 0,
                     failedTrades: 0,
-                    totalFees: 0,
-                    usdcBalance: 0,
-                    usdcProfit: 0
+                    totalFees: 0
                 };
                 state.activePatterns.clear();
                 state.patternStats = { totalPatterns: 0, tokensWithPatterns: 0 };
@@ -2429,11 +2103,9 @@
                 state.openBuyOrders.clear();
                 state.lastDetectionTime = null;
                 state.lastSwaps = [];
-                state.lastUsdcConversion = null;
                 state.lastSwapDetected = null;
                 state.wasRunningBeforeReload = false;
 
-                localStorage.removeItem('uniswapTraderBackup');
                 updateUI();
                 showToast('success', 'App has been reset!');
             }
@@ -2465,9 +2137,6 @@
                     connectBtn.disabled = true;
                 }
 
-                const liveModeBtn = document.getElementById('toggleLiveModeBtn');
-                if (liveModeBtn) liveModeBtn.disabled = false;
-
                 const network = await state.provider.getNetwork();
                 const currentChainId = network.chainId;
                 const expectedChainId = CHAINS.arbitrum.chainId;
@@ -2481,16 +2150,6 @@
                 showToast('error', 'Failed to connect wallet: ' + (error.message || String(error)));
                 console.error('Wallet connection error:', error);
             }
-        }
-
-        function toggleLiveMode() {
-            state.liveMode = !state.liveMode;
-            const btn = document.getElementById('toggleLiveModeBtn');
-            if (btn) {
-                btn.textContent = state.liveMode ? 'Live Mode: ON' : 'Live Mode: OFF';
-                btn.className = state.liveMode ? 'btn btn-danger' : 'btn btn-warning';
-            }
-            showToast(state.liveMode ? 'success' : 'warning', state.liveMode ? 'Live Mode enabled.' : 'Live Mode disabled.');
         }
 
         // ======================
@@ -2700,7 +2359,6 @@
                 state.manuallyStopped = true;
                 stopPatternDetection();
                 stopPricePolling();
-                stopUsdcConversionTimer();
                 stopSwapDetectionTimeoutCheck();
                 stopSessionResetWatchdog();
                 stopBlockProcessingWatchdog();
@@ -3362,9 +3020,7 @@
                     winningTrades: 0,
                     losingTrades: 0,
                     failedTrades: 0,
-                    totalFees: 0,
-                    usdcBalance: 0,
-                    usdcProfit: 0
+                    totalFees: 0
                 };
             }
             state.lastTradedToken = null;
@@ -3373,100 +3029,6 @@
             updatePortfolioUI();
             updateStartingEthDisplay();
             updateTradeAmountDisplay();
-        }
-
-        // ======================
-        // STATE PERSISTENCE
-        // ======================
-        function backupData() {
-            try {
-                const backup = {
-                    wasRunning: state.isRunning,
-                    trades: state.trades.slice(-50),
-                    portfolio: {
-                        balances: state.portfolio.balances,
-                        positions: state.portfolio.positions,
-                        realizedPnL: state.portfolio.realizedPnL,
-                        unrealizedPnL: state.portfolio.unrealizedPnL,
-                        gasSpent: state.portfolio.gasSpent,
-                        feesPaid: state.portfolio.feesPaid,
-                        startingEth: state.portfolio.startingEth,
-                        currentEth: state.portfolio.currentEth,
-                        totalTrades: state.portfolio.totalTrades,
-                        winningTrades: state.portfolio.winningTrades,
-                        losingTrades: state.portfolio.losingTrades,
-                        failedTrades: state.portfolio.failedTrades,
-                        totalFees: state.portfolio.totalFees,
-                        usdcBalance: state.portfolio.usdcBalance,
-                        usdcProfit: state.portfolio.usdcProfit
-                    },
-                    activePatterns: Array.from(state.activePatterns.values()).slice(0, 20),
-                    prices: state.prices,
-                    priceHistory: Object.fromEntries(
-                        Object.entries(state.priceHistory).map(([token, history]) => [
-                            token,
-                            history.slice(-CONFIG.MAX_PRICE_HISTORY)
-                        ])
-                    ),
-                    lastSwaps: state.lastSwaps.slice(-MAX_SWAPS_STORAGE),
-                    observedTokens: Array.from(state.observedTokens),
-                    lastRecoveryTime: new Date().toISOString(),
-                    config: CONFIG
-                };
-
-                try {
-                    localStorage.setItem('uniswapTraderBackup', JSON.stringify(backup));
-                } catch (e) {
-                    console.error('Error saving to localStorage:', e);
-                }
-            } catch (e) {
-                console.error('Error backing up data:', e);
-            }
-        }
-
-        function loadBackup() {
-            try {
-                const backup = localStorage.getItem('uniswapTraderBackup');
-                if (backup) {
-                    const data = JSON.parse(backup);
-                    if (data.wasRunning) {
-                        state.wasRunningBeforeReload = true;
-                        safeSetText('recoveryStatus', `Last recovery: ${new Date(data.lastRecoveryTime).toLocaleString()}`);
-                    }
-                    if (data.trades) state.trades = data.trades;
-                    if (data.portfolio) state.portfolio = data.portfolio;
-                    if (data.activePatterns) {
-                        state.activePatterns = new Map(
-                            data.activePatterns?.map(p => [getPatternKey(p), p]) || []
-                        );
-                    }
-                    if (data.prices) state.prices = data.prices;
-                    if (data.priceHistory) state.priceHistory = data.priceHistory;
-                    if (data.lastSwaps) state.lastSwaps = data.lastSwaps;
-                    if (data.observedTokens) {
-                        state.observedTokens = new Set(data.observedTokens);
-                    }
-                    if (data.config) {
-                        Object.assign(CONFIG, data.config);
-                    }
-
-                    updateUI();
-                }
-            } catch (e) {
-                console.error('Error loading backup:', e);
-            }
-        }
-
-        function shutdownBot() {
-            state.isRunning = false;
-            state.manuallyStopped = true;
-            stopPatternDetection();
-            stopPricePolling();
-            stopUsdcConversionTimer();
-            stopSwapDetectionTimeoutCheck();
-            stopSessionResetWatchdog();
-            stopBlockProcessingWatchdog();
-            stopProfitTakingMonitor();
         }
 
         // ======================
@@ -3482,27 +3044,7 @@
             initializeKnownTokens();
             updateUI();
             startUptimeTimer();
-            loadBackup();
-            loadConfig();
-
-            // Auto-start if it was running before reload
-            if (state.wasRunningBeforeReload) {
-                setTimeout(() => {
-                    showToast('info', 'Restoring previous session...');
-                    startBot();
-                }, 2000);
-            }
-
-            document.addEventListener('visibilitychange', () => {
-                if (state.isRunning && document.visibilityState === 'visible') {
-                    updateDashboard();
-                    updatePortfolioUI();
-                }
-            });
-
-            if (typeof ethers === 'undefined') {
-                showToast('error', 'ethers.js not loaded.');
-            }
+            updateConstantsDisplay();
         }
 
         function startUptimeTimer() {
@@ -3542,17 +3084,20 @@
 
         window.addEventListener('unload', function () {
             if (state.isRunning || state.trades.length > 0 || state.portfolio.positions.length > 0) {
-                backupData();
                 shutdownBot();
             }
         });
 
-        setInterval(() => {
-            if (state.isRunning || state.trades.length > 0 || state.portfolio.positions.length > 0) {
-                backupData();
-            }
-            renderDashboard();
-        }, 60000);
+        function shutdownBot() {
+            state.isRunning = false;
+            state.manuallyStopped = true;
+            stopPatternDetection();
+            stopPricePolling();
+            stopSwapDetectionTimeoutCheck();
+            stopSessionResetWatchdog();
+            stopBlockProcessingWatchdog();
+            stopProfitTakingMonitor();
+        }
 
         // ======================
         // START THE APP
@@ -3560,7 +3105,6 @@
         document.addEventListener('DOMContentLoaded', function () {
             initializeApp();
             setupEventListeners();
-            updateConstantsDisplay();
         });
     </script>
 </body>
