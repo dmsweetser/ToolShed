@@ -199,6 +199,7 @@ tr:hover {
         transform: translateX(100%);
         opacity: 0;
     }
+
     to {
         transform: translateX(0);
         opacity: 1;
@@ -210,6 +211,7 @@ tr:hover {
         transform: translateX(0);
         opacity: 1;
     }
+
     to {
         transform: translateX(100%);
         opacity: 0;
@@ -235,6 +237,7 @@ tr:hover {
 }
 
 @media (max-width: 768px) {
+
     .grid-2,
     .grid-3 {
         grid-template-columns: 1fr;

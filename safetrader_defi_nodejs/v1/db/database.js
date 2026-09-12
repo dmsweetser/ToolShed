@@ -7,18 +7,18 @@ const DB_PATH = process.env.SQLITE_PATH || './db/trader.db';
 // Ensure directory exists
 const dbDir = path.dirname(DB_PATH);
 if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
+    fs.mkdirSync(dbDir, { recursive: true });
 }
 
 // Initialize database
 function initDatabase() {
-  const db = new Database(DB_PATH);
-  
-  // Enable WAL mode for better performance
-  db.pragma('journal_mode = WAL');
-  
-  // Create tables
-  db.exec(`
+    const db = new Database(DB_PATH);
+
+    // Enable WAL mode for better performance
+    db.pragma('journal_mode = WAL');
+
+    // Create tables
+    db.exec(`
     -- App state table
     CREATE TABLE IF NOT EXISTS app_state (
       id INTEGER PRIMARY KEY,
@@ -152,73 +152,73 @@ function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_patterns_token ON patterns(token);
   `);
 
-  return db;
+    return db;
 }
 
 // Helper functions for database operations
 function getTrades(db, limit = 20) {
-  const stmt = db.prepare(`
+    const stmt = db.prepare(`
     SELECT * FROM trades 
     ORDER BY timestamp DESC 
     LIMIT ?
   `);
-  return stmt.all(limit);
+    return stmt.all(limit);
 }
 
 function getPositions(db, status = null) {
-  let query = 'SELECT * FROM positions';
-  const params = [];
-  
-  if (status) {
-    query += ' WHERE status = ?';
-    params.push(status);
-  }
-  
-  query += ' ORDER BY entry_time DESC';
-  const stmt = db.prepare(query);
-  return stmt.all(...params);
+    let query = 'SELECT * FROM positions';
+    const params = [];
+
+    if (status) {
+        query += ' WHERE status = ?';
+        params.push(status);
+    }
+
+    query += ' ORDER BY entry_time DESC';
+    const stmt = db.prepare(query);
+    return stmt.all(...params);
 }
 
 function getPriceHistory(db, token, limit = 100) {
-  const stmt = db.prepare(`
+    const stmt = db.prepare(`
     SELECT * FROM price_history 
     WHERE token = ? 
     ORDER BY timestamp DESC 
     LIMIT ?
   `);
-  return stmt.all(token, limit);
+    return stmt.all(token, limit);
 }
 
 function getSwaps(db, limit = 10) {
-  const stmt = db.prepare(`
+    const stmt = db.prepare(`
     SELECT * FROM swaps 
     ORDER BY timestamp DESC 
     LIMIT ?
   `);
-  return stmt.all(limit);
+    return stmt.all(limit);
 }
 
 function getPatterns(db, token = null) {
-  let query = 'SELECT * FROM patterns';
-  const params = [];
-  
-  if (token) {
-    query += ' WHERE token = ?';
-    params.push(token);
-  }
-  
-  query += ' ORDER BY last_seen DESC';
-  const stmt = db.prepare(query);
-  return stmt.all(...params);
+    let query = 'SELECT * FROM patterns';
+    const params = [];
+
+    if (token) {
+        query += ' WHERE token = ?';
+        params.push(token);
+    }
+
+    query += ' ORDER BY last_seen DESC';
+    const stmt = db.prepare(query);
+    return stmt.all(...params);
 }
 
 function getPortfolioBalances(db) {
-  const stmt = db.prepare('SELECT * FROM portfolio_balances');
-  return stmt.all();
+    const stmt = db.prepare('SELECT * FROM portfolio_balances');
+    return stmt.all();
 }
 
 function getPortfolioSummary(db) {
-  const stmt = db.prepare(`
+    const stmt = db.prepare(`
     SELECT 
       (SELECT amount FROM portfolio_balances WHERE token = 'WETH') as weth_balance,
       (SELECT COUNT(*) FROM positions WHERE status = 'open') as open_positions,
@@ -229,16 +229,16 @@ function getPortfolioSummary(db) {
       (SELECT SUM(pnl) FROM positions WHERE status = 'open') as unrealized_pnl
     FROM dual
   `);
-  return stmt.get();
+    return stmt.get();
 }
 
 module.exports = {
-  initDatabase,
-  getTrades,
-  getPositions,
-  getPriceHistory,
-  getSwaps,
-  getPatterns,
-  getPortfolioBalances,
-  getPortfolioSummary
+    initDatabase,
+    getTrades,
+    getPositions,
+    getPriceHistory,
+    getSwaps,
+    getPatterns,
+    getPortfolioBalances,
+    getPortfolioSummary
 };
