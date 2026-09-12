@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uniswap Quick Swap Trader v11.1.0 (Node.js Backend)</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="toast-container" id="toastContainer"></div>
+    <div class="container">
+        <h1>Uniswap Quick Swap Trader</h1>
+        <p><strong>v11.1.0 (Node.js Backend + SQLite + AJAX)</strong></p>
+        <p class="recovery-status" id="recoveryStatus">Last recovery: <span id="lastRecoveryTime">Never</span></p>
+
+        <!-- Controls -->
+        <div class="card">
+            <h2>Controls</h2>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 15px;">
+                <button class="btn btn-primary" id="connectWalletBtn" onclick="connectWallet()">Connect Wallet</button>
+                <button class="btn btn-success" id="startBotBtn" onclick="startBot()">
+                    <span class="loading-spinner" id="startSpinner" style="display:none;"></span>Start Trading
+                </button>
+                <button class="btn btn-danger" id="stopBotBtn" onclick="stopBot()" disabled>Stop Trading</button>
+                <button class="btn btn-secondary" onclick="resetApp()">Reset App</button>
+                <button class="btn btn-warning" id="reconnectBtn" onclick="restartConnection()" style="display: none;">Reconnect</button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: 15px;">
+                <span id="botStatusIndicator"></span>
+                <span id="botStatusText">Not Running</span>
+                <span class="status status-disconnected" id="statusIndicator"></span>
+                <span id="blockchainStatus"><span class="loading-spinner" style="display:none;"></span> Market Connection</span>
+                <span id="priceFeedStatus"><span class="loading-spinner" style="display:none;"></span> Price Updates</span>
+                <span id="tradingMode"></span>
+            </div>
+            <div class="grid-3" style="margin-top: 20px;">
+                <div class="metric-card">
+                    <div class="metric-value"><span id="uptime">00:00:00</span></div>
+                    <div class="metric-label">Running Time</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value"><span id="lastPriceUpdate">Never</span></div>
+                    <div class="metric-label">Last Price Update</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value"><span id="currentGasPrice">0.02 gwei</span></div>
+                    <div class="metric-label">Network Fee</div>
+                </div>
+            </div>
+            <div class="grid-3" style="margin-top: 10px;">
+                <div class="metric-card">
+                    <div class="metric-value"><span id="tradeAmountDisplay">0.00100000 WETH</span></div>
+                    <div class="metric-label">Trade Size</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value"><span id="trackedTokensCount">0</span></div>
+                    <div class="metric-label">Tokens Watched</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value"><span id="activePatternsCount">0</span></div>
+                    <div class="metric-label">Active Patterns</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Portfolio, Pattern Finder, Trading Costs -->
+        <div class="grid-3">
+            <div class="card">
+                <h3>Portfolio</h3>
+                <div style="display: grid; gap: 10px;">
+                    <div>
+                        <div style="font-size: 14px; color: #64748b;">Starting Budget</div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="startingEthDisplay">0.01 WETH</span></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #64748b;">Current Value</div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="currentEth">0.01 WETH</span></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #64748b;">Profit from Closed Trades</div>
+                        <div style="font-size: 18px; font-weight: 600;"><span class="price-up" id="realizedPnL">0.000000 WETH</span></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #64748b;">Profit from Open Trades</div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="unrealizedPnL">0.000000 WETH</span></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #64748b;">Total Profit</div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="netPnL">0.000000 WETH</span></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #64748b;">Return</div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="portfolioReturn">0.00%</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Pattern Finder</h3>
+                <div style="display: grid; gap: 10px;">
+                    <div>
+                        <div style="font-size: 14px; color: #64748b;">Total Patterns Found</div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="totalPatterns">0</span></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #64748b;">Tokens with Patterns</div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="tokensWithPatterns">0</span></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #64748b;">Profit Target</div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="targetProfitPercent">0.5%</span></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #64748b;">Prediction Validation</div>
+                        <div style="font-size: 18px; font-weight: 600;">
+                            <span id="predictionValidationCount">3</span>
+                            <span class="validation-indicator validation-pending" id="validationStatus"></span>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #64748b;">Last Detection</div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="lastDetectionTime">Never</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Trading Costs</h3>
+                <div style="display: grid; gap: 10px;">
+                    <div>
+                        <div style="font-size: 14px; color: #64748b;">Network Fees Paid</div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="gasSpent">0.00000000 WETH</span></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #64748b;">Exchange Fees Paid</div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="dexFees">0.00000000 WETH</span></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #64748b;">Total Fees</div>
+                        <div style="font-size: 18px; font-weight: 600;"><span id="totalFees">0.00000000 WETH</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Open Positions -->
+        <div class="card">
+            <h2>Open Positions</h2>
+            <div id="activePositions">
+                <p style="color: #94a3b8; text-align: center; padding: 20px;">No open investments</p>
+            </div>
+        </div>
+
+        <!-- Recent Trades -->
+        <div class="card">
+            <h2>Recent Trades</h2>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Token</th>
+                            <th>Action</th>
+                            <th>Price (WETH)</th>
+                            <th>Amount</th>
+                            <th>Pattern</th>
+                            <th>Validation</th>
+                            <th>Profit (WETH)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentTrades">
+                        <tr>
+                            <td colspan="8" style="text-align: center; color: #94a3b8;">No trades yet</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Last 10 Swaps Observed -->
+        <div class="card">
+            <h2>Last 10 Swaps Observed</h2>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Token In</th>
+                            <th>Token Out</th>
+                            <th>Amount In</th>
+                            <th>Amount Out</th>
+                            <th>Pool</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lastSwaps">
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: #94a3b8;">No swaps observed yet</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Configuration (Read-Only) -->
+        <div class="card">
+            <h2>Configuration (Read-Only)</h2>
+
+            <!-- Trading Budget -->
+            <div class="config-section">
+                <h3>Trading Budget</h3>
+                <div class="grid-3">
+                    <div>
+                        <label>Starting WETH:</label>
+                        <input type="number" class="form-control" id="inputStartingEth" value="0.01" step="0.001" disabled>
+                    </div>
+                    <div>
+                        <label>Trade %:</label>
+                        <input type="number" class="form-control" id="inputTradePercent" value="10" step="1" disabled>
+                    </div>
+                    <div>
+                        <label>Min Trade (WETH):</label>
+                        <input type="number" class="form-control" id="inputMinTrade" value="0.001" step="0.001" disabled>
+                    </div>
+                </div>
+                <div class="grid-3" style="margin-top: 10px;">
+                    <div>
+                        <label>Max Trades:</label>
+                        <input type="number" class="form-control" id="inputMaxTrades" value="10" step="1" disabled>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Cubic Regression-Based Pattern Detection -->
+            <div class="config-section" style="margin-top: 15px;">
+                <h3>Enhanced Cubic Regression-Based Pattern Detection</h3>
+                <div class="grid-3">
+                    <div>
+                        <label>Window Size (s):</label>
+                        <input type="number" class="form-control" id="inputWindowSize" value="90" step="1" disabled>
+                    </div>
+                    <div>
+                        <label>Margin of Error (%):</label>
+                        <input type="number" class="form-control" id="inputMarginOfError" value="3" step="0.1" disabled>
+                    </div>
+                    <div>
+                        <label>Regression Degree:</label>
+                        <select class="form-control" id="inputRegressionDegree" disabled>
+                            <option value="1">Linear (1)</option>
+                            <option value="2">Quadratic (2)</option>
+                            <option value="3" selected>Cubic (3)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid-3" style="margin-top: 10px;">
+                    <div>
+                        <label>Prediction Validation Count:</label>
+                        <input type="number" class="form-control" id="inputValidationCount" value="3" step="1" disabled>
+                    </div>
+                    <div>
+                        <label>Min Prediction Accuracy (%):</label>
+                        <input type="number" class="form-control" id="inputMinAccuracy" value="95" step="1" disabled>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profit & Safety -->
+            <div class="config-section" style="margin-top: 15px;">
+                <h3>Profit & Safety</h3>
+                <div class="grid-3">
+                    <div>
+                        <label>Min Profit to Sell (%):</label>
+                        <input type="number" class="form-control" id="inputMinProfit" value="0.5" step="0.1" disabled>
+                    </div>
+                    <div>
+                        <label>Max Slippage (%):</label>
+                        <input type="number" class="form-control" id="inputMaxSlippage" value="0.5" step="0.1" disabled>
+                    </div>
+                    <div>
+                        <label>Max Gas Price (gwei):</label>
+                        <input type="number" class="form-control" id="inputMaxGasPrice" value="500" step="1" disabled>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trade Statistics -->
+        <div class="card">
+            <h2>Trade Statistics</h2>
+            <div class="grid-3">
+                <div class="metric-card">
+                    <div class="metric-value"><span id="totalTradesCount">0</span></div>
+                    <div class="metric-label">Total Trades</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value"><span id="winningTradesCount">0</span></div>
+                    <div class="metric-label">Winning Trades</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value"><span id="losingTradesCount">0</span></div>
+                    <div class="metric-label">Losing Trades</div>
+                </div>
+            </div>
+            <div class="grid-3" style="margin-top: 10px;">
+                <div class="metric-card">
+                    <div class="metric-value"><span id="failedTradesCount">0</span></div>
+                    <div class="metric-label">Failed Trades</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value"><span id="winRate">0%</span></div>
+                    <div class="metric-label">Win Rate</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value"><span id="avgProfit">0 WETH</span></div>
+                    <div class="metric-label">Avg Profit per Trade</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
