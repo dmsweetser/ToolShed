@@ -98,7 +98,7 @@ const patternDetection = initPatternDetection(state, config, blockchain);
 const tradeExecution = initTradeExecution(state, config, blockchain, db);
 
 // API Routes
-app.use('/api', apiRouter(state, config, blockchain, patternDetection, tradeExecution, saveState));
+app.use('/api', apiRouter(state, config, blockchain, patternDetection, tradeExecution, saveState, db));
 
 // Serve frontend
 app.get('/', (req, res) => {

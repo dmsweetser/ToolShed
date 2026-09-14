@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-module.exports = function (state, config, blockchain, patternDetection, tradeExecution, saveState) {
+module.exports = function (state, config, blockchain, patternDetection, tradeExecution, saveState, db) {
 
     // ======================
     // BOT CONTROL ENDPOINTS
@@ -33,7 +33,7 @@ module.exports = function (state, config, blockchain, patternDetection, tradeExe
             tradeExecution.startProfitTakingMonitor();
 
             // Save state
-            saveState();
+            saveState(db, state);
 
             res.json({
                 success: true,
@@ -66,7 +66,7 @@ module.exports = function (state, config, blockchain, patternDetection, tradeExe
             state.openBuyOrders.clear();
 
             // Save state
-            saveState();
+            saveState(db, state);
 
             res.json({ success: true, message: 'Trading stopped successfully', isRunning: false });
         } catch (error) {
@@ -127,7 +127,7 @@ module.exports = function (state, config, blockchain, patternDetection, tradeExe
             db.initDatabase().exec('DELETE FROM portfolio_balances');
 
             // Save empty state
-            saveState();
+            saveState(db, state);
 
             res.json({ success: true, message: 'App has been reset!' });
         } catch (error) {
@@ -292,7 +292,7 @@ module.exports = function (state, config, blockchain, patternDetection, tradeExe
             }
 
             // Save state
-            saveState();
+            saveState(db, state);
 
             res.json({ success: true, trade });
         } catch (error) {

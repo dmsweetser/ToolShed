@@ -423,7 +423,7 @@ function updatePortfolioForTrade(trade, action, tradeResult) {
     try {
         const token = trade.token;
         const tokenSymbol = token;
-        const gasCostWETH = tradeResult.gasUsed * tradeResult.gasPrice / 1e9 / 1e9;
+        const gasCostWETH = tradeResult.gasUsed * tradeResult.gasPrice / 1e9;
         const feeCostWETH = tradeResult.feeAmount;
         const totalCostWETH = gasCostWETH + feeCostWETH;
 

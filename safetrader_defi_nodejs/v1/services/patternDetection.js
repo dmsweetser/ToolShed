@@ -4,11 +4,13 @@ const { PATTERN_TYPES } = require('../config/config');
 let stateRef;
 let configRef;
 let blockchainRef;
+let tradeExecutionRef;
 
-function initPatternDetection(state, config, blockchain) {
+function initPatternDetection(state, config, blockchain, tradeExecution) {
     stateRef = state;
     configRef = config;
     blockchainRef = blockchain;
+    tradeExecutionRef = tradeExecution;
 
     return {
         detectPatternsForToken,
@@ -412,8 +414,8 @@ async function checkPatternsForToken(token) {
                 continue;
             }
 
-            // Trigger trade execution (handled by tradeExecution service)
-            // This will be called from the trade execution service
+            const amountWETH = tradeExecutionRef.calculateTradeAmount();
+            await tradeExecutionRef.executeTrade(token, 'buy', `Pattern: ${pattern.type}`, amountWETH, pattern);
         }
     } catch (e) {
         console.error('Error checking patterns for token:', e);
