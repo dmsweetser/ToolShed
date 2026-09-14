@@ -1,9 +1,9 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
-const logger = require('../v1/services/logger');
+const logger = require('../services/logger');
 
-const DB_PATH = process.env.SQLITE_PATH || './instance/db/trader.db';
+const DB_PATH = process.env.SQLITE_PATH || '../instance/db/trader.db';
 
 const dbDir = path.dirname(DB_PATH);
 if (!fs.existsSync(dbDir)) {
