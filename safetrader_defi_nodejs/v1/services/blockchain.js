@@ -262,7 +262,7 @@ function initializeSessionHandlers(s) {
     if (s.provider && s.provider.on) {
         s.provider.on("block", n => {
             if (current(s)) {
-                logger.warn(`[Block] Received block ${n}`);
+                // logger.warn(`[Block] Received block ${n}`); // Suppressed
                 queueBlock(s, Number(n));
             }
         });
@@ -449,7 +449,7 @@ async function processBlock(s, n) {
             logs = await s.provider.getLogs(blockRange);
         } catch (e) {
             if (e.message && e.message.includes("invalid block range params")) {
-                logger.info(`Skipping block ${n} due to invalid block range params`);
+                // logger.info(`Skipping block ${n} due to invalid block range params`); // Suppressed
                 return;
             }
             logger.warn('Error getting logs:', e);

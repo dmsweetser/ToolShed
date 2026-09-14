@@ -91,11 +91,11 @@ state.portfolio = initPortfolio(db, config);
 // Initialize blockchain service
 const blockchain = initBlockchain(state, config);
 
-// Initialize pattern detection
-const patternDetection = initPatternDetection(state, config, blockchain);
-
 // Initialize trade execution
 const tradeExecution = initTradeExecution(state, config, blockchain, db);
+
+// Initialize pattern detection
+const patternDetection = initPatternDetection(state, config, blockchain, tradeExecution);
 
 // API Routes
 app.use('/api', apiRouter(state, config, blockchain, patternDetection, tradeExecution, saveState, db));
@@ -125,7 +125,7 @@ process.on('SIGINT', () => {
     state.isRunning = false;
     state.manuallyStopped = true;
     blockchain.disconnect();
-    saveState();
+    saveState(db, state);
     process.exit(0);
 });
 
