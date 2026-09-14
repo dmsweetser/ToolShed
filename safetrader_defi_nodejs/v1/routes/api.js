@@ -117,14 +117,13 @@ module.exports = function (state, config, blockchain, patternDetection, tradeExe
             state.lastRecoveryTime = null;
 
             // Clear database
-            const db = require('../db/database');
-            db.initDatabase().exec('DELETE FROM app_state');
-            db.initDatabase().exec('DELETE FROM trades');
-            db.initDatabase().exec('DELETE FROM positions');
-            db.initDatabase().exec('DELETE FROM price_history');
-            db.initDatabase().exec('DELETE FROM swaps');
-            db.initDatabase().exec('DELETE FROM patterns');
-            db.initDatabase().exec('DELETE FROM portfolio_balances');
+            db.exec('DELETE FROM app_state');
+            db.exec('DELETE FROM trades');
+            db.exec('DELETE FROM positions');
+            db.exec('DELETE FROM price_history');
+            db.exec('DELETE FROM swaps');
+            db.exec('DELETE FROM patterns');
+            db.exec('DELETE FROM portfolio_balances');
 
             // Save empty state
             saveState(db, state);

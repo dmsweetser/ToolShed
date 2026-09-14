@@ -10,6 +10,7 @@ const {
     initializeKnownTokens,
     getChainConfig
 } = require('../config/config');
+const logger = require('./logger');
 
 // Initialize known tokens
 initializeKnownTokens();
@@ -175,7 +176,7 @@ async function connectWithRetry(s) {
         if (s.ws) {
             s.ws.addEventListener("open", () => {
                 if (!current(s)) return;
-                console.log(`[WebSocket] Connected to ${s.chain.name}`);
+                logger.info(`[WebSocket] Connected to ${s.chain.name}`);
                 s.connected = true;
                 s.reconnectAttempts = 0;
                 initializeSessionHandlers(s);
@@ -183,7 +184,7 @@ async function connectWithRetry(s) {
 
             s.ws.addEventListener("close", (e) => {
                 if (!current(s)) return;
-                console.warn(`[WebSocket] Disconnected: ${e.code} ${e.reason}`);
+                logger.warn(`[WebSocket] Disconnected: ${e.code} ${e.reason}`);
                 s.connected = false;
                 // Reconnect immediately if this was an unexpected close
                 if (e.code !== 1000) {
@@ -195,7 +196,7 @@ async function connectWithRetry(s) {
 
             s.ws.addEventListener("error", (e) => {
                 if (!current(s)) return;
-                console.error(`[WebSocket] Error:`, e);
+                logger.error(`[WebSocket] Error:`, e);
                 s.connected = false;
                 scheduleReconnect(s);
             });
@@ -216,7 +217,7 @@ async function connectWithRetry(s) {
 
     } catch (e) {
         if (!current(s)) return;
-        console.error('[Connection] Failed:', e);
+        logger.error('[Connection] Failed:', e);
         s.connected = false;
         scheduleReconnect(s);
     }
@@ -242,7 +243,7 @@ function scheduleReconnect(s) {
         return;
     }
 
-    console.log(`[Reconnect] Attempt ${s.reconnectAttempts}/${maxAttempts} in ${delay / 1000}s...`);
+    logger.info(`[Reconnect] Attempt ${s.reconnectAttempts}/${maxAttempts} in ${delay / 1000}s...`);
 
     s.reconnectTimer = setTimeout(() => {
         s.reconnectTimer = null;
@@ -261,7 +262,7 @@ function initializeSessionHandlers(s) {
     if (s.provider && s.provider.on) {
         s.provider.on("block", n => {
             if (current(s)) {
-                console.log(`[Block] Received block ${n}`);
+                logger.warn(`[Block] Received block ${n}`);
                 queueBlock(s, Number(n));
             }
         });
@@ -270,7 +271,7 @@ function initializeSessionHandlers(s) {
     if (!s.priceUpdateInterval) {
         s.priceUpdateInterval = setInterval(() => {
             if (current(s)) {
-                console.log(`[Price Update] Fetching prices...`);
+                logger.info(`[Price Update] Fetching prices...`);
                 updatePricesForSession(s);
             }
         }, 10000);
@@ -284,7 +285,7 @@ function initializeSessionHandlers(s) {
                 const blockNumber = await s.provider.getBlockNumber();
                 stateRef.lastBlockProcessed = Date.now();
             } catch (e) {
-                console.warn('[Heartbeat] WebSocket failed. Reconnecting...');
+                logger.warn('[Heartbeat] WebSocket failed. Reconnecting...');
                 s.connected = false;
                 scheduleReconnect(s);
             }
@@ -344,7 +345,7 @@ async function startPriceMonitoring(s) {
 // Update prices for session
 async function updatePricesForSession(s) {
     if (!current(s) || !s.connected) {
-        console.warn('Skipping price update: Session not active or connected.');
+        logger.warn('Skipping price update: Session not active or connected.');
         return;
     }
 
@@ -363,13 +364,13 @@ async function updatePricesForSession(s) {
                     }
                 }
             } catch (e) {
-                console.warn(`Error updating price for ${token}:`, e);
+                logger.warn(`Error updating price for ${token}:`, e);
             }
         }
 
         stateRef.lastPriceUpdate = new Date();
     } catch (error) {
-        console.error('Error updating prices for session:', error);
+        logger.error('Error updating prices for session:', error);
     }
 }
 
@@ -448,10 +449,10 @@ async function processBlock(s, n) {
             logs = await s.provider.getLogs(blockRange);
         } catch (e) {
             if (e.message && e.message.includes("invalid block range params")) {
-                console.info(`Skipping block ${n} due to invalid block range params`);
+                logger.info(`Skipping block ${n} due to invalid block range params`);
                 return;
             }
-            console.warn('Error getting logs:', e);
+            logger.warn('Error getting logs:', e);
             return;
         }
 
@@ -470,14 +471,14 @@ async function processBlock(s, n) {
                 try {
                     await processSwapLog(s, logEntry);
                 } catch (e) {
-                    console.warn('Error processing swap log:', e);
+                    logger.warn('Error processing swap log:', e);
                 }
             }));
         }));
 
         stateRef.lastBlockProcessed = Date.now();
     } catch (error) {
-        console.error('Error processing block:', error);
+        logger.error('Error processing block:', error);
     }
 }
 
@@ -592,7 +593,7 @@ async function processSwapLog(s, logEntry) {
         }
 
     } catch (error) {
-        console.error('Error processing swap log:', error);
+        logger.error('Error processing swap log:', error);
     }
 }
 
