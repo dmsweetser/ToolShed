@@ -167,7 +167,7 @@ function saveState(db, state) {
              observed_tokens, pattern_stats, last_detection_time, last_price_update, 
              last_recovery_time, start_time, last_traded_token, last_trade_times, 
              open_buy_orders, prediction_validation, pending_validations, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
         stmt.run({
             id: 1,
