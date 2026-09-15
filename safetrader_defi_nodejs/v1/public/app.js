@@ -87,22 +87,6 @@ async function apiRequest(method, endpoint, data = null) {
 // BOT CONTROLS
 // ======================
 
-async function connectWallet() {
-    showToast('info', 'Connecting wallet...');
-    const result = await apiRequest('POST', '/wallet/connect');
-
-    if (result.success) {
-        const btn = document.getElementById('connectWalletBtn');
-        if (btn) {
-            btn.textContent = 'Wallet Connected';
-            btn.disabled = true;
-        }
-        showToast('success', 'Wallet connected successfully!');
-        updateTradingMode();
-    } else {
-        showToast('error', result.message || 'Failed to connect wallet');
-    }
-}
 
 async function startBot() {
     const btn = document.getElementById('startBotBtn');
@@ -214,13 +198,19 @@ function updateBotStatus() {
     updateConnectionStatus();
 }
 
-function updateConnectionStatus() {
+function updateConnectionStatus(blockchainConnected, lastPriceUpdate) {
     const us = document.getElementById('blockchainStatus');
     const ps = document.getElementById('priceFeedStatus');
-    const connected = false; // Will be updated by polling
 
-    if (us) us.innerHTML = connected ? 'Market Connection ✓' : '<span class="loading-spinner"></span> Market Connection';
-    if (ps) ps.innerHTML = connected ? 'Price Updates ✓' : '<span class="loading-spinner"></span> Price Updates';
+    if (us) {
+        us.innerHTML = blockchainConnected ? 'Market Connection ✓' : '<span class="loading-spinner"></span> Market Connection';
+        us.style.color = blockchainConnected ? '#10b981' : '#dc2626';
+    }
+    if (ps) {
+        const priceUpdated = lastPriceUpdate && (Date.now() - new Date(lastPriceUpdate).getTime() < 15000);
+        ps.innerHTML = priceUpdated ? 'Price Updates ✓' : '<span class="loading-spinner"></span> Price Updates';
+        ps.style.color = priceUpdated ? '#10b981' : '#dc2626';
+    }
 }
 
 function updateTradingMode() {
@@ -275,15 +265,16 @@ function stopPolling() {
 function updateUIWithState(stateData) {
     // Update status indicators
     isRunning = stateData.isRunning;
+    const blockchainConnected = stateData.blockchainConnected || false;
+    const lastPriceUpdate = stateData.lastPriceUpdate;
 
     const si = document.getElementById('statusIndicator');
     const st = document.getElementById('botStatusText');
     const sb = document.getElementById('startBotBtn');
     const stopb = document.getElementById('stopBotBtn');
     const reconnectBtn = document.getElementById('reconnectBtn');
-    const connected = false; // TODO: Get from backend
 
-    if (isRunning && connected) {
+    if (isRunning && blockchainConnected) {
         if (si) si.className = 'status status-connected';
         if (st) st.textContent = 'Running';
         if (sb) sb.disabled = true;
@@ -291,20 +282,23 @@ function updateUIWithState(stateData) {
         if (reconnectBtn) reconnectBtn.style.display = 'none';
     } else {
         if (si) si.className = 'status status-disconnected';
-        if (st) st.textContent = connected ? 'Paused' : 'Disconnected';
+        if (st) st.textContent = blockchainConnected ? 'Paused' : 'Disconnected';
         if (sb) sb.disabled = false;
         if (stopb) stopb.disabled = true;
-        if (reconnectBtn) reconnectBtn.style.display = (isRunning && !connected) ? 'inline-block' : 'none';
+        if (reconnectBtn) reconnectBtn.style.display = (isRunning && !blockchainConnected) ? 'inline-block' : 'none';
     }
 
     // Update metrics
     safeSetText('uptime', stateData.uptime || '00:00:00');
-    safeSetText('lastPriceUpdate', stateData.lastPriceUpdate ? new Date(stateData.lastPriceUpdate).toLocaleTimeString() : 'Never');
+    safeSetText('lastPriceUpdate', lastPriceUpdate ? new Date(lastPriceUpdate).toLocaleTimeString() : 'Never');
     safeSetText('currentGasPrice', (stateData.currentGasPrice || 0).toFixed(2) + ' gwei');
     safeSetText('trackedTokensCount', stateData.observedTokens ? stateData.observedTokens.length : 0);
     safeSetText('activePatternsCount', stateData.patternStats ? stateData.patternStats.totalPatterns : 0);
     safeSetText('lastDetectionTime', stateData.lastDetectionTime ? new Date(stateData.lastDetectionTime).toLocaleTimeString() : 'Never');
     safeSetText('tradeAmountDisplay', formatETH(stateData.tradeAmount || 0));
+
+    // Update connection status with real data
+    updateConnectionStatus(blockchainConnected, lastPriceUpdate);
 
     // Update trading mode
     updateTradingMode();

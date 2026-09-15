@@ -153,6 +153,7 @@ module.exports = function (state, config, blockchain, patternDetection, tradeExe
                     walletConnected: state.walletConnected,
                     currentNetwork: state.currentNetwork,
                     currentGasPrice: state.currentGasPrice || config.MAX_GAS_PRICE,
+                    blockchainConnected: state.activeSession?.connected || false,
                     prices: state.prices,
                     observedTokens: Array.from(state.observedTokens),
                     patternStats: state.patternStats,
@@ -315,46 +316,6 @@ module.exports = function (state, config, blockchain, patternDetection, tradeExe
     // ======================
     // WALLET ENDPOINTS
     // ======================
-
-    // Connect wallet (for live trading)
-    router.post('/wallet/connect', async (req, res) => {
-        try {
-            if (!process.env.PRIVATE_KEY) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'No PRIVATE_KEY in .env. Running in paper trading mode.'
-                });
-            }
-
-            const provider = blockchain.getProvider();
-            if (!provider) {
-                return res.status(400).json({ success: false, message: 'Blockchain not connected' });
-            }
-
-            const signer = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-            const address = await signer.getAddress();
-
-            state.walletConnected = true;
-            state.signer = signer;
-
-            // Check balance
-            const wethAddress = require('../config/config').NETWORK_TOKENS.arbitrum.WETH;
-            const wethContract = new ethers.Contract(wethAddress, require('../config/config').ERC20_ABI, provider);
-            const wethBalance = await wethContract.balanceOf(address);
-            const ethBalance = await provider.getBalance(address);
-
-            res.json({
-                success: true,
-                walletConnected: true,
-                address,
-                ethBalance: ethers.formatEther(ethBalance),
-                wethBalance: ethers.formatEther(wethBalance)
-            });
-        } catch (error) {
-            console.error('Wallet connection error:', error);
-            res.status(500).json({ success: false, message: error.message || 'Failed to connect wallet' });
-        }
-    });
 
     // ======================
     // CONFIGURATION ENDPOINTS

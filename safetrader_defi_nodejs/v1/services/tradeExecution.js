@@ -386,7 +386,7 @@ function saveTradeToDB(trade) {
       (id, timestamp, token, type, price, token_amount, amount_eth, fee, gas_used, 
        gas_price, price_impact, slippage, status, reason, pnl, pattern, network, 
        entry_time, closed_at, tx_hash, validation_count, validation_successes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
         stmt.run(
@@ -403,15 +403,15 @@ function saveTradeToDB(trade) {
             trade.priceImpact,
             trade.slippage,
             trade.status,
-            trade.reason,
+            trade.reason || null,
             trade.pnl,
-            trade.pattern,
+            trade.pattern || null,
             trade.network,
             trade.entryTime,
-            trade.closedAt,
-            trade.txHash,
-            trade.validationCount,
-            trade.validationSuccesses
+            trade.closedAt || null,
+            trade.txHash || null,
+            trade.validationCount || 0,
+            trade.validationSuccesses || 0
         );
     } catch (e) {
         console.error('Error saving trade to DB:', e);
@@ -668,7 +668,9 @@ async function checkOpenPositionsForProfitTaking() {
         const profitWETH = currentValue - costBasis;
         const profitPercent = (profitWETH / costBasis) * 100;
 
-        if (profitPercent >= configRef.MIN_PROFIT_PERCENT && profitWETH > 0) {
+        // Increased threshold to prevent selling at a loss due to fees/slippage
+        const minProfitThreshold = Math.max(configRef.MIN_PROFIT_PERCENT, 1.0);
+        if (profitPercent >= minProfitThreshold && profitWETH > 0.0000001) {
             console.log(`[Profit-Taking] Selling ${token} at ${profitPercent.toFixed(4)}% profit`);
             await executeTrade(token, 'sell', `Profit target (${formatNumber(profitPercent, 2)}%) reached`);
         }
