@@ -161,7 +161,7 @@ module.exports = function (state, config, blockchain, patternDetection, tradeExe
                     lastRecoveryTime: state.lastRecoveryTime?.toISOString(),
                     startTime: state.startTime?.toISOString(),
                     uptime: state.startTime ? getUptime(state.startTime) : '00:00:00',
-                    tradeAmount: require('../services/tradeExecution').initTradeExecution(state, config).calculateTradeAmount()
+                    tradeAmount: require('../services/tradeExecution').initTradeExecution(state, config, blockchain, db).calculateTradeAmount()
                 },
                 portfolio: portfolioUI,
                 tradeStats: tradeStats,
@@ -303,7 +303,7 @@ module.exports = function (state, config, blockchain, patternDetection, tradeExe
     // Get trade amount
     router.get('/trade/amount', (req, res) => {
         try {
-            const tradeExecutionService = require('../services/tradeExecution').initTradeExecution(state, config);
+            const tradeExecutionService = require('../services/tradeExecution').initTradeExecution(state, config, blockchain, db);
             const amount = tradeExecutionService.calculateTradeAmount();
             res.json({ success: true, amount });
         } catch (error) {
