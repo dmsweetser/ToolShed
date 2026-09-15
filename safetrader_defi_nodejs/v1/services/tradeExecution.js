@@ -205,7 +205,7 @@ async function executeTrade(token, action, patternDescription = 'Manual', amount
         }
 
         // Update gas price
-        await blockchainRef.updateGasPrice();
+        await blockchainRef.updateGasPriceForSession(stateRef.activeSession);
         const currentGasPrice = stateRef.currentGasPrice || configRef.MAX_GAS_PRICE;
 
         if (currentGasPrice > configRef.MAX_GAS_PRICE) {

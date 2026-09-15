@@ -41,11 +41,7 @@ function initBlockchain(state, config) {
         updatePricesForSession,
         queueBlock,
         processPending,
-        updateGasPrice: async () => {
-            if (stateRef.activeSession) {
-                await updateGasPriceForSession(stateRef.activeSession);
-            }
-        }
+        updateGasPriceForSession
     };
 }
 

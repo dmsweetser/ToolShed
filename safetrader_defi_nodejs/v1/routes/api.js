@@ -28,7 +28,7 @@ module.exports = function (state, config, blockchain, patternDetection, tradeExe
             await blockchain.connect();
 
             // Start various monitors
-            await blockchain.updateGasPrice();
+            await blockchain.updateGasPriceForSession(state.activeSession);
             patternDetection.startPatternDetection();
             tradeExecution.startProfitTakingMonitor();
 
