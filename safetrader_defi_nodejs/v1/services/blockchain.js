@@ -182,12 +182,7 @@ async function connectWithRetry(s) {
                 if (!current(s)) return;
                 logger.warn(`[WebSocket] Disconnected: ${e.code} ${e.reason}`);
                 s.connected = false;
-                // Reconnect immediately if this was an unexpected close
-                if (e.code !== 1000) {
-                    scheduleReconnect(s);
-                } else {
-                    scheduleReconnect(s);
-                }
+                scheduleReconnect(s);
             });
 
             s.ws.addEventListener("error", (e) => {
@@ -494,7 +489,10 @@ async function processSwapLog(s, logEntry) {
             return;
         }
 
-        if (!parsed) return;
+        if (!parsed) {
+            logger.warn(`[SwapLog] Failed to parse log for block: ${logEntry.blockNumber}`);
+            return;
+        }
 
         const amount0 = parsed.args.amount0;
         const amount1 = parsed.args.amount1;
