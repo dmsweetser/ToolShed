@@ -550,7 +550,6 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // Make functions available globally for button onclick handlers
-window.connectWallet = connectWallet;
 window.startBot = startBot;
 window.stopBot = stopBot;
 window.resetApp = resetApp;

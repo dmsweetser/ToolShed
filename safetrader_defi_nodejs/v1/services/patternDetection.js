@@ -171,7 +171,7 @@ function detectPatternsForToken(history, token) {
     if (currentWindow.length > 0) windows.push(currentWindow);
 
     if (windows.length < 2) {
-        console.warn(`[Cubic] Not enough windows for ${token}. Need at least 2.`);
+        // console.warn(`[Cubic] Not enough windows for ${token}. Need at least 2.`); // Suppressed
         return [];
     }
 
@@ -410,7 +410,7 @@ async function checkPatternsForToken(token) {
             const validationData = stateRef.predictionValidation.get(validationKey);
 
             if (!validationData || !validationData.validated) {
-                console.log(`Prediction not yet validated for ${token}, skipping trade`);
+                // console.log(`Prediction not yet validated for ${token}, skipping trade`); // Suppressed
                 continue;
             }
 
