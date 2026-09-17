@@ -1,4 +1,5 @@
 const { PATTERN_TYPES } = require('../config/config');
+const logger = require('./logger');
 
 // Global state and config references
 let stateRef;
@@ -204,7 +205,7 @@ function detectPatternsForToken(history, token) {
         predictedY > currentPrice &&
         predictedProfitPercent >= minProfitThreshold) {
 
-        patterns.push({
+        const pattern = {
             type: PATTERN_TYPES.REGRESSION,
             token,
             predictedPrice: predictedY,
@@ -218,7 +219,14 @@ function detectPatternsForToken(history, token) {
             regressionDegree: 3,
             timestamp: Date.now(),
             predictedProfitPercent
+        };
+        logger.info(`[Pattern Detection] New pattern found for ${token}`, {
+            type: pattern.type,
+            currentPrice,
+            predictedPrice: pattern.predictedPrice,
+            predictedProfitPercent: pattern.predictedProfitPercent
         });
+        patterns.push(pattern);
     }
 
     return patterns;
@@ -379,6 +387,10 @@ async function detectAllPatterns() {
         for (const token of tokens) {
             await checkPatternsForToken(token);
         }
+        logger.info('[Pattern Detection] Cycle complete', {
+            totalPatterns: stateRef.activePatterns.size,
+            tokensChecked: tokens.length
+        });
     } catch (e) {
         console.error('Error in detectAllPatterns:', e);
     } finally {
@@ -410,15 +422,20 @@ async function checkPatternsForToken(token) {
             const validationData = stateRef.predictionValidation.get(validationKey);
 
             if (!validationData || !validationData.validated) {
-                // console.log(`Prediction not yet validated for ${token}, skipping trade`); // Suppressed
+                logger.debug(`[Pattern Detection] Prediction not yet validated for ${token}, skipping trade`, { token });
                 continue;
             }
 
+            logger.info(`[Pattern Detection] Triggering BUY for ${token} based on validated pattern`, {
+                token,
+                predictedPrice: pattern.predictedPrice,
+                currentPrice: stateRef.prices[token]
+            });
             const amountWETH = tradeExecutionRef.calculateTradeAmount();
             await tradeExecutionRef.executeTrade(token, 'buy', `Pattern: ${pattern.type}`, amountWETH, pattern);
         }
     } catch (e) {
-        console.error('Error checking patterns for token:', e);
+        logger.error('Error checking patterns for token:', e);
     }
 }
 

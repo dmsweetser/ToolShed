@@ -10,9 +10,9 @@ function log(level, message) {
     const timestamp = new Date().toISOString();
     const logMessage = `[${timestamp}] [${level}] ${message}\n`;
     logStream.write(logMessage);
-    if (level === 'ERROR') console.error(message);
-    else if (level === 'WARN') console.warn(message);
-    else if (level === 'DEBUG') console.debug(message);
+    if (level === 'ERROR') console.error(logMessage);
+    else if (level === 'WARN') console.warn(logMessage);
+    else if (level === 'DEBUG') console.debug(logMessage);
     else console.log(message);
 }
 

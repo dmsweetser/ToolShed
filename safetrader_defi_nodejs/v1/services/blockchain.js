@@ -335,7 +335,7 @@ async function startPriceMonitoring(s) {
     // Restart swap detection every 2 minutes
     if (s.swapDetectionRestartTimer) clearInterval(s.swapDetectionRestartTimer);
     s.swapDetectionRestartTimer = setTimeout(() => {
-        logger.info('[Swap Detection] Restarting price/swap monitoring...');
+        logger.info('[Swap Detection] Restarting price/swap monitoring...', { network: s.chain.name });
         startPriceMonitoring(s);
     }, 120000);
 }
@@ -522,6 +522,7 @@ async function processSwapLog(s, logEntry) {
             pool: short(logEntry.address)
         };
 
+        logger.info('[Swap Detection] New swap detected', swapRecord);
         stateRef.lastSwaps.unshift(swapRecord);
         if (stateRef.lastSwaps.length > 1000) {
             stateRef.lastSwaps.pop();

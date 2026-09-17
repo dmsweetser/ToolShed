@@ -80,7 +80,8 @@ const config = {
     MIN_LIQUIDITY: 50000,
     PATTERN_MODE: 'regression',
     PREDICTION_VALIDATION_COUNT: parseInt(process.env.PREDICTION_VALIDATION_COUNT) || 3,
-    MIN_PREDICTION_ACCURACY: parseInt(process.env.MIN_PREDICTION_ACCURACY) || 95
+    MIN_PREDICTION_ACCURACY: parseInt(process.env.MIN_PREDICTION_ACCURACY) || 95,
+    version: '11.1.0'
 };
 
 // Initialize portfolio
@@ -115,11 +116,11 @@ async function startTrading() {
     }
 }
 
-startTrading();
+startTrading().catch(err => logger.error('Unhandled startTrading error:', err));
 
 // Start server (headless mode)
 app.listen(PORT, () => {
-    logger.info(`Uniswap Quick Swap Trader v${config.version || '11.1.0'} running headless on port ${PORT}`);
+    logger.info(`Uniswap Quick Swap Trader v${config.version} running headless on port ${PORT}`);
     logger.info(`Mode: ${process.env.PRIVATE_KEY ? 'LIVE TRADING' : 'PAPER TRADING'}`);
 });
 

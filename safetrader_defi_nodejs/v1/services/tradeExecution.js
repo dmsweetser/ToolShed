@@ -237,6 +237,14 @@ async function executeTrade(token, action, patternDescription = 'Manual', amount
 
         let tradeResult = await simulateRealisticTrade(tokenSymbol, action, tokenAmount, currentPrice, poolInfo, 0, currentGasPrice);
 
+        logger.info(`[Trade Simulation] ${action.toUpperCase()} ${tokenSymbol}`, {
+            amount: tokenAmount,
+            price: currentPrice,
+            gasPrice: currentGasPrice,
+            success: tradeResult.success,
+            reason: tradeResult.reason
+        });
+
         if (!tradeResult.success) {
             const failedTrade = createTradeObject(
                 tokenSymbol, action, currentPrice, tokenAmount, amountInWETH,
@@ -250,6 +258,7 @@ async function executeTrade(token, action, patternDescription = 'Manual', amount
             // Save to database
             saveTradeToDB(failedTrade);
 
+            logger.error(`[Trade Execution] ${action.toUpperCase()} ${tokenSymbol} FAILED`, { reason: tradeResult.reason });
             return failedTrade;
         }
 
@@ -291,6 +300,13 @@ async function executeTrade(token, action, patternDescription = 'Manual', amount
 
         updatePortfolioForTrade(trade, action, tradeResult);
         stateRef.trades.push(trade);
+
+        logger.info(`[Trade Execution] ${action.toUpperCase()} ${tokenSymbol} SUCCESS`, {
+            id: trade.id,
+            amount: trade.tokenAmount,
+            price: tradeResult.executionPrice,
+            status: trade.status
+        });
 
         // Save to database
         saveTradeToDB(trade);

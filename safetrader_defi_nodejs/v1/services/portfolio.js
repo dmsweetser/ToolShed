@@ -63,40 +63,6 @@ function formatPercent(value, decimals = 2) {
     return value.toFixed(decimals) + '%';
 }
 
-// Update portfolio UI data (returns data for frontend)
-function updatePortfolioUI() {
-    try {
-        const portfolio = stateRef.portfolio;
-
-        return {
-            startingEth: formatETH(portfolio.startingEth),
-            currentEth: formatETH(portfolio.currentEth),
-            realizedPnL: {
-                value: formatETH(portfolio.realizedPnL),
-                class: portfolio.realizedPnL >= 0 ? 'price-up' : 'price-down'
-            },
-            unrealizedPnL: {
-                value: formatETH(portfolio.unrealizedPnL),
-                class: portfolio.unrealizedPnL >= 0 ? 'price-up' : 'price-down'
-            },
-            netPnL: {
-                value: formatETH(portfolio.realizedPnL + portfolio.unrealizedPnL),
-                class: (portfolio.realizedPnL + portfolio.unrealizedPnL) >= 0 ? 'price-up' : 'price-down'
-            },
-            portfolioReturn: {
-                value: formatPercent((portfolio.realizedPnL + portfolio.unrealizedPnL) / portfolio.startingEth * 100),
-                class: (portfolio.realizedPnL + portfolio.unrealizedPnL) >= 0 ? 'price-up' : 'price-down'
-            },
-            gasSpent: formatETH(portfolio.gasSpent),
-            dexFees: formatETH(portfolio.feesPaid),
-            totalFees: formatETH(portfolio.gasSpent + portfolio.feesPaid)
-        };
-    } catch (e) {
-        console.error('Error updating portfolio UI:', e);
-        return {};
-    }
-}
-
 // Update portfolio equity
 function updatePortfolioEquity() {
     try {
