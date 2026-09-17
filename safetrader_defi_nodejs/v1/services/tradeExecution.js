@@ -1,5 +1,6 @@
 const { ethers } = require('ethers');
 const { POOL_FEES, NETWORK_TOKENS } = require('../config/config');
+const logger = require('./logger');
 
 // Global references
 let stateRef;
