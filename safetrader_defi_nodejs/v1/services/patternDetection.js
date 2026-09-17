@@ -387,10 +387,7 @@ async function detectAllPatterns() {
         for (const token of tokens) {
             await checkPatternsForToken(token);
         }
-        logger.info('[Pattern Detection] Cycle complete', {
-            totalPatterns: stateRef.activePatterns.size,
-            tokensChecked: tokens.length
-        });
+        
     } catch (e) {
         console.error('Error in detectAllPatterns:', e);
     } finally {
