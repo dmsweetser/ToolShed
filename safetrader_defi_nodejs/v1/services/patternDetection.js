@@ -27,7 +27,7 @@ function initPatternDetection(state, config, blockchain, tradeExecution) {
     };
 }
 
-// Smoothing function with vectorized metrics
+// Smoothing function
 function smoothData(history, windowSize = 3) {
     if (history.length <= windowSize) return history;
     const smoothed = [];
@@ -35,21 +35,8 @@ function smoothData(history, windowSize = 3) {
         const start = Math.max(0, i - Math.floor(windowSize / 2));
         const end = Math.min(history.length, i + Math.ceil(windowSize / 2));
         const window = history.slice(start, end);
-        const prices = window.map(p => p.price);
-        const avgPrice = prices.reduce((sum, p) => sum + p, 0) / prices.length;
-
-        // Vectorized metrics for direction, magnitude, and momentum
-        const direction = prices[prices.length - 1] - prices[0];
-        const magnitude = Math.max(...prices) - Math.min(...prices);
-        const momentum = direction * (magnitude > 0 ? Math.abs(direction) / magnitude : 0);
-
-        smoothed.push({
-            timestamp: history[i].timestamp,
-            price: avgPrice,
-            direction,
-            magnitude,
-            momentum
-        });
+        const avgPrice = window.reduce((sum, p) => sum + p.price, 0) / window.length;
+        smoothed.push({ timestamp: history[i].timestamp, price: avgPrice });
     }
     return smoothed;
 }
@@ -189,24 +176,13 @@ function detectPatternsForToken(history, token) {
         return [];
     }
 
-    const windowFeatures = windows.map(window => {
-        const prices = window.map(p => p.price);
-        const direction = prices[prices.length - 1] - prices[0];
-        const magnitude = Math.max(...prices) - Math.min(...prices);
-        const momentum = direction * (magnitude > 0 ? Math.abs(direction) / magnitude : 0);
-        // Composite signal combining direction, magnitude, and momentum for regression
-        const compositeSignal = direction + (magnitude * 0.5) + (momentum * 0.2);
-        return {
-            timestamp: window[window.length - 1].timestamp,
-            direction,
-            magnitude,
-            momentum,
-            compositeSignal
-        };
-    });
+    const windowAverages = windows.map(window => ({
+        avg: window.map(p => p.price).reduce((a, b) => a + b, 0) / window.length,
+        timestamp: window[window.length - 1].timestamp
+    }));
 
-    const xValues = windowFeatures.map((_, i) => i);
-    const yValues = windowFeatures.map(w => w.compositeSignal);
+    const xValues = windowAverages.map((_, i) => i);
+    const yValues = windowAverages.map(w => w.avg);
     const regression = polynomialRegression(xValues, yValues, 3);
     const nextX = xValues.length;
     let predictedY = regression.predict(nextX);
