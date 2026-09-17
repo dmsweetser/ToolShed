@@ -331,6 +331,13 @@ async function startPriceMonitoring(s) {
             await updatePricesForSession(s);
         }
     }, 10000);
+
+    // Restart swap detection every 2 minutes
+    if (s.swapDetectionRestartTimer) clearInterval(s.swapDetectionRestartTimer);
+    s.swapDetectionRestartTimer = setTimeout(() => {
+        logger.info('[Swap Detection] Restarting price/swap monitoring...');
+        startPriceMonitoring(s);
+    }, 120000);
 }
 
 // Update prices for session

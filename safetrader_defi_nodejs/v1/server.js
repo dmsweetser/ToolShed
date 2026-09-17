@@ -17,7 +17,6 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
 // Global state
 const state = {
@@ -100,10 +99,7 @@ const patternDetection = initPatternDetection(state, config, blockchain, tradeEx
 // API Routes
 app.use('/api', apiRouter(state, config, blockchain, patternDetection, tradeExecution, saveState, db));
 
-// Serve frontend
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+
 
 // Start server
 app.listen(PORT, () => {
