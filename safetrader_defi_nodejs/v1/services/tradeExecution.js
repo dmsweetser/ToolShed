@@ -571,7 +571,7 @@ function savePositionToDB(position) {
       (id, token, entry_price, amount, usd_value, entry_time, exit_time, 
        exit_price, gas_paid, fees_paid, status, pnl, trade_id, pattern, 
        validation_count, validation_successes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
         stmt.run(

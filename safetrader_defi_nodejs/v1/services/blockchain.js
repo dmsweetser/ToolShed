@@ -253,7 +253,6 @@ function initializeSessionHandlers(s) {
     if (s.provider && s.provider.on) {
         s.provider.on("block", n => {
             if (current(s)) {
-                // logger.warn(`[Block] Received block ${n}`); // Suppressed
                 queueBlock(s, Number(n));
             }
         });
@@ -447,7 +446,6 @@ async function processBlock(s, n) {
             logs = await s.provider.getLogs(blockRange);
         } catch (e) {
             if (e.message && e.message.includes("invalid block range params")) {
-                // logger.info(`Skipping block ${n} due to invalid block range params`); // Suppressed
                 return;
             }
             logger.warn('Error getting logs:', e);
@@ -522,7 +520,6 @@ async function processSwapLog(s, logEntry) {
             pool: short(logEntry.address)
         };
 
-        logger.info('[Swap Detection] New swap detected', swapRecord);
         stateRef.lastSwaps.unshift(swapRecord);
         if (stateRef.lastSwaps.length > 1000) {
             stateRef.lastSwaps.pop();
