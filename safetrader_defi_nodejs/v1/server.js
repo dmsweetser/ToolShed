@@ -8,7 +8,6 @@ const { initBlockchain } = require('./services/blockchain');
 const { initPatternDetection } = require('./services/patternDetection');
 const { initTradeExecution } = require('./services/tradeExecution');
 const { initPortfolio } = require('./services/portfolio');
-const apiRouter = require('./routes/api');
 
 // Initialize Express app
 const app = express();
@@ -20,7 +19,7 @@ app.use(express.json());
 
 // Global state
 const state = {
-    isRunning: false,
+    isRunning: true,
     walletConnected: false,
     provider: null,
     signer: null,
@@ -46,7 +45,7 @@ const state = {
     sessionSerial: 0,
     activeSession: null,
     currentRpcIndex: 0,
-    manuallyStopped: true,
+    manuallyStopped: false,
     reconnectAttempts: 0,
     maxReconnectAttempts: parseInt(process.env.MAX_RECONNECT_ATTEMPTS) || 10,
     reconnectDelay: parseInt(process.env.RECONNECT_DELAY) || 1000
@@ -96,23 +95,32 @@ const tradeExecution = initTradeExecution(state, config, blockchain, db);
 // Initialize pattern detection
 const patternDetection = initPatternDetection(state, config, blockchain, tradeExecution);
 
-// API Routes
-app.use('/api', apiRouter(state, config, blockchain, patternDetection, tradeExecution, saveState, db));
+// Load state on startup
+loadState(db, state);
 
-
-
-// Start server
-app.listen(PORT, () => {
-    logger.info(`Uniswap Quick Swap Trader v${config.version || '11.1.0'} running on port ${PORT}`);
-    logger.info(`Mode: ${process.env.PRIVATE_KEY ? 'LIVE TRADING' : 'PAPER TRADING'}`);
-
-    // Load state on startup
-    loadState(db, state);
-
-    // Initialize blockchain connection if running
-    if (state.isRunning) {
-        blockchain.connect();
+// Auto-start trading on boot
+async function startTrading() {
+    state.startTime = new Date();
+    state.isRunning = true;
+    state.manuallyStopped = false;
+    logger.info('Auto-starting trading bot...');
+    try {
+        await blockchain.connect();
+        patternDetection.startPatternDetection();
+        tradeExecution.startProfitTakingMonitor();
+        logger.info('Trading bot started successfully.');
+    } catch (error) {
+        logger.error('Failed to start trading bot:', error);
+        state.isRunning = false;
     }
+}
+
+startTrading();
+
+// Start server (headless mode)
+app.listen(PORT, () => {
+    logger.info(`Uniswap Quick Swap Trader v${config.version || '11.1.0'} running headless on port ${PORT}`);
+    logger.info(`Mode: ${process.env.PRIVATE_KEY ? 'LIVE TRADING' : 'PAPER TRADING'}`);
 });
 
 // Graceful shutdown
@@ -121,6 +129,8 @@ process.on('SIGINT', () => {
     state.isRunning = false;
     state.manuallyStopped = true;
     blockchain.disconnect();
+    patternDetection.stopPatternDetection();
+    tradeExecution.stopProfitTakingMonitor();
     saveState(db, state);
     process.exit(0);
 });
